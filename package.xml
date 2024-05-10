@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>robot_model_renderer</name>
+  <version>1.1.0</version>
+  <description>Node for masking out robot parts from the camera view.</description>
+
+  <maintainer email="peckama2@fel.cvut.cz">Martin Pecka</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>assimp-dev</build_depend>
+  <build_depend>camera_info_manager</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>glut</build_depend>
+  <build_depend>image_geometry</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>libglew-dev</build_depend>
+  <build_depend>libxi-dev</build_depend>
+  <build_depend>opengl</build_depend>
+  <build_depend>resource_retriever</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>tf2_geometry_msgs</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <build_depend>urdf</build_depend>
+
+  <exec_depend>assimp</exec_depend>
+  <exec_depend>camera_info_manager</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>glut</exec_depend>
+  <exec_depend>image_geometry</exec_depend>
+  <exec_depend>image_transport</exec_depend>
+  <exec_depend>image_view</exec_depend>
+  <exec_depend>libglew-dev</exec_depend>
+  <exec_depend>libxi-dev</exec_depend>
+  <exec_depend>nifti_robot_description</exec_depend>
+  <exec_depend>opengl</exec_depend>
+  <exec_depend>resource_retriever</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rviz</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>urdf</exec_depend>
+
+</package>
