@@ -31,6 +31,7 @@
 
 #include <memory>
 
+#include <OgrePixelFormat.h>
 #include <OgreSharedPtr.h>
 
 #include <opencv2/core/core.hpp>
@@ -65,6 +66,7 @@ public:
   virtual void setFarClipDistance(double farClip);
   virtual void setVisualVisible(bool visible);
   virtual void setCollisionVisible(bool visible);
+  virtual void setPixelFormat(const Ogre::PixelFormat& pf);
 
   virtual void reset();
 
@@ -95,6 +97,8 @@ protected:
   Ogre::Camera* camera_ {nullptr};
   Ogre::Viewport* viewPort_ {nullptr};
   OgreDistortionPass distortionPass_;
+  Ogre::PixelFormat pixelFormat;
+  int cvImageType;
 };
 
 } // namespace robot_model_renderer

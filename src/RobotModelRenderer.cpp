@@ -61,7 +61,7 @@ namespace robot_model_renderer
 RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdater* linkUpdater,
   Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera, const bool setupDefaultLighting) :
     linkUpdater(linkUpdater), isDistorted(false), visualVisible(true), collisionVisible(false),
-    scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(false)
+    scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(false),
     pixelFormat(Ogre::PF_A8R8G8B8), cvImageType(ogrePixelFormatToCvMatType(Ogre::PF_A8R8G8B8))
 {
   if (sceneManager == nullptr && sceneNode != nullptr)
@@ -136,6 +136,12 @@ void RobotModelRenderer::setCollisionVisible(const bool visible)
   this->collisionVisible = visible;
   if (this->robot_ != nullptr)
     this->robot_->setCollisionVisible(visible);
+}
+
+void RobotModelRenderer::setPixelFormat(const Ogre::PixelFormat& pf)
+{
+  this->pixelFormat = pf;
+  this->cvImageType = ogrePixelFormatToCvMatType(pf);
 }
 
 void RobotModelRenderer::updateOgreCamera()
@@ -263,12 +269,10 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
   const auto rectRows = static_cast<int>(rt_->getHeight());
   const auto rectCols = static_cast<int>(rt_->getWidth());
 
-  const Ogre::PixelFormat pf = rt_->suggestPixelFormat();
-  const auto cvImageType = ogrePixelFormatToCvMatType(pf);
+  // If distortion is done on GPU, this will already be raw image
+  cv::Mat rectImg(rectRows, rectCols, this->cvImageType);
 
-  cv::Mat rectImg(rectRows, rectCols, cvImageType);  // If distortion is done on GPU, this will already be raw image
-
-  const Ogre::PixelBox pb(rt_->getWidth(), rt_->getHeight(), 1, pf, rectImg.data);
+  const Ogre::PixelBox pb(rt_->getWidth(), rt_->getHeight(), 1, this->pixelFormat, rectImg.data);
   rt_->copyContentsToMemory(pb);
 
   const auto rawRows = this->origCameraModel.reducedResolution().height;
@@ -284,7 +288,7 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
     const auto bgColor = cv::Scalar::all(0);  // TODO fill with actual background color
 
     // This will be the raw image, but still with the size of the rectified one. It will get cropped later.
-    cv::Mat rawImg(rectRows, rectCols, cvImageType, bgColor);
+    cv::Mat rawImg(rectRows, rectCols, this->cvImageType, bgColor);
 
     this->rectifiedCameraModel.unrectifyImage(rectImg, rawImg);
     outputImg = rawImg;
