@@ -28,27 +28,30 @@
  */
 
 #include <robot_model_renderer/ogre_helpers/shape.h>
-#include <ros/assert.h>
 
-#include <OgreSceneManager.h>
-#include <OgreSceneNode.h>
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
-#include <OgreQuaternion.h>
+#include <cstdint>
+
 #include <OgreEntity.h>
 #include <OgreMaterialManager.h>
+#include <OgreQuaternion.h>
+#include <OgreSceneManager.h>
+#include <OgreSceneNode.h>
 #include <OgreTextureManager.h>
 #include <OgreTechnique.h>
-#include <cstdint>
+
+#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
+#include <ros/assert.h>
 
 namespace robot_model_renderer
 {
-Ogre::Entity* Shape::createEntity(const std::string& name, Type type, Ogre::SceneManager* scene_manager)
+
+Ogre::Entity* Shape::createEntity(const std::string& name, const Type shape_type, Ogre::SceneManager* scene_manager)
 {
-  if (type == Mesh)
-    return nullptr; // the entity is initialized after the vertex data was specified
+  if (shape_type == Mesh)
+    return nullptr;  // the entity is initialized after the vertex data was specified
 
   std::string mesh_name;
-  switch (type)
+  switch (shape_type)
   {
   case Cone:
     mesh_name = "rviz_cone.mesh";
@@ -73,14 +76,14 @@ Ogre::Entity* Shape::createEntity(const std::string& name, Type type, Ogre::Scen
   return scene_manager->createEntity(name, mesh_name);
 }
 
-Shape::Shape(Type type, Ogre::SceneManager* scene_manager, Ogre::SceneNode* parent_node)
-  : Object(scene_manager), type_(type)
+Shape::Shape(const Type shape_type, Ogre::SceneManager* scene_manager, Ogre::SceneNode* parent_node)
+  : Object(scene_manager), type_(shape_type)
 {
   static uint32_t count = 0;
   std::stringstream ss;
   ss << "Shape" << count++;
 
-  entity_ = createEntity(ss.str(), type, scene_manager);
+  entity_ = createEntity(ss.str(), shape_type, scene_manager);
 
   if (!parent_node)
   {
@@ -175,4 +178,4 @@ void Shape::setUserData(const Ogre::Any& data)
     ROS_ERROR("Shape not yet fully constructed. Cannot set user data. Did you add triangles to the mesh already?");
 }
 
-} // namespace robot_model_renderer
+}

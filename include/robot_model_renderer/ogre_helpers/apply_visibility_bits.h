@@ -38,6 +38,7 @@ class SceneNode;
 
 namespace robot_model_renderer
 {
+
 void applyVisibilityBits(uint32_t bits, Ogre::SceneNode* node);
 
-} // end namespace robot_model_renderer
+}

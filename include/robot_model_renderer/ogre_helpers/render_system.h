@@ -29,16 +29,20 @@
 
 #pragma once
 
-#include <OgreRoot.h>
 #include <cstdint>
+
+#include <OgreRoot.h>
 
 namespace Ogre
 {
+
 class SceneManager;
-} // namespace Ogre
+
+}
 
 namespace robot_model_renderer
 {
+
 class RenderSystem
 {
 public:
@@ -50,24 +54,22 @@ public:
 
   static RenderSystem* get();
 
-  Ogre::RenderWindow* makeRenderWindow(WindowIDType window_id,
-                                       unsigned int width,
-                                       unsigned int height,
-                                       double pixel_ratio = 1.0);
+  Ogre::RenderWindow* makeRenderWindow(
+    WindowIDType window_id, unsigned int width, unsigned int height, double pixel_ratio = 1.0);
 
-  Ogre::Root* root()
+  Ogre::Root* root() const
   {
     return ogre_root_;
   }
 
   // @brief return OpenGl Version as integer, e.g. 320 for OpenGl 3.20
-  int getGlVersion()
+  int getGlVersion() const
   {
     return gl_version_;
   }
 
   // @brief return GLSL Version as integer, e.g. 150 for GLSL 1.50
-  int getGlslVersion()
+  int getGlslVersion() const
   {
     return glsl_version_;
   }
@@ -84,11 +86,9 @@ private:
   void loadOgrePlugins();
 
   // helper for makeRenderWindow()
-  Ogre::RenderWindow* tryMakeRenderWindow(const std::string& name,
-                                          unsigned int width,
-                                          unsigned int height,
-                                          const Ogre::NameValuePairList* params,
-                                          int max_attempts);
+  Ogre::RenderWindow* tryMakeRenderWindow(
+    const std::string& name, unsigned int width, unsigned int height, const Ogre::NameValuePairList* params,
+    int max_attempts);
 
   // Find and configure the render system.
   void setupRenderSystem();
@@ -108,4 +108,4 @@ private:
   static int force_gl_version_;
 };
 
-} // end namespace robot_model_renderer
+}

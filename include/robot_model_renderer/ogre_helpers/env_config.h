@@ -33,5 +33,7 @@
 
 namespace robot_model_renderer
 {
+
 std::string get_ogre_plugin_path();
-} // namespace robot_model_renderer
+
+}

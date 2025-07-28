@@ -33,17 +33,13 @@
 
 namespace robot_model_renderer
 {
+
 void buildScaledOrthoMatrix(Ogre::Matrix4& proj,
-                            float left,
-                            float right,
-                            float bottom,
-                            float top,
-                            float near,
-                            float far)
+  const float left, const float right, const float bottom, const float top, const float near, const float far)
 {
-  float invw = 1 / (right - left);
-  float invh = 1 / (top - bottom);
-  float invd = 1 / (far - near);
+  const float invw = 1 / (right - left);
+  const float invh = 1 / (top - bottom);
+  const float invd = 1 / (far - near);
 
   proj = Ogre::Matrix4::ZERO;
   proj[0][0] = 2 * invw;
@@ -55,4 +51,4 @@ void buildScaledOrthoMatrix(Ogre::Matrix4& proj,
   proj[3][3] = 1;
 }
 
-} // namespace robot_model_renderer
+}

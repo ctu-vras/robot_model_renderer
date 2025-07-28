@@ -30,7 +30,10 @@
 
 #pragma once
 
+#include <string>
+
 #include <robot_model_renderer/ogre_helpers/version_check.h>
+
 #include <OgreSimpleRenderable.h>
 #include <OgreSceneNode.h>
 
@@ -40,10 +43,9 @@
 #include <OgreMaterialManager.h>
 #endif
 
-#include <string>
-
 namespace robot_model_renderer
 {
+
 /* This header provides helper functions to maintain compatibility with Ogre versions 1.9 ... 1.12+.
  *
  * setMaterial() allows setting the material of a renderable by either name or MaterialPtr.
@@ -97,4 +99,5 @@ inline void removeAndDestroyChildNode(Ogre::SceneNode* parent, Ogre::SceneNode* 
   parent->removeAndDestroyChild(child);
 }
 #endif
-} // namespace robot_model_renderer
+
+}

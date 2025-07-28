@@ -15,40 +15,46 @@
  *
  */
 
+#include <OgreCamera.h>
+#include <OgreCompositionPass.h>
+#include <OgreCompositionTargetPass.h>
+#include <OgreCompositorInstance.h>
+#include <OgreCompositorManager.h>
+#include <OgreHardwarePixelBuffer.h>
+#include <OgreMaterial.h>
+#include <OgreTechnique.h>
+#include <OgreTextureManager.h>
+#include <OgreViewport.h>
+
+#include <Eigen/Core>
+
+#include <opencv2/calib3d.hpp>
 
 #include <image_geometry/pinhole_camera_model.h>
 #include <robot_model_renderer/distortion/OgreDistortionPass.hh>
-#include <OgreCompositorInstance.h>
-#include <OgreMaterial.h>
-#include <OgreTechnique.h>
-#include <OgreCamera.h>
-#include <OgreViewport.h>
-#include <OgreTextureManager.h>
-#include <OgreHardwarePixelBuffer.h>
-#include <OgreCompositorManager.h>
-#include <OgreCompositionTargetPass.h>
-#include <OgreCompositionPass.h>
-#include <opencv2/calib3d.hpp>
 #include <robot_model_renderer/pinhole_camera.h>
-#include <Eigen/Core>
 
 namespace robot_model_renderer
 {
+
 struct OgreDistortionPass::Implementation
 {
-  /// \brief Distortion compositor.
+  //! \brief Distortion compositor.
   Ogre::CompositorInstance* distortionInstance = nullptr;
 
-  /// \brief Ogre Material that contains the distortion shader
+  //! \brief Ogre Material that contains the distortion shader
   Ogre::MaterialPtr distortionMaterial;
 
-  /// \brief Ogre Texture that contains the distortion map
+  //! \brief Ogre Texture that contains the distortion map
   Ogre::TexturePtr distortionTexture;
 
+  //! \brief Model of the camera.
   PinholeCameraModel pinholeCameraModel;
 
+  //! \brief Whether to use distortion map.
   bool useDistortionMap {false};
 
+  //! \brief Name of the compositor.
   std::string compositorName;
 };
 
@@ -72,32 +78,29 @@ Ogre::Matrix3 ogreMatFromCv(const cv::Matx34d& cv)
   };
 }
 
-//////////////////////////////////////////////////
-OgreDistortionPass::OgreDistortionPass() : dataPtr(std::make_unique<Implementation>())
+OgreDistortionPass::OgreDistortionPass(const bool useDistortionMap) : dataPtr(std::make_unique<Implementation>())
 {
+  this->dataPtr->useDistortionMap = useDistortionMap;
   this->dataPtr->compositorName = this->dataPtr->useDistortionMap ?
     "RenderPass/CameraMappedDistortion" : "RenderPass/InverseRectification";
 }
 
-//////////////////////////////////////////////////
 OgreDistortionPass::~OgreDistortionPass()
 {
-  OgreDistortionPass::Destroy();
+  this->Destroy();
 }
 
-//////////////////////////////////////////////////
-void OgreDistortionPass::SetCamera(Ogre::Camera* _camera)
+void OgreDistortionPass::SetCamera(Ogre::Camera* camera)
 {
-  this->ogreCamera = _camera;
+  this->ogreCamera = camera;
 }
 
-bool OgreDistortionPass::SetCameraModel(const robot_model_renderer::PinholeCameraModel& cam)
+bool OgreDistortionPass::SetCameraModel(const PinholeCameraModel& cam)
 {
   this->dataPtr->pinholeCameraModel = cam;
   return true;
 }
 
-//////////////////////////////////////////////////
 void OgreDistortionPass::CreateRenderPass()
 {
   if (!this->ogreCamera)
@@ -114,7 +117,7 @@ void OgreDistortionPass::CreateRenderPass()
 
   const auto& coeffs = this->dataPtr->pinholeCameraModel.distortionCoeffs();
   // If no distortion is required, immediately return.
-  if (std::all_of(coeffs.begin(), coeffs.end(), [](double x) {return fabs(x) < 1e-6;}))
+  if (std::all_of(coeffs.begin(), coeffs.end(), [](const double x) {return std::fabs(x) < 1e-6;}))
     return;
 
   const auto& renderTextureResolution = this->dataPtr->pinholeCameraModel.reducedResolution();
@@ -147,7 +150,7 @@ void OgreDistortionPass::CreateRenderPass()
     using DistortionTextureMap = Eigen::Map<DistortionTexture>;
 
     const auto distortionTextureSize = distortionTextureWidth * distortionTextureHeight;
-    PixelBufferMap pixelBufferMap(reinterpret_cast<float*>(pixelBox.data), distortionTextureSize, 2);
+    PixelBufferMap pixelBufferMap(static_cast<float*>(pixelBox.data), distortionTextureSize, 2);
     const DistortionTextureMap distortionTextureMap(unrectifyMap.ptr<float>(0, 0), distortionTextureSize, 2);
     pixelBufferMap = distortionTextureMap;
 
@@ -165,10 +168,13 @@ void OgreDistortionPass::CreateRenderPass()
     auto params = this->dataPtr->distortionMaterial->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
     std::array<float, 14> D{};
     std::copy_n(coeffs.begin(), std::min(14, coeffs.size().area()), D.begin());
-    params->setNamedConstant("cameraMatrixVec", ogreMatFromCv(this->dataPtr->pinholeCameraModel.intrinsicMatrix())[0], 1, 9);
+    params->setNamedConstant("cameraMatrixVec",
+      ogreMatFromCv(this->dataPtr->pinholeCameraModel.intrinsicMatrix())[0], 1, 9);
     params->setNamedConstant("distCoeffs", D.data(), 1, 14);
-    params->setNamedConstant("rectificationRotationVec", ogreMatFromCv(this->dataPtr->pinholeCameraModel.rotationMatrix())[0], 1, 9);
-    params->setNamedConstant("newCameraMatrixVec", ogreMatFromCv(this->dataPtr->pinholeCameraModel.projectionMatrix())[0], 1, 9);
+    params->setNamedConstant("rectificationRotationVec",
+      ogreMatFromCv(this->dataPtr->pinholeCameraModel.rotationMatrix())[0], 1, 9);
+    params->setNamedConstant("newCameraMatrixVec",
+      ogreMatFromCv(this->dataPtr->pinholeCameraModel.projectionMatrix())[0], 1, 9);
     params->setNamedConstant("size", Ogre::Vector2(distortionTextureWidth, distortionTextureHeight));
   }
 
@@ -181,7 +187,6 @@ void OgreDistortionPass::CreateRenderPass()
   this->dataPtr->distortionInstance->setEnabled(true);
 }
 
-//////////////////////////////////////////////////
 void OgreDistortionPass::Destroy()
 {
   if (this->dataPtr->distortionInstance)

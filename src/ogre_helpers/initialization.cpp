@@ -4,17 +4,17 @@
 
 namespace robot_model_renderer
 {
+
 void cleanupOgre()
 {
   delete Ogre::Root::getSingletonPtr();
 }
 
-// This should be folded into RenderSystem, but it should work fine as
-// is, so I'm leaving it for now.
+// This should be folded into RenderSystem, but it should work fine as is, so I'm leaving it for now.
 void initializeResources(const V_string& resource_paths)
 {
-  V_string::const_iterator path_it = resource_paths.begin();
-  V_string::const_iterator path_end = resource_paths.end();
+  auto path_it = resource_paths.begin();
+  const auto path_end = resource_paths.end();
   for (; path_it != path_end; ++path_it)
   {
     Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
@@ -24,4 +24,4 @@ void initializeResources(const V_string& resource_paths)
   Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
 }
 
-} // namespace robot_model_renderer
+}

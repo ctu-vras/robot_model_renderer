@@ -27,17 +27,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <robot_model_renderer/ogre_helpers/apply_visibility_bits.h>
+
 #include <cstdint>
 
 #include <OgreMovableObject.h>
 #include <OgreSceneNode.h>
 #include <OgreIteratorWrapper.h>
 
-#include <robot_model_renderer/ogre_helpers/apply_visibility_bits.h>
-
 namespace robot_model_renderer
 {
-void applyVisibilityBits(uint32_t bits, Ogre::SceneNode* node)
+
+void applyVisibilityBits(const uint32_t bits, Ogre::SceneNode* node)
 {
   if (!node)
   {
@@ -54,9 +55,9 @@ void applyVisibilityBits(uint32_t bits, Ogre::SceneNode* node)
   Ogre::SceneNode::ChildNodeIterator child_it = node->getChildIterator();
   while (child_it.hasMoreElements())
   {
-    Ogre::SceneNode* child = dynamic_cast<Ogre::SceneNode*>(child_it.getNext());
+    const auto child = dynamic_cast<Ogre::SceneNode*>(child_it.getNext());
     applyVisibilityBits(bits, child);
   }
 }
 
-} // end namespace robot_model_renderer
+}

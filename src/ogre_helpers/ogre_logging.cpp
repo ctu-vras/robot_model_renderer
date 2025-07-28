@@ -27,28 +27,27 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <OgreLogManager.h>
+#include <robot_model_renderer/ogre_helpers/ogre_logging.h>
+
 #include <OgreLog.h>
+#include <OgreLogManager.h>
 
 #include <ros/console.h>
 
-#include <robot_model_renderer/ogre_helpers/ogre_logging.h>
-
 namespace robot_model_renderer
 {
+
 class RosLogListener : public Ogre::LogListener
 {
 public:
-  RosLogListener() : min_lml(Ogre::LML_CRITICAL){};
-  ~RosLogListener() override
+  RosLogListener() : min_lml(Ogre::LML_CRITICAL)
   {
   }
 
-  void messageLogged(const Ogre::String& message,
-                     Ogre::LogMessageLevel lml,
-                     bool /*maskDebug*/,
-                     const Ogre::String& /*logName*/,
-                     bool& skipThisMessage) override
+  ~RosLogListener() override = default;
+
+  void messageLogged(const Ogre::String& message, Ogre::LogMessageLevel lml, bool /*maskDebug*/,
+    const Ogre::String& /*logName*/, bool& skipThisMessage) override
   {
     if (!skipThisMessage)
     {
@@ -64,33 +63,22 @@ public:
 OgreLogging::Preference OgreLogging::preference_ = OgreLogging::NoLogging;
 std::string OgreLogging::filename_;
 
-/** @brief Configure Ogre to write output to standard out. */
 void OgreLogging::useRosLog()
 {
   preference_ = StandardOut;
 }
 
-/** @brief Configure Ogre to write output to the given log file
- * name.  If file name is a relative path, it will be relative to
- * the directory which is current when the program is run.  Default
- * is "Ogre.log". */
 void OgreLogging::useLogFile(const std::string& filename)
 {
   preference_ = FileLogging;
   filename_ = filename;
 }
 
-/** @brief Disable Ogre logging entirely.  This is the default. */
 void OgreLogging::noLog()
 {
   preference_ = NoLogging;
 }
 
-/** @brief Configure the Ogre::LogManager to give the behavior
- * selected by the most recent call to enableStandardOut(),
- * setLogFile(), or disable().  This must be called before
- * Ogre::Root is instantiated!  Called inside RenderSystem
- * constructor. */
 void OgreLogging::configureLogging()
 {
   static RosLogListener ll;
@@ -109,4 +97,4 @@ void OgreLogging::configureLogging()
   }
 }
 
-} // end namespace robot_model_renderer
+}

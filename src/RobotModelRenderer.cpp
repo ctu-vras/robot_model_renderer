@@ -61,7 +61,8 @@ namespace robot_model_renderer
 RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdater* linkUpdater,
   Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera, const bool setupDefaultLighting) :
     linkUpdater(linkUpdater), isDistorted(false), visualVisible(true), collisionVisible(false),
-    scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera)
+    scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(false)
+    pixelFormat(Ogre::PF_A8R8G8B8), cvImageType(ogrePixelFormatToCvMatType(Ogre::PF_A8R8G8B8))
 {
   if (sceneManager == nullptr && sceneNode != nullptr)
     throw std::runtime_error("When sceneManager is not passed, sceneNode has to be null too.");

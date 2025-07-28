@@ -36,11 +36,8 @@ class Matrix4;
 
 namespace robot_model_renderer
 {
-void buildScaledOrthoMatrix(Ogre::Matrix4& proj,
-                            float left,
-                            float right,
-                            float bottom,
-                            float top,
-                            float near,
-                            float far);
+
+void buildScaledOrthoMatrix(
+  Ogre::Matrix4& proj, float left, float right, float bottom, float top, float near, float far);
+
 }

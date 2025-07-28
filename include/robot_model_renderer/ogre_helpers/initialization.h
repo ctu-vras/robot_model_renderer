@@ -29,14 +29,16 @@
 
 #pragma once
 
-#include <cstddef>
 #include <string>
 #include <vector>
 
 namespace robot_model_renderer
 {
+
 typedef std::vector<std::string> V_string;
+
 void cleanupOgre();
+
 void initializeResources(const V_string& resource_paths);
 
-} // namespace robot_model_renderer
+}

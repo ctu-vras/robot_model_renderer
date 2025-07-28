@@ -27,12 +27,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <robot_model_renderer/ogre_helpers/render_system.h>
+
+#include <GL/glx.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include <GL/glx.h>
-
-#include <ros/package.h> // This dependency should be moved out of here, it is just used for a search path.
-#include <ros/console.h>
 
 #include <robot_model_renderer/ogre_helpers/version_check.h>
 #include <OgreRenderWindow.h>
@@ -40,13 +39,18 @@
 
 #include <robot_model_renderer/ogre_helpers/env_config.h>
 #include <robot_model_renderer/ogre_helpers/ogre_logging.h>
-#include <robot_model_renderer/ogre_helpers/render_system.h>
+#include <ros/console.h>
+#include <ros/package.h> // This dependency should be moved out of here, it is just used for a search path.
 
 namespace robot_model_renderer
 {
+
 RenderSystem* RenderSystem::instance_ = nullptr;
+
 int RenderSystem::force_gl_version_ = 0;
+
 bool RenderSystem::use_anti_aliasing_ = true;
+
 RenderSystem* RenderSystem::get()
 {
   if (instance_ == nullptr)
@@ -56,7 +60,7 @@ RenderSystem* RenderSystem::get()
   return instance_;
 }
 
-void createColorMaterial(const std::string& name, const Ogre::ColourValue& color, bool use_self_illumination)
+void createColorMaterial(const std::string& name, const Ogre::ColourValue& color, const bool use_self_illumination)
 {
   Ogre::MaterialPtr mat = Ogre::MaterialManager::getSingleton().create(
     name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
@@ -252,7 +256,7 @@ void RenderSystem::setupResources()
   std::vector<std::string> media_paths;
   ros::package::getPlugins("media_export", "ogre_media_path", media_paths);
   std::string delim(":");
-  for (std::vector<std::string>::iterator iter = media_paths.begin(); iter != media_paths.end(); ++iter)
+  for (auto iter = media_paths.begin(); iter != media_paths.end(); ++iter)
   {
     if (!iter->empty())
     {
@@ -278,10 +282,8 @@ void RenderSystem::setupResources()
 
 static bool x_baddrawable_error = false;
 
-Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowIDType window_id,
-                                                   unsigned int width,
-                                                   unsigned int height,
-                                                   double pixel_ratio)
+Ogre::RenderWindow* RenderSystem::makeRenderWindow(
+  WindowIDType window_id, unsigned int width, unsigned int height, double pixel_ratio)
 {
   static int windowCounter = 0; // Every RenderWindow needs a unique name, oy.
 
@@ -299,16 +301,13 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowIDType window_id,
     params["FSAA"] = "4";
   }
 
-// Set the macAPI for Ogre based on the Qt implementation
+  // Set the macAPI for Ogre based on the Qt implementation
   params["contentScalingFactor"] = std::to_string(pixel_ratio);
 
   std::ostringstream stream;
   stream << "OgreWindow(" << windowCounter++ << ")";
 
-  if (window == nullptr)
-  {
-    window = tryMakeRenderWindow(stream.str(), width, height, &params, 100);
-  }
+  window = tryMakeRenderWindow(stream.str(), width, height, &params, 100);
 
   if (window == nullptr)
   {
@@ -326,11 +325,9 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowIDType window_id,
   return window;
 }
 
-Ogre::RenderWindow* RenderSystem::tryMakeRenderWindow(const std::string& name,
-                                                      unsigned int width,
-                                                      unsigned int height,
-                                                      const Ogre::NameValuePairList* params,
-                                                      int max_attempts)
+Ogre::RenderWindow* RenderSystem::tryMakeRenderWindow(
+  const std::string& name, const unsigned int width, const unsigned int height, const Ogre::NameValuePairList* params,
+  const int max_attempts)
 {
   Ogre::RenderWindow* window = nullptr;
   int attempts = 0;
@@ -365,5 +362,4 @@ Ogre::RenderWindow* RenderSystem::tryMakeRenderWindow(const std::string& name,
   return window;
 }
 
-
-} // end namespace robot_model_renderer
+}

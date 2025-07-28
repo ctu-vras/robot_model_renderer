@@ -33,7 +33,9 @@
 
 namespace robot_model_renderer
 {
-/** @brief Convenience interface to Ogre logging.
+
+/**
+ * \brief Convenience interface to Ogre logging.
  *
  * This all-static class wraps Ogre::LogManager into 3 easy options:
  * no logging, standard out, or file logging.  The option-selection
@@ -45,21 +47,29 @@ namespace robot_model_renderer
 class OgreLogging
 {
 public:
-  /** @brief Configure Ogre to write output to the ROS logger. */
+  /**
+   * \brief Configure Ogre to write output to the ROS logger.
+   */
   static void useRosLog();
 
-  /** @brief Configure Ogre to write output to the given log file
-   * name.  If file name is a relative path, it will be relative to
-   * the directory which is current when the program is run.  Default
-   * is "Ogre.log". */
+  /**
+   * \brief Configure Ogre to write output to the given log file name.
+   *
+   * \param[in] filename The log filename (default is Ogre.log). If file name is a relative path, it will be relative to
+   *                     the directory which is current when the program is run.
+   */
   static void useLogFile(const std::string& filename = "Ogre.log");
 
-  /** @brief Disable Ogre logging entirely.  This is the default. */
+  /**
+   * \brief Disable Ogre logging entirely.  This is the default.
+   */
   static void noLog();
 
-  /** @brief Configure the Ogre::LogManager to give the
-   * currently selected behavior.
-   * This must be called before Ogre::Root is instantiated! */
+  /**
+   * \brief Configure the Ogre::LogManager to give the currently selected behavior.
+   *
+   * \note This must be called before Ogre::Root is instantiated!
+   */
   static void configureLogging();
 
 private:
@@ -69,8 +79,9 @@ private:
     FileLogging,
     NoLogging
   } Preference;
-  static Preference preference_;
-  static std::string filename_;
+
+  static Preference preference_;  //!< The logging preference.
+  static std::string filename_;  //!< The log filename.
 };
 
-} // end namespace robot_model_renderer
+}

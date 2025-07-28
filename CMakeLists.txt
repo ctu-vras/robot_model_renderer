@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13.4)
+cmake_minimum_required(VERSION 3.10.2)
 project(robot_model_renderer)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -74,7 +74,8 @@ endif()
 
 catkin_package()
 
-include_directories(include
+include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   ${OPENGL_INCLUDE_DIR}
@@ -87,18 +88,14 @@ include_directories(include
 set(ENV_CONFIG_FILE ${CMAKE_CURRENT_BINARY_DIR}/src/env_config.cpp)
 configure_file(src/env_config.cpp.in ${ENV_CONFIG_FILE} @ONLY)
 
-add_library(robot_model_renderer_distortion
+add_library(${PROJECT_NAME}_distortion
   src/distortion/OgreDistortionPass.cc
 )
-
-target_link_libraries(robot_model_renderer_distortion
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
-  ${OGRE_LIBRARIES}
-  Eigen3::Eigen
+target_link_libraries(${PROJECT_NAME}_distortion PUBLIC
+  ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${OGRE_LIBRARIES} Eigen3::Eigen
 )
 
-add_library(robot_model_renderer_ogre_helpers
+add_library(${PROJECT_NAME}_ogre_helpers
   ${ENV_CONFIG_FILE}
   src/ogre_helpers/apply_visibility_bits.cpp
   src/ogre_helpers/camera_base.cpp
@@ -109,28 +106,20 @@ add_library(robot_model_renderer_ogre_helpers
   src/ogre_helpers/render_system.cpp
   src/ogre_helpers/shape.cpp
 )
-
-target_link_libraries(robot_model_renderer_ogre_helpers
-  ${catkin_LIBRARIES}
-  ${ASSIMP_LIBRARIES}
-  ${OPENGL_LIBRARIES}
-  ${OGRE_LIBRARIES}
+target_link_libraries(${PROJECT_NAME}_ogre_helpers PUBLIC
+  ${catkin_LIBRARIES} ${ASSIMP_LIBRARIES} ${OPENGL_LIBRARIES} ${OGRE_LIBRARIES}
 )
 
-add_library(robot_model_renderer_robot
+add_library(${PROJECT_NAME}_robot
   src/robot/mesh_loader.cpp
   src/robot/robot.cpp
   src/robot/robot_joint.cpp
   src/robot/robot_link.cpp
   src/robot/tf_link_updater.cpp
 )
-
-target_link_libraries(robot_model_renderer_robot
-  robot_model_renderer_ogre_helpers
-  ${catkin_LIBRARIES}
-  ${ASSIMP_LIBRARIES}
-  ${OPENGL_LIBRARIES}
-  ${OGRE_LIBRARIES}
+target_link_libraries(${PROJECT_NAME}_robot PUBLIC
+  ${PROJECT_NAME}_ogre_helpers
+  ${catkin_LIBRARIES} ${ASSIMP_LIBRARIES} ${OPENGL_LIBRARIES} ${OGRE_LIBRARIES}
 )
 
 add_library(${PROJECT_NAME}
@@ -139,34 +128,32 @@ add_library(${PROJECT_NAME}
   src/RosCameraRobotModelRenderer.cpp
   src/utils/ogre_opencv.cpp
 )
-
 target_link_libraries(${PROJECT_NAME}
-  robot_model_renderer_robot
-  robot_model_renderer_ogre_helpers
-  robot_model_renderer_distortion
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
-  ${ASSIMP_LIBRARIES}
-  ${OPENGL_LIBRARIES}
-  ${OGRE_LIBRARIES}
+  ${PROJECT_NAME}_robot
+  ${PROJECT_NAME}_ogre_helpers
+  ${PROJECT_NAME}_distortion
+  ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${ASSIMP_LIBRARIES} ${OPENGL_LIBRARIES} ${OGRE_LIBRARIES}
 )
 
 add_executable(${PROJECT_NAME}_node
   src/${PROJECT_NAME}_node.cpp
 )
-
 target_link_libraries(${PROJECT_NAME}_node
-  ${PROJECT_NAME}
-  ${catkin_LIBRARIES}
+  ${PROJECT_NAME} ${catkin_LIBRARIES}
 )
 
-install(TARGETS robot_model_renderer_ogre_helpers ${PROJECT_NAME}_node robot_model_renderer_robot robot_model_renderer_distortion ${PROJECT_NAME}
+install(TARGETS
+  ${PROJECT_NAME}_ogre_helpers
+  ${PROJECT_NAME}_node
+  ${PROJECT_NAME}_robot
+  ${PROJECT_NAME}_distortion
+  ${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(FILES
-  launch/robot_model_renderer.launch
+  launch/${PROJECT_NAME}launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )

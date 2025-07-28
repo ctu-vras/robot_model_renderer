@@ -29,10 +29,15 @@
 
 #include <robot_model_renderer/ogre_helpers/object.h>
 
+#include <OgreSceneManager.h>
+
 namespace robot_model_renderer
 {
+
 Object::Object(Ogre::SceneManager* scene_manager) : scene_manager_(scene_manager)
 {
 }
 
-} // namespace robot_model_renderer
+Object::~Object() = default;
+
+}

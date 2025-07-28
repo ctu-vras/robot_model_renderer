@@ -31,21 +31,27 @@
 
 #include <cmath>
 
-#include <geometry_msgs/PointStamped.h>
-#include <geometry_msgs/Point32.h>
-#include <geometry_msgs/Vector3.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Twist.h>
-#include <sensor_msgs/CameraInfo.h>
-#include <std_msgs/ColorRGBA.h>
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <OgreQuaternion.h>
 
 #include <boost/array.hpp>
 
+#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Point32.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Vector3.h>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
+#include <sensor_msgs/CameraInfo.h>
+#include <std_msgs/ColorRGBA.h>
+
 namespace robot_model_renderer
 {
-inline bool validateFloats(Ogre::Real val)
+inline bool validateFloats(const float val)
+{
+  return !(std::isnan(val) || std::isinf(val));
+}
+
+inline bool validateFloats(const double val)
 {
   return !(std::isnan(val) || std::isinf(val));
 }
