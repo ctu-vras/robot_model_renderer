@@ -29,11 +29,18 @@
 
 #pragma once
 
+// This file is taken from rviz and slightly edited to be usable in this package.
+
+#include <string>
+
 #include <OgreMesh.h>
 #include <OgreSkeleton.h>
 
 namespace robot_model_renderer
 {
+
 Ogre::MeshPtr loadMeshFromResource(const std::string& resource_path);
+
 Ogre::SkeletonPtr loadSkeletonFromResource(const std::string& resource_path);
-} // namespace robot_model_renderer
+
+}

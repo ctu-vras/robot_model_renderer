@@ -27,24 +27,27 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <robot_model_renderer/robot/robot.h>
-#include <robot_model_renderer/robot/robot_link.h>
-#include <robot_model_renderer/robot/robot_joint.h>
+// This file is compiled from rviz and gazebo and slightly edited to be usable in this package.
 
-#include <robot_model_renderer/ogre_helpers/object.h>
-#include <robot_model_renderer/ogre_helpers/shape.h>
+#include <robot_model_renderer/robot/robot.h>
+
+#include <string>
 
 #include <urdf_model/model.h>
 
-#include <OgreSceneNode.h>
-#include <OgreSceneManager.h>
 #include <OgreEntity.h>
-#include <OgreMaterialManager.h>
 #include <OgreMaterial.h>
+#include <OgreMaterialManager.h>
 #include <OgreResourceGroupManager.h>
+#include <OgreSceneManager.h>
+#include <OgreSceneNode.h>
 
-#include <ros/console.h>
+#include <robot_model_renderer/ogre_helpers/object.h>
+#include <robot_model_renderer/ogre_helpers/shape.h>
+#include <robot_model_renderer/robot/robot_joint.h>
+#include <robot_model_renderer/robot/robot_link.h>
 #include <ros/assert.h>
+#include <ros/console.h>
 
 namespace robot_model_renderer
 {
@@ -154,7 +157,7 @@ void Robot::clear()
 }
 
 RobotLink* Robot::createLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
-  bool visual, bool collision)
+  const bool visual, const bool collision)
 {
   return new RobotLink(robot, link, parent_joint_name, visual, collision);
 }
@@ -164,7 +167,7 @@ RobotJoint* Robot::createJoint(Robot* robot, const urdf::JointConstSharedPtr& jo
   return new RobotJoint(robot, joint);
 }
 
-void Robot::load(const urdf::ModelInterface& urdf, bool visual, bool collision)
+void Robot::load(const urdf::ModelInterface& urdf, const bool visual, const bool collision)
 {
   robot_loaded_ = false;
 
@@ -263,33 +266,29 @@ void Robot::update(const LinkUpdater& updater, const ros::Time& time)
       if (visual_orientation.isNaN())
       {
         ROS_ERROR_THROTTLE(1.0,
-                           "visual orientation of %s contains NaNs. "
-                           "Skipping render as long as the orientation is invalid.",
-                           link->getName().c_str());
+          "visual orientation of %s contains NaNs. Skipping render as long as the orientation is invalid.",
+          link->getName().c_str());
         continue;
       }
       if (visual_position.isNaN())
       {
-        ROS_ERROR_THROTTLE(
-            1.0,
-            "visual position of %s contains NaNs. Skipping render as long as the position is invalid.",
-            link->getName().c_str());
+        ROS_ERROR_THROTTLE(1.0,
+          "visual position of %s contains NaNs. Skipping render as long as the position is invalid.",
+          link->getName().c_str());
         continue;
       }
       if (collision_orientation.isNaN())
       {
         ROS_ERROR_THROTTLE(1.0,
-                           "collision orientation of %s contains NaNs. "
-                           "Skipping render as long as the orientation is invalid.",
-                           link->getName().c_str());
+          "collision orientation of %s contains NaNs. Skipping render as long as the orientation is invalid.",
+          link->getName().c_str());
         continue;
       }
       if (collision_position.isNaN())
       {
         ROS_ERROR_THROTTLE(1.0,
-                           "collision position of %s contains NaNs. "
-                           "Skipping render as long as the position is invalid.",
-                           link->getName().c_str());
+          "collision position of %s contains NaNs. Skipping render as long as the position is invalid.",
+          link->getName().c_str());
         continue;
       }
       link->setTransforms(visual_position, visual_orientation, collision_position, collision_orientation);
@@ -338,4 +337,4 @@ const Ogre::Quaternion& Robot::getOrientation()
   return root_visual_node_->getOrientation();
 }
 
-} // namespace robot_model_renderer
+}

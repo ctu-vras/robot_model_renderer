@@ -29,39 +29,38 @@
 
 #pragma once
 
-#include <string>
+// This file is taken from rviz and slightly edited to be usable in this package.
+
 #include <map>
+#include <string>
 
-
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
-#include <OgreQuaternion.h>
 #include <OgreAny.h>
 #include <OgreMaterial.h>
+#include <OgrePrerequisites.h>
+#include <OgreQuaternion.h>
 
 #include <urdf/model.h>
 #include <urdf_model/pose.h>
 
 #include <robot_model_renderer/ogre_helpers/object.h>
-
-#include <OgrePrerequisites.h>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 
 namespace robot_model_renderer
 {
+
 class Shape;
 class Robot;
 class RobotJoint;
 
-
 /**
- * \struct RobotJoint
  * \brief Contains any data we need from a joint in the robot.
  */
 class RobotJoint
 {
 public:
   RobotJoint(Robot* robot, const urdf::JointConstSharedPtr& joint);
-  virtual ~RobotJoint();
 
+  virtual ~RobotJoint();
 
   void setTransforms(const Ogre::Vector3& parent_link_position, const Ogre::Quaternion& parent_link_orientation);
 
@@ -69,17 +68,21 @@ public:
   {
     return name_;
   }
+
   const std::string& getParentLinkName() const
   {
     return parent_link_name_;
   }
+
   const std::string& getChildLinkName() const
   {
     return child_link_name_;
   }
+
   RobotJoint* getParentJoint();
 
   Ogre::Vector3 getPosition();
+
   Ogre::Quaternion getOrientation();
 
   void setRobotAlpha(float /*unused*/)
@@ -88,36 +91,38 @@ public:
 
   bool hasDescendentLinksWithGeometry() const
   {
-    return has_decendent_links_with_geometry_;
+    return has_descendent_links_with_geometry_;
   }
 
 private:
   void updateChildVisibility();
 
-private:
   bool getEnabled() const;
 
-  // determine the state of child link(s)
-  void
-  getChildLinkState(int& links_with_geom,           // returns # of children with geometry
-                    int& links_with_geom_checked,   // returns # of enabled children with geometry
-                    int& links_with_geom_unchecked, // returns # of disabled children with geometry
-                    bool recursive) const; // True: all descendant links.  False: just single child link.
-
+  /**
+   * \brief determine the state of child link(s)
+   *
+   * \param[in] links_with_geom # of children with geometry
+   * \param[in] links_with_geom_checked # of enabled children with geometry
+   * \param[in] links_with_geom_unchecked # of disabled children with geometry
+   * \param[in] recursive True: all descendant links.  False: just single child link.
+   */
+  void getChildLinkState(
+    int& links_with_geom, int& links_with_geom_checked, int& links_with_geom_unchecked, bool recursive) const;
 
 protected:
   Robot* robot_;
-  std::string name_; ///< Name of this joint
+  std::string name_;  //!< Name of this joint
   std::string parent_link_name_;
   std::string child_link_name_;
 
 private:
   Ogre::Vector3 joint_origin_pos_;
   Ogre::Quaternion joint_origin_rot_;
-  bool has_decendent_links_with_geometry_;
+  bool has_descendent_links_with_geometry_;
 
   Ogre::Vector3 position_;
   Ogre::Quaternion orientation_;
 };
 
-} // namespace robot_model_renderer
+}

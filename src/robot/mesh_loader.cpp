@@ -27,57 +27,58 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+// This file is compiled from rviz and gazebo and slightly edited to be usable in this package.
+
 #include <robot_model_renderer/robot/mesh_loader.h>
-#include <OgrePrerequisites.h>
-#include <resource_retriever/retriever.h>
 
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include <OgreHardwareBufferManager.h>
+#include <OgreMaterial.h>
+#include <OgreMaterialManager.h>
+#include <OgreMeshManager.h>
+#include <OgreMeshSerializer.h>
+#include <OgrePass.h>
+#include <OgrePrerequisites.h>
+#include <OgreSharedPtr.h>
 #include <OgreSkeleton.h>
 #include <OgreSkeletonManager.h>
 #include <OgreSkeletonSerializer.h>
-#include <OgreMeshManager.h>
-#include <OgreTextureManager.h>
-#include <OgreMaterialManager.h>
-#include <OgreTexture.h>
-#include <OgrePass.h>
-#include <OgreTechnique.h>
-#include <OgreMaterial.h>
-#include <OgreTextureUnitState.h>
-#include <OgreMeshSerializer.h>
 #include <OgreSubMesh.h>
-#include <OgreHardwareBufferManager.h>
-#include <OgreSharedPtr.h>
 #include <OgreTechnique.h>
+#include <OgreTechnique.h>
+#include <OgreTexture.h>
+#include <OgreTextureManager.h>
+#include <OgreTextureUnitState.h>
 
 #include <tinyxml2.h>
 
-#include <ros/assert.h>
-
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 #include <assimp/IOStream.hpp>
 #include <assimp/IOSystem.hpp>
-#include <boost/filesystem/operations.hpp>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+
+#include <resource_retriever/retriever.h>
+#include <ros/assert.h>
 
 namespace fs = boost::filesystem;
 
 namespace robot_model_renderer
 {
+
 class ResourceIOStream : public Assimp::IOStream
 {
 public:
-  ResourceIOStream(const resource_retriever::MemoryResource& res) : res_(res), pos_(res.data.get())
+  explicit ResourceIOStream(const resource_retriever::MemoryResource& res) : res_(res), pos_(res.data.get())
   {
   }
 
-  ~ResourceIOStream() override
-  {
-  }
+  ~ResourceIOStream() override = default;
 
-  size_t Read(void* buffer, size_t size, size_t count) override
+  size_t Read(void* buffer, const size_t size, const size_t count) override
   {
     size_t to_read = size * count;
     if (pos_ + to_read > res_.data.get() + res_.size)
@@ -106,10 +107,10 @@ public:
       new_pos = res_.data.get() + offset;
       break;
     case aiOrigin_CUR:
-      new_pos = pos_ + offset; // TODO is this right?  can offset really not be negative
+      new_pos = pos_ + offset;
       break;
     case aiOrigin_END:
-      new_pos = res_.data.get() + res_.size - offset; // TODO is this right?
+      new_pos = res_.data.get() + res_.size - offset;
       break;
     default:
       ROS_BREAK();
@@ -146,13 +147,9 @@ private:
 class ResourceIOSystem : public Assimp::IOSystem
 {
 public:
-  ResourceIOSystem()
-  {
-  }
+  ResourceIOSystem() = default;
 
-  ~ResourceIOSystem() override
-  {
-  }
+  ~ResourceIOSystem() override = default;
 
   // Check whether a specific file exists
   bool Exists(const char* file) const override
@@ -200,30 +197,29 @@ public:
     return new ResourceIOStream(res);
   }
 
-  void Close(Assimp::IOStream* stream) override;
+  void Close(Assimp::IOStream* stream) override
+  {
+    delete stream;
+  }
 
 private:
   mutable resource_retriever::Retriever retriever_;
 };
 
-void ResourceIOSystem::Close(Assimp::IOStream* stream)
-{
-  delete stream;
-}
-
-// Mostly stolen from gazebo
-/** @brief Recursive mesh-building function.
- * @param scene is the assimp scene containing the whole mesh.
- * @param node is the current assimp node, which is part of a tree of nodes being recursed over.
- * @param material_table is indexed the same as scene->mMaterials[], and should have been filled out
- * already by loadMaterials(). */
-void buildMesh(const aiScene* scene,
-               const aiNode* node,
-               const Ogre::MeshPtr& mesh,
-               Ogre::AxisAlignedBox& aabb,
-               float& radius,
-               std::vector<Ogre::MaterialPtr>& material_table,
-               aiMatrix4x4 transform = aiMatrix4x4())
+/**
+ * \brief Recursive mesh-building function.
+ *
+ * \param[in] scene is the assimp scene containing the whole mesh.
+ * \param[in] node is the current assimp node, which is part of a tree of nodes being recursed over.
+ * \param[in] mesh The parent mesh.
+ * \param[out] aabb Bounding box of the mesh.
+ * \param[out] radius Radius of bounding sphere of the mesh.
+ * \param[in] material_table Is indexed the same as scene->mMaterials[], and should have been filled out
+ *                           already by loadMaterials().
+ * \param[in] transform
+ */
+void buildMesh(const aiScene* scene, const aiNode* node, const Ogre::MeshPtr& mesh,
+  Ogre::AxisAlignedBox& aabb, float& radius, std::vector<Ogre::MaterialPtr>& material_table, aiMatrix4x4 transform = {})
 {
   if (!node)
     return;
@@ -399,9 +395,10 @@ void loadTexture(const std::string& resource_path)
     {
       res = retriever.get(resource_path);
     }
-    catch (resource_retriever::Exception& e)
+    catch (const resource_retriever::Exception& e)
     {
       ROS_ERROR("%s", e.what());
+      return;
     }
 
     if (res.size != 0)
@@ -429,18 +426,17 @@ void loadTexture(const std::string& resource_path)
   }
 }
 
-// Mostly cribbed from gazebo
-/** @brief Load all materials needed by the given scene.
- * @param resource_path the path to the resource from which this scene is being loaded.
- *        loadMaterials() assumes textures for this scene are relative to the same directory that this
- * scene is in.
- * @param scene the assimp scene to load materials for.
- * @param material_table_out Reference to the resultant material table, filled out by this function.  Is
- * indexed the same as scene->mMaterials[].
+/**
+ * \brief Load all materials needed by the given scene.
+ *
+ * \param[in] resource_path The path to the resource from which this scene is being loaded.
+ *           loadMaterials() assumes textures for this scene are relative to the same directory that this scene is in.
+ * \param[in] scene the assimp scene to load materials for.
+ * \param[out] material_table_out Reference to the resultant material table, filled out by this function.  Is indexed
+ *             the same as scene->mMaterials[].
  */
-void loadMaterials(const std::string& resource_path,
-                   const aiScene* scene,
-                   std::vector<Ogre::MaterialPtr>& material_table_out)
+void loadMaterials(const std::string& resource_path, const aiScene* scene,
+  std::vector<Ogre::MaterialPtr>& material_table_out)
 {
 #if BOOST_FILESYSTEM_VERSION == 3
   std::string ext = fs::path(resource_path).extension().string();
@@ -666,7 +662,6 @@ Ogre::MeshPtr loadMeshFromResource(const std::string& resource_path)
   return Ogre::MeshPtr();
 }
 
-// Try to load .skeleton file co-located with a .mesh file
 Ogre::SkeletonPtr loadSkeletonFromResource(const std::string& resource_path)
 {
   std::string skeleton_resource_path = resource_path.substr(0, resource_path.length() - 4);
@@ -709,4 +704,4 @@ Ogre::SkeletonPtr loadSkeletonFromResource(const std::string& resource_path)
   return Ogre::SkeletonPtr();
 }
 
-} // namespace robot_model_renderer
+}

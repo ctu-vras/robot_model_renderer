@@ -29,10 +29,14 @@
 
 #pragma once
 
-#include <robot_model_renderer/robot/link_updater.h>
+// This file is taken from rviz and slightly edited to be usable in this package.
 
 #include <string>
 
+#include <OgrePrerequisites.h>
+
+#include <robot_model_renderer/robot/link_updater.h>
+#include <ros/time.h>
 #include <tf2_ros/buffer.h>
 
 namespace robot_model_renderer
@@ -41,15 +45,13 @@ namespace robot_model_renderer
 class TFLinkUpdater : public LinkUpdater
 {
 public:
-  explicit TFLinkUpdater(tf2_ros::Buffer* tf, const std::string& fixed_frame = {},
-                const std::string& tf_prefix = {});
+  explicit TFLinkUpdater(tf2_ros::Buffer* tf, const std::string& fixed_frame = {}, const std::string& tf_prefix = {});
+
   void setFixedFrame(const std::string& fixedFrame);
-  bool getLinkTransforms(const ros::Time& time,
-                         const std::string& link_name,
-                         Ogre::Vector3& visual_position,
-                         Ogre::Quaternion& visual_orientation,
-                         Ogre::Vector3& collision_position,
-                         Ogre::Quaternion& collision_orientation) const override;
+
+  bool getLinkTransforms(const ros::Time& time, const std::string& link_name,
+    Ogre::Vector3& visual_position, Ogre::Quaternion& visual_orientation,
+    Ogre::Vector3& collision_position, Ogre::Quaternion& collision_orientation) const override;
 
 private:
   tf2_ros::Buffer* tf_;
@@ -57,4 +59,4 @@ private:
   std::string tf_prefix_;
 };
 
-} // namespace robot_model_renderer
+}

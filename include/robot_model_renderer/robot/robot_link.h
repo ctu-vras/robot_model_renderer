@@ -29,35 +29,39 @@
 
 #pragma once
 
-#include <map>
+// This file is taken from rviz and slightly edited to be usable in this package.
 
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
-#include <OgreQuaternion.h>
-#include <OgreAny.h>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <OgreMaterial.h>
+#include <OgrePrerequisites.h>
+#include <OgreQuaternion.h>
 #include <OgreSharedPtr.h>
 
-#include <urdf/model.h> // can be replaced later by urdf_model/types.h
+#include <urdf/model.h>
 #include <urdf_model/pose.h>
 
 #include <robot_model_renderer/ogre_helpers/object.h>
-
-#include <OgrePrerequisites.h>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 
 namespace Ogre
 {
+
 class Any;
+
 }
 
 namespace robot_model_renderer
 {
+
 class Shape;
 class Robot;
 class RobotJoint;
 
-
 /**
- * \struct RobotLink
  * \brief Contains any data we need from a link in the robot.
  */
 class RobotLink
@@ -72,6 +76,7 @@ class RobotLink
 public:
   RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
     bool visual, bool collision);
+
   virtual ~RobotLink();
 
   virtual void setRobotAlpha(float a);
@@ -79,81 +84,98 @@ public:
   virtual void setTransforms(const Ogre::Vector3& visual_position, const Ogre::Quaternion& visual_orientation,
     const Ogre::Vector3& collision_position, const Ogre::Quaternion& collision_orientation);
 
-  // access
   const std::string& getName() const
   {
     return name_;
   }
+
   const std::string& getParentJointName() const
   {
     return parent_joint_name_;
   }
+
   const std::vector<std::string>& getChildJointNames() const
   {
     return child_joint_names_;
   }
+
   Ogre::SceneNode* getVisualNode() const
   {
     return visual_node_;
   }
+
   Ogre::SceneNode* getCollisionNode() const
   {
     return collision_node_;
   }
+
   Robot* getRobot() const
   {
     return robot_;
   }
+
   const std::string& getGeometryErrors() const;
 
   void setToErrorMaterial();
+
   void setToNormalMaterial();
 
   void setColor(float red, float green, float blue);
+
   void unsetColor();
 
   Ogre::Vector3 getPosition();
+
   Ogre::Quaternion getOrientation();
 
   bool hasGeometry() const;
 
-  /* If set to true, the link will only render to the depth channel
-   * and be in render group 0, so it is rendered before anything else.
-   * Thus, it will occlude other objects without being visible.
+  /**
+   * \brief If set to true, the link will only render to the depth channel and be in render group 0, so it is rendered
+   *        before anything else. Thus, it will occlude other objects without being visible.
+   *
+   * \param[in] onlyRenderDepth Whether to render only depth.
    */
   void setOnlyRenderDepth(bool onlyRenderDepth);
+
   bool getOnlyRenderDepth() const
   {
     return only_render_depth_;
   }
 
-  /** @brief Update the visibility of the link elements: visual mesh, collision mesh, trail, and axes.
+  /**
+   * \brief Update the visibility of the link elements: visual mesh, collision mesh, trail, and axes.
    *
-   * Called by Robot when changing visual and collision visibilities,
-   * since each link may be enabled or disabled. */
+   * Called by Robot when changing visual and collision visibilities, since each link may be enabled or disabled.
+   */
   void updateVisibility();
 
 private:
   void updateAlpha();
 
-private:
   void setMaterialMode(unsigned char mode_flags);
+
   void setRenderQueueGroup(Ogre::uint8 group);
+
   bool getEnabled() const;
+
   void createEntityForGeometryElement(const urdf::LinkConstSharedPtr& link, const urdf::Geometry& geom,
     const urdf::MaterialSharedPtr& material, const urdf::Pose& origin, Ogre::SceneNode* scene_node,
     Ogre::Entity*& entity);
+
   void addError(const char* format, ...);
 
   void createVisual(const urdf::LinkConstSharedPtr& link);
+
   void createCollision(const urdf::LinkConstSharedPtr& link);
+
   Ogre::MaterialPtr getMaterialForLink(const urdf::LinkConstSharedPtr& link, urdf::MaterialConstSharedPtr material);
 
 protected:
   Robot* robot_;
   Ogre::SceneManager* scene_manager_;
 
-  std::string name_; ///< Name of this link
+  std::string name_;  //!< Name of this link
   std::string parent_joint_name_;
   std::vector<std::string> child_joint_names_;
 
@@ -169,18 +191,17 @@ private:
   //! The entities representing the collision mesh of this link (if they exist)
   std::vector<Ogre::Entity*> collision_meshes_;
 
-  Ogre::SceneNode* visual_node_;    ///< The scene node the visual meshes are attached to
-  Ogre::SceneNode* collision_node_; ///< The scene node the collision meshes are attached to
+  Ogre::SceneNode* visual_node_;  //!< The scene node the visual meshes are attached to
+  Ogre::SceneNode* collision_node_;  //!< The scene node the collision meshes are attached to
 
-  float robot_alpha_; ///< Alpha value from top-level robot alpha Property (set via setRobotAlpha()).
+  float robot_alpha_;  //!< Alpha value from top-level robot alpha Property (set via setRobotAlpha()).
 
   bool only_render_depth_;
 
-  // joint stuff
   std::string joint_name_;
 
   Ogre::MaterialPtr color_material_;
   unsigned char material_mode_flags_;
 };
 
-} // namespace robot_model_renderer
+}

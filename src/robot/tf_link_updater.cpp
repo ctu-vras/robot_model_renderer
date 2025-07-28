@@ -27,11 +27,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+// This file is taken from rviz and slightly edited to be usable in this package.
+
 #include <robot_model_renderer/robot/tf_link_updater.h>
 
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
+#include <string>
+
 #include <OgreQuaternion.h>
+
+#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <rosconsole/macros_generated.h>
+#include <tf2_ros/buffer.h>
 
 namespace robot_model_renderer
 {
@@ -47,8 +53,7 @@ std::string concat(const std::string& prefix, const std::string& frame)
   return composite;
 }
 
-TFLinkUpdater::TFLinkUpdater(tf2_ros::Buffer* tf, const std::string& fixed_frame,
-                             const std::string& tf_prefix)
+TFLinkUpdater::TFLinkUpdater(tf2_ros::Buffer* tf, const std::string& fixed_frame, const std::string& tf_prefix)
   : tf_(tf), fixed_frame_(fixed_frame), tf_prefix_(tf_prefix)
 {
 }
@@ -58,12 +63,9 @@ void TFLinkUpdater::setFixedFrame(const std::string& fixedFrame)
   this->fixed_frame_ = fixedFrame;
 }
 
-bool TFLinkUpdater::getLinkTransforms(const ros::Time& time,
-                                      const std::string& _link_name,
-                                      Ogre::Vector3& visual_position,
-                                      Ogre::Quaternion& visual_orientation,
-                                      Ogre::Vector3& collision_position,
-                                      Ogre::Quaternion& collision_orientation) const
+bool TFLinkUpdater::getLinkTransforms(const ros::Time& time, const std::string& link_name,
+  Ogre::Vector3& visual_position, Ogre::Quaternion& visual_orientation,
+  Ogre::Vector3& collision_position, Ogre::Quaternion& collision_orientation) const
 {
   if (fixed_frame_.empty())
   {
@@ -71,18 +73,19 @@ bool TFLinkUpdater::getLinkTransforms(const ros::Time& time,
     return false;
   }
 
-  std::string link_name = concat(tf_prefix_, _link_name);
+  const auto link_name_prefixed = concat(tf_prefix_, link_name);
 
-  if (!tf_->canTransform(fixed_frame_, link_name, time, ros::Duration(0.01)))
+  if (!tf_->canTransform(fixed_frame_, link_name_prefixed, time, ros::Duration(0.01)))
   {
-    ROS_WARN_STREAM("No transform from [" << link_name << "] to [" << fixed_frame_ << "]");
+    ROS_WARN_STREAM("No transform from [" << link_name_prefixed << "] to [" << fixed_frame_ << "]");
     return false;
   }
 
-  const auto tf = tf_->lookupTransform(fixed_frame_, link_name, time);
+  const auto tf = tf_->lookupTransform(fixed_frame_, link_name_prefixed, time);
 
-  Ogre::Vector3 position(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z);
-  Ogre::Quaternion orientation(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
+  const Ogre::Vector3 position(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z);
+  const Ogre::Quaternion orientation(
+    tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
 
   // Collision/visual transforms are the same in this case
   visual_position = position;
@@ -93,4 +96,4 @@ bool TFLinkUpdater::getLinkTransforms(const ros::Time& time,
   return true;
 }
 
-} // namespace robot_model_renderer
+}

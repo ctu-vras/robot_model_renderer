@@ -27,20 +27,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+// This file is compiled from rviz and gazebo and slightly edited to be usable in this package.
+
 #include <robot_model_renderer/robot/robot_joint.h>
-#include <robot_model_renderer/robot/robot_link.h>
-#include <robot_model_renderer/robot/robot.h>
 
 #include <OgreSceneNode.h>
 
+#include <robot_model_renderer/robot/robot.h>
+#include <robot_model_renderer/robot/robot_link.h>
+
 namespace robot_model_renderer
 {
+
 RobotJoint::RobotJoint(Robot* robot, const urdf::JointConstSharedPtr& joint)
-  : robot_(robot)
-  , name_(joint->name)
-  , parent_link_name_(joint->parent_link_name)
-  , child_link_name_(joint->child_link_name)
-  , has_decendent_links_with_geometry_(true)
+  : robot_(robot), name_(joint->name), parent_link_name_(joint->parent_link_name),
+    child_link_name_(joint->child_link_name), has_descendent_links_with_geometry_(true)
 {
   std::string type = "";
   if (joint->type == urdf::Joint::UNKNOWN)
@@ -81,10 +82,8 @@ RobotJoint* RobotJoint::getParentJoint()
   return robot_->getJoint(parent_joint_name);
 }
 
-void RobotJoint::getChildLinkState(int& links_with_geom,
-                                   int& links_with_geom_checked,
-                                   int& links_with_geom_unchecked,
-                                   bool recursive) const
+void RobotJoint::getChildLinkState(int& links_with_geom, int& links_with_geom_checked, int& links_with_geom_unchecked,
+  const bool recursive) const
 {
   links_with_geom_checked = 0;
   links_with_geom_unchecked = 0;
@@ -100,11 +99,11 @@ void RobotJoint::getChildLinkState(int& links_with_geom,
 
   if (recursive)
   {
-    std::vector<std::string>::const_iterator child_joint_it = link->getChildJointNames().begin();
-    std::vector<std::string>::const_iterator child_joint_end = link->getChildJointNames().end();
+    auto child_joint_it = link->getChildJointNames().begin();
+    const auto child_joint_end = link->getChildJointNames().end();
     for (; child_joint_it != child_joint_end; ++child_joint_it)
     {
-      RobotJoint* child_joint = robot_->getJoint(*child_joint_it);
+      const RobotJoint* child_joint = robot_->getJoint(*child_joint_it);
       if (child_joint)
       {
         int child_links_with_geom;
@@ -120,7 +119,6 @@ void RobotJoint::getChildLinkState(int& links_with_geom,
 
   links_with_geom = links_with_geom_checked + links_with_geom_unchecked;
 }
-
 
 bool RobotJoint::getEnabled() const
 {
@@ -146,8 +144,8 @@ void RobotJoint::updateChildVisibility()
   }
 }
 
-void RobotJoint::setTransforms(const Ogre::Vector3& parent_link_position,
-                               const Ogre::Quaternion& parent_link_orientation)
+void RobotJoint::setTransforms(
+  const Ogre::Vector3& parent_link_position, const Ogre::Quaternion& parent_link_orientation)
 {
   position_ = parent_link_position + parent_link_orientation * joint_origin_pos_;
   orientation_ = parent_link_orientation * joint_origin_rot_;
@@ -163,4 +161,4 @@ Ogre::Quaternion RobotJoint::getOrientation()
   return orientation_;
 }
 
-} // namespace robot_model_renderer
+}
