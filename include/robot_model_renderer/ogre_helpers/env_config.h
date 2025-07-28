@@ -29,6 +29,8 @@
 
 #pragma once
 
+// This file is taken from rviz and minimally edited (just code style and different namespace).
+
 #include <string>
 
 namespace robot_model_renderer

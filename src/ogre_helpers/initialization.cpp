@@ -1,3 +1,5 @@
+// This file is taken from rviz and minimally edited (just code style and different namespace).
+
 #include <robot_model_renderer/ogre_helpers/initialization.h>
 
 #include <OgreRoot.h>
