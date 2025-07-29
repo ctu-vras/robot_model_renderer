@@ -58,7 +58,6 @@ compositor RenderPass/InverseRectification
     {
       // Start with clear output
       input none
-      // Draw a fullscreen quad with noise
       pass render_quad
       {
           // Renders a fullscreen quad with a material

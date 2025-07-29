@@ -50,7 +50,7 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(const urdf::Model& mode
   this->linkUpdater = std::make_unique<TFLinkUpdater>(tf);
   this->renderer = std::make_unique<RobotModelRenderer>(model, this->linkUpdater.get(),
     sceneManager, sceneNode, camera, setupDefaultLighting);
-  this->renderer->setPixelFormat(Ogre::PixelFormat::PF_B8G8R8);
+  this->renderer->setPixelFormat(Ogre::PixelFormat::PF_A8B8G8R8);
 }
 
 RosCameraRobotModelRenderer::~RosCameraRobotModelRenderer() = default;
@@ -87,7 +87,7 @@ sensor_msgs::ImageConstPtr RosCameraRobotModelRenderer::render(const sensor_msgs
 
   this->linkUpdater->setFixedFrame(msg->header.frame_id);
 
-  cv_bridge::CvImage cvImg(msg->header, "bgr8");
+  cv_bridge::CvImage cvImg(msg->header, "bgra8");
   cvImg.image = this->renderer->render(msg->header.stamp);
 
   return cvImg.toImageMsg();  // TODO here's an unneeded memcpy, we should rather preallocate and share the buffer

@@ -9,6 +9,7 @@ uniform float distCoeffs[14];
 uniform float rectificationRotationVec[9];
 uniform float newCameraMatrixVec[9];
 uniform vec2 size;
+uniform vec4 backgroundColor;
 
 // The distort method implementation is largely based on the OpenCV cvUndistortPointsInternal
 // https://github.com/opencv/opencv/blob/4.x/modules/calib3d/src/undistort.dispatch.cpp#L385
@@ -203,7 +204,7 @@ void main()
   vec2 uvRaw = inverseRectify(uvRect);  // And we want to get the raw (distorted) coordinates.
 
   if (uvRaw.x < 0.0 || uvRaw.y < 0.0)
-    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    gl_FragColor = backgroundColor;
   else
     gl_FragColor = texture2D(RT, uvRaw);
 }

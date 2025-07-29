@@ -27,6 +27,7 @@ fragment_program CameraMappedDistortionFS glsl
   {
     param_named RT int 0
     param_named distortionMap int 1
+    param_named backgroundColor float4 0 0 0 1
   }
 }
 
@@ -43,6 +44,7 @@ fragment_program InverseRectificationFS glsl
     param_named rectificationRotationVec float9 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0
     param_named newCameraMatrixVec float9 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0
     param_named size float2 640.0 480.0
+    param_named backgroundColor float4 0 0 0 1
   }
 }
 

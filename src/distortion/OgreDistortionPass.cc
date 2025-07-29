@@ -162,6 +162,9 @@ void OgreDistortionPass::CreateRenderPass()
 
     // set up the distortion map texture to be used in the pixel shader.
     this->dataPtr->distortionMaterial->getTechnique(0)->getPass(0)->createTextureUnitState(texName, 1);
+
+    auto params = this->dataPtr->distortionMaterial->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
+    params->setNamedConstant("backgroundColor", this->ogreCamera->getViewport()->getBackgroundColour());
   }
   else
   {
@@ -176,6 +179,7 @@ void OgreDistortionPass::CreateRenderPass()
     params->setNamedConstant("newCameraMatrixVec",
       ogreMatFromCv(this->dataPtr->pinholeCameraModel.projectionMatrix())[0], 1, 9);
     params->setNamedConstant("size", Ogre::Vector2(distortionTextureWidth, distortionTextureHeight));
+    params->setNamedConstant("backgroundColor", this->ogreCamera->getViewport()->getBackgroundColour());
   }
 
   // create compositor instance

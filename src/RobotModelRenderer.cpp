@@ -222,6 +222,12 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
     }
   }
 
+  auto ci = model.cameraInfo();
+  ci.header.stamp = this->origCameraModel.cameraInfo().header.stamp;
+  ci.header.seq = this->origCameraModel.cameraInfo().header.seq;
+  if (ci == this->origCameraModel.cameraInfo())
+    return true;
+
   const auto prevOrigCamMsg = this->origCameraModel.cameraInfo();
   this->origCameraModel = model;
 
@@ -249,7 +255,8 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
   rt_ = tex_->getBuffer()->getRenderTarget();
 
   viewPort_ = rt_->addViewport(camera_);
-  viewPort_->setBackgroundColour(Ogre::ColourValue(0, 0, 0, 0));
+  // The color is interpreted as BGRA
+  viewPort_->setBackgroundColour(Ogre::ColourValue(1, 0, 0, 0));  // TODO change to 0 0 0 0
   viewPort_->setClearEveryFrame(true);
 
   if (this->isDistorted && this->gpuDistortion)
@@ -285,10 +292,10 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
 
   if (this->isDistorted && !this->gpuDistortion)
   {
-    const auto bgColor = cv::Scalar::all(0);  // TODO fill with actual background color
+    const auto bgColor = viewPort_->getBackgroundColour();
 
     // This will be the raw image, but still with the size of the rectified one. It will get cropped later.
-    cv::Mat rawImg(rectRows, rectCols, this->cvImageType, bgColor);
+    cv::Mat rawImg(rectRows, rectCols, this->cvImageType, cv::Scalar(bgColor.b, bgColor.g, bgColor.r, bgColor.a));
 
     this->rectifiedCameraModel.unrectifyImage(rectImg, rawImg);
     outputImg = rawImg;
