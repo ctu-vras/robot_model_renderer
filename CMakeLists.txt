@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10.2)
 project(robot_model_renderer)
 
+set(CMAKE_CXX_STANDARD 17)
+
 find_package(catkin REQUIRED COMPONENTS
   camera_info_manager
   cv_bridge
@@ -77,6 +79,8 @@ catkin_package()
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+)
+include_directories(SYSTEM PUBLIC
   ${OpenCV_INCLUDE_DIRS}
   ${OPENGL_INCLUDE_DIR}
   ${ASSIMP_INCLUDE_DIRS}

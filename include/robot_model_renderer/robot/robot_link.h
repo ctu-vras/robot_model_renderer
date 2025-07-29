@@ -114,7 +114,7 @@ public:
     return robot_;
   }
 
-  const std::string& getGeometryErrors() const;
+  std::string getGeometryErrors() const;
 
   void setToErrorMaterial();
 
@@ -124,9 +124,9 @@ public:
 
   void unsetColor();
 
-  Ogre::Vector3 getPosition();
+  Ogre::Vector3 getPosition() const;
 
-  Ogre::Quaternion getOrientation();
+  Ogre::Quaternion getOrientation() const;
 
   bool hasGeometry() const;
 
@@ -179,7 +179,6 @@ protected:
   std::string parent_joint_name_;
   std::vector<std::string> child_joint_names_;
 
-private:
   // maintain the original material of each SubEntity to restore it after unsetColor()
   using M_SubEntityToMaterial = std::map<Ogre::SubEntity*, std::pair<Ogre::MaterialPtr, Ogre::MaterialPtr>>;
   M_SubEntityToMaterial materials_;
@@ -199,6 +198,9 @@ private:
   bool only_render_depth_;
 
   std::string joint_name_;
+
+  bool enabled_;
+  std::string errors_;
 
   Ogre::MaterialPtr color_material_;
   unsigned char material_mode_flags_;

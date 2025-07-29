@@ -42,18 +42,16 @@
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
 
-#include <robot_model_renderer/ogre_helpers/object.h>
-#include <robot_model_renderer/ogre_helpers/shape.h>
 #include <robot_model_renderer/robot/robot_joint.h>
 #include <robot_model_renderer/robot/robot_link.h>
-#include <ros/assert.h>
 #include <ros/console.h>
 
 namespace robot_model_renderer
 {
 Robot::Robot(Ogre::SceneNode* root_node, Ogre::SceneManager* scene_manager, const std::string& name)
-  : scene_manager_(scene_manager), visible_(true), visual_visible_(true), collision_visible_(false),
-    robot_loaded_(false), name_(name)
+  : scene_manager_(scene_manager), root_link_(nullptr),
+    visible_(true), visual_visible_(true), collision_visible_(false),
+    robot_loaded_(false), name_(name), alpha_(1.0f)
 {
   root_visual_node_ = root_node->createChildSceneNode();
   root_collision_node_ = root_node->createChildSceneNode();
@@ -104,9 +102,9 @@ void Robot::setCollisionVisible(const bool visible)
 
 void Robot::updateLinkVisibilities()
 {
-  for (const auto& nameAndLink : links_)
+  for (const auto& [name, link] : links_)
   {
-    nameAndLink.second->updateVisibility();
+    link->updateVisibility();
   }
 }
 
@@ -129,23 +127,21 @@ void Robot::setAlpha(const float a)
 {
   alpha_ = a;
 
-  for (const auto& nameAndLink : links_)
+  for (const auto& [name, link] : links_)
   {
-    nameAndLink.second->setRobotAlpha(alpha_);
+    link->setRobotAlpha(alpha_);
   }
 }
 
 void Robot::clear()
 {
-  for (const auto& nameAndLink : links_)
+  for (const auto& [name, link] : links_)
   {
-    RobotLink* link = nameAndLink.second;
     delete link;
   }
 
-  for (const auto& nameAndJoint : joints_)
+  for (const auto& [name, joint] : joints_)
   {
-    RobotJoint* joint = nameAndJoint.second;
     delete joint;
   }
 
@@ -180,11 +176,9 @@ void Robot::load(const urdf::ModelInterface& urdf, const bool visual, const bool
   // Create properties for each link.
   // Properties are not added to display until changedLinkTreeStyle() is called (below).
   {
-    for (const auto& nameAndLink : urdf.links_)
+    for (const auto& [link_name, urdf_link] : urdf.links_)
     {
-      const urdf::LinkConstSharedPtr& urdf_link = nameAndLink.second;
       std::string parent_joint_name;
-
       if (urdf_link != urdf.getRoot() && urdf_link->parent_joint)
       {
         parent_joint_name = urdf_link->parent_joint->name;
@@ -204,16 +198,12 @@ void Robot::load(const urdf::ModelInterface& urdf, const bool visual, const bool
   }
 
   // Create properties for each joint.
-  // Properties are not added to display until changedLinkTreeStyle() is called (below).
   {
-    for (const auto& nameAndJoint : urdf.joints_)
+    for (const auto& [joint_name, urdf_joint] : urdf.joints_)
     {
-      const auto& urdf_joint = nameAndJoint.second;
       RobotJoint* joint = this->createJoint(this, urdf_joint);
 
       joints_[urdf_joint->name] = joint;
-
-      joint->setRobotAlpha(alpha_);
     }
   }
 
@@ -250,10 +240,8 @@ RobotJoint* Robot::getJoint(const std::string& name) const
 
 void Robot::update(const LinkUpdater& updater, const ros::Time& time)
 {
-  for (const auto& nameAndLink : links_)
+  for (const auto& [link_name, link] : links_)
   {
-    RobotLink* link = nameAndLink.second;
-
     Ogre::Vector3 visual_position, collision_position;
     Ogre::Quaternion visual_orientation, collision_orientation;
     if (updater.getLinkTransforms(time, link->getName(), visual_position, visual_orientation,
@@ -295,7 +283,7 @@ void Robot::update(const LinkUpdater& updater, const ros::Time& time)
 
       for (const auto& jointName : link->getChildJointNames())
       {
-        auto joint = getJoint(jointName);
+        const auto joint = getJoint(jointName);
         if (joint)
         {
           joint->setTransforms(visual_position, visual_orientation);

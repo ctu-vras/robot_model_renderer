@@ -63,13 +63,11 @@ namespace fs = boost::filesystem;
 namespace robot_model_renderer
 {
 
-static std::map<const RobotLink*, std::string> errors;
-
 RobotLink::RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
   const bool visual, const bool collision)
   : robot_(robot), scene_manager_(robot->getSceneManager()), name_(link->name), parent_joint_name_(parent_joint_name),
     visual_node_(nullptr), collision_node_(nullptr), robot_alpha_(1.0), only_render_depth_(false),
-    material_mode_flags_(ORIGINAL)
+    material_mode_flags_(ORIGINAL), enabled_(true)
 {
   visual_node_ = robot_->getVisualNode()->createChildSceneNode();
   collision_node_ = robot_->getCollisionNode()->createChildSceneNode();
@@ -96,20 +94,18 @@ RobotLink::RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const s
 
 RobotLink::~RobotLink()
 {
-  for (size_t i = 0; i < visual_meshes_.size(); i++)
+  for (const auto& visual_mesh : visual_meshes_)
   {
-    scene_manager_->destroyEntity(visual_meshes_[i]);
+    scene_manager_->destroyEntity(visual_mesh);
   }
 
-  for (size_t i = 0; i < collision_meshes_.size(); i++)
+  for (const auto& collision_mesh : collision_meshes_)
   {
-    scene_manager_->destroyEntity(collision_meshes_[i]);
+    scene_manager_->destroyEntity(collision_mesh);
   }
 
   scene_manager_->destroySceneNode(visual_node_);
   scene_manager_->destroySceneNode(collision_node_);
-
-  errors.erase(this);
 }
 
 void RobotLink::addError(const char* format, ...)
@@ -120,15 +116,14 @@ void RobotLink::addError(const char* format, ...)
   vsnprintf(buffer, sizeof(buffer), format, args);
   va_end(args);
 
-  std::string& err = const_cast<std::string&>(getGeometryErrors());
-  if (!err.empty())
-    err.append("\n");
-  err.append(buffer);
+  if (!errors_.empty())
+    errors_.append("\n");
+  errors_.append(buffer);
 }
 
-const std::string& RobotLink::getGeometryErrors() const
+std::string RobotLink::getGeometryErrors() const
 {
-  return errors[this];
+  return errors_;
 }
 
 bool RobotLink::hasGeometry() const
@@ -138,12 +133,10 @@ bool RobotLink::hasGeometry() const
 
 bool RobotLink::getEnabled() const
 {
-  if (!hasGeometry())
-    return true;
-  return true;
+  return this->enabled_;
 }
 
-void RobotLink::setRobotAlpha(float a)
+void RobotLink::setRobotAlpha(const float a)
 {
   robot_alpha_ = a;
   updateAlpha();
@@ -151,13 +144,13 @@ void RobotLink::setRobotAlpha(float a)
 
 void RobotLink::setRenderQueueGroup(const Ogre::uint8 group)
 {
-  Ogre::SceneNode::ChildNodeIterator child_it = visual_node_->getChildIterator();
+  auto child_it = visual_node_->getChildIterator();
   while (child_it.hasMoreElements())
   {
-    Ogre::SceneNode* child = dynamic_cast<Ogre::SceneNode*>(child_it.getNext());
+    const auto child = dynamic_cast<Ogre::SceneNode*>(child_it.getNext());
     if (child)
     {
-      Ogre::SceneNode::ObjectIterator object_it = child->getAttachedObjectIterator();
+      auto object_it = child->getAttachedObjectIterator();
       while (object_it.hasMoreElements())
       {
         Ogre::MovableObject* obj = object_it.getNext();
@@ -177,36 +170,35 @@ void RobotLink::setOnlyRenderDepth(const bool onlyRenderDepth)
 void RobotLink::updateAlpha()
 {
   float link_alpha = 1.0;
-  for (auto& item : materials_)
+  for (auto& [subEntity, material] : materials_)
   {
-    Ogre::MaterialPtr& active = item.second.first;
-    const Ogre::MaterialPtr& original = item.second.second;
+    auto& [activeMat, originalMat] = material;
 
     if (only_render_depth_)
     {
-      active->setColourWriteEnabled(false);
-      active->setDepthWriteEnabled(true);
+      activeMat->setColourWriteEnabled(false);
+      activeMat->setDepthWriteEnabled(true);
     }
     else
     {
-      Ogre::ColourValue color = active->getTechnique(0)->getPass(0)->getDiffuse();
-      const float material_alpha = original->getTechnique(0)->getPass(0)->getDiffuse().a;
+      Ogre::ColourValue color = activeMat->getTechnique(0)->getPass(0)->getDiffuse();
+      const float material_alpha = originalMat->getTechnique(0)->getPass(0)->getDiffuse().a;
       color.a = robot_alpha_ * material_alpha * link_alpha;
-      active->setDiffuse(color);
+      activeMat->setDiffuse(color);
 
       if (color.a < 0.9998) // transparent
       {
-        active->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
-        active->setDepthWriteEnabled(false);
+        activeMat->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+        activeMat->setDepthWriteEnabled(false);
       }
-      else if (active == original)
+      else if (activeMat == originalMat)
       {
-        active->setSceneBlending(Ogre::SBT_REPLACE);
-        active->setDepthWriteEnabled(true);
+        activeMat->setSceneBlending(Ogre::SBT_REPLACE);
+        activeMat->setDepthWriteEnabled(true);
       }
       else // restore original material
       {
-        original->copyDetailsTo(active);
+        originalMat->copyDetailsTo(activeMat);
       }
     }
   }
@@ -229,15 +221,15 @@ void RobotLink::updateAlpha()
 
 void RobotLink::updateVisibility()
 {
-  bool enabled = getEnabled();
+  const bool enabled = getEnabled() && robot_->isVisible();
 
   if (visual_node_)
   {
-    visual_node_->setVisible(enabled && robot_->isVisible() && robot_->isVisualVisible());
+    visual_node_->setVisible(enabled && robot_->isVisualVisible());
   }
   if (collision_node_)
   {
-    collision_node_->setVisible(enabled && robot_->isVisible() && robot_->isCollisionVisible());
+    collision_node_->setVisible(enabled && robot_->isCollisionVisible());
   }
 }
 
@@ -264,8 +256,8 @@ Ogre::MaterialPtr RobotLink::getMaterialForLink(
   if (material)
     name += ":" + material->name;
 
-  Ogre::MaterialPtr mat = Ogre::MaterialPtr(
-      new Ogre::Material(nullptr, name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
+  auto mat = Ogre::MaterialPtr(
+    new Ogre::Material(nullptr, name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
 
   if (!material)
   {
@@ -344,24 +336,14 @@ void RobotLink::createEntityForGeometryElement(
 
   Ogre::Vector3 scale(Ogre::Vector3::UNIT_SCALE);
 
-  Ogre::Vector3 offset_position(Ogre::Vector3::ZERO);
-  Ogre::Quaternion offset_orientation(Ogre::Quaternion::IDENTITY);
-
-  {
-    Ogre::Vector3 position(origin.position.x, origin.position.y, origin.position.z);
-    Ogre::Quaternion orientation(Ogre::Quaternion::IDENTITY);
-    orientation = orientation * Ogre::Quaternion(origin.rotation.w, origin.rotation.x, origin.rotation.y,
-                                                 origin.rotation.z);
-
-    offset_position = position;
-    offset_orientation = orientation;
-  }
+  Ogre::Vector3 offset_position(origin.position.x, origin.position.y, origin.position.z);
+  Ogre::Quaternion offset_orientation(origin.rotation.w, origin.rotation.x, origin.rotation.y, origin.rotation.z);
 
   switch (geom.type)
   {
     case urdf::Geometry::SPHERE:
     {
-      const urdf::Sphere& sphere = static_cast<const urdf::Sphere&>(geom);
+      const auto& sphere = static_cast<const urdf::Sphere&>(geom);
       entity = Shape::createEntity(entity_name, Shape::Sphere, scene_manager_);
 
       scale = Ogre::Vector3(sphere.radius * 2, sphere.radius * 2, sphere.radius * 2);
@@ -369,7 +351,7 @@ void RobotLink::createEntityForGeometryElement(
     }
     case urdf::Geometry::BOX:
     {
-      const urdf::Box& box = static_cast<const urdf::Box&>(geom);
+      const auto& box = static_cast<const urdf::Box&>(geom);
       entity = Shape::createEntity(entity_name, Shape::Cube, scene_manager_);
 
       scale = Ogre::Vector3(box.dim.x, box.dim.y, box.dim.z);
@@ -378,7 +360,7 @@ void RobotLink::createEntityForGeometryElement(
     }
     case urdf::Geometry::CYLINDER:
     {
-      const urdf::Cylinder& cylinder = static_cast<const urdf::Cylinder&>(geom);
+      const auto& cylinder = static_cast<const urdf::Cylinder&>(geom);
 
       Ogre::Quaternion rotX;
       rotX.FromAngleAxis(Ogre::Degree(90), Ogre::Vector3::UNIT_X);
@@ -390,11 +372,10 @@ void RobotLink::createEntityForGeometryElement(
     }
     case urdf::Geometry::MESH:
     {
-      const urdf::Mesh& mesh = static_cast<const urdf::Mesh&>(geom);
+      const auto& mesh = static_cast<const urdf::Mesh&>(geom);
 
       if (mesh.filename.empty())
         return;
-
 
       scale = Ogre::Vector3(mesh.scale.x, mesh.scale.y, mesh.scale.z);
 
@@ -461,14 +442,13 @@ void RobotLink::createCollision(const urdf::LinkConstSharedPtr& link)
 {
   bool valid_collision_found = false;
 
-  for (auto vi = link->collision_array.begin(); vi != link->collision_array.end(); ++vi)
+  for (const auto& collision : link->collision_array)
   {
-    urdf::CollisionSharedPtr collision = *vi;
     if (collision && collision->geometry)
     {
       Ogre::Entity* collision_mesh = nullptr;
-      createEntityForGeometryElement(link, *collision->geometry, urdf::MaterialSharedPtr(),
-                                     collision->origin, collision_node_, collision_mesh);
+      createEntityForGeometryElement(
+        link, *collision->geometry, nullptr, collision->origin, collision_node_, collision_mesh);
       if (collision_mesh)
       {
         collision_meshes_.push_back(collision_mesh);
@@ -480,8 +460,8 @@ void RobotLink::createCollision(const urdf::LinkConstSharedPtr& link)
   if (!valid_collision_found && link->collision && link->collision->geometry)
   {
     Ogre::Entity* collision_mesh = nullptr;
-    createEntityForGeometryElement(link, *link->collision->geometry, urdf::MaterialSharedPtr(),
-                                   link->collision->origin, collision_node_, collision_mesh);
+    createEntityForGeometryElement(
+      link, *link->collision->geometry, nullptr, link->collision->origin, collision_node_, collision_mesh);
     if (collision_mesh)
     {
       collision_meshes_.push_back(collision_mesh);
@@ -495,14 +475,13 @@ void RobotLink::createVisual(const urdf::LinkConstSharedPtr& link)
 {
   bool valid_visual_found = false;
 
-  for (auto vi = link->visual_array.begin(); vi != link->visual_array.end(); ++vi)
+  for (const auto& visual : link->visual_array)
   {
-    urdf::VisualSharedPtr visual = *vi;
     if (visual && visual->geometry)
     {
       Ogre::Entity* visual_mesh = nullptr;
-      createEntityForGeometryElement(link, *visual->geometry, visual->material, visual->origin,
-                                     visual_node_, visual_mesh);
+      createEntityForGeometryElement(
+        link, *visual->geometry, visual->material, visual->origin, visual_node_, visual_mesh);
       if (visual_mesh)
       {
         visual_meshes_.push_back(visual_mesh);
@@ -514,8 +493,8 @@ void RobotLink::createVisual(const urdf::LinkConstSharedPtr& link)
   if (!valid_visual_found && link->visual && link->visual->geometry)
   {
     Ogre::Entity* visual_mesh = nullptr;
-    createEntityForGeometryElement(link, *link->visual->geometry, link->visual->material,
-                                   link->visual->origin, visual_node_, visual_mesh);
+    createEntityForGeometryElement(
+      link, *link->visual->geometry, link->visual->material, link->visual->origin, visual_node_, visual_mesh);
     if (visual_mesh)
     {
       visual_meshes_.push_back(visual_mesh);
@@ -560,8 +539,8 @@ void RobotLink::setMaterialMode(const unsigned char mode_flags)
 
   if (mode_flags == ORIGINAL)
   {
-    for (const auto& item : materials_)
-      item.first->setMaterial(item.second.first);
+    for (const auto& [subEntity, material] : materials_)
+      subEntity->setMaterial(material.first);
     return;
   }
 
@@ -592,7 +571,7 @@ void RobotLink::unsetColor()
   setMaterialMode(ORIGINAL | (material_mode_flags_ & ERROR));
 }
 
-Ogre::Vector3 RobotLink::getPosition()
+Ogre::Vector3 RobotLink::getPosition() const
 {
   if (visual_node_)
     return visual_node_->getPosition();
@@ -601,7 +580,7 @@ Ogre::Vector3 RobotLink::getPosition()
   return {};
 }
 
-Ogre::Quaternion RobotLink::getOrientation()
+Ogre::Quaternion RobotLink::getOrientation() const
 {
   if (visual_node_)
     return visual_node_->getOrientation();

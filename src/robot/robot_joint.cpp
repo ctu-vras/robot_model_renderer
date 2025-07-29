@@ -41,37 +41,19 @@ namespace robot_model_renderer
 
 RobotJoint::RobotJoint(Robot* robot, const urdf::JointConstSharedPtr& joint)
   : robot_(robot), name_(joint->name), parent_link_name_(joint->parent_link_name),
-    child_link_name_(joint->child_link_name), has_descendent_links_with_geometry_(true)
+    child_link_name_(joint->child_link_name), enabled_(true)
 {
-  std::string type = "";
-  if (joint->type == urdf::Joint::UNKNOWN)
-    type = "unknown";
-  else if (joint->type == urdf::Joint::REVOLUTE)
-    type = "revolute";
-  else if (joint->type == urdf::Joint::CONTINUOUS)
-    type = "continuous";
-  else if (joint->type == urdf::Joint::PRISMATIC)
-    type = "prismatic";
-  else if (joint->type == urdf::Joint::FLOATING)
-    type = "floating";
-  else if (joint->type == urdf::Joint::PLANAR)
-    type = "planar";
-  else if (joint->type == urdf::Joint::FIXED)
-    type = "fixed";
-
   const urdf::Vector3& pos = joint->parent_to_joint_origin_transform.position;
   const urdf::Rotation& rot = joint->parent_to_joint_origin_transform.rotation;
   joint_origin_pos_ = Ogre::Vector3(pos.x, pos.y, pos.z);
   joint_origin_rot_ = Ogre::Quaternion(rot.w, rot.x, rot.y, rot.z);
 }
 
-RobotJoint::~RobotJoint()
-{
-}
+RobotJoint::~RobotJoint() = default;
 
-RobotJoint* RobotJoint::getParentJoint()
+RobotJoint* RobotJoint::getParentJoint() const
 {
-  RobotLink* parent_link = robot_->getLink(parent_link_name_);
+  const RobotLink* parent_link = robot_->getLink(parent_link_name_);
   if (!parent_link)
     return nullptr;
 
@@ -82,66 +64,9 @@ RobotJoint* RobotJoint::getParentJoint()
   return robot_->getJoint(parent_joint_name);
 }
 
-void RobotJoint::getChildLinkState(int& links_with_geom, int& links_with_geom_checked, int& links_with_geom_unchecked,
-  const bool recursive) const
-{
-  links_with_geom_checked = 0;
-  links_with_geom_unchecked = 0;
-
-  RobotLink* link = robot_->getLink(child_link_name_);
-  assert(link);
-  if (link->hasGeometry())
-  {
-    bool checked = true;
-    links_with_geom_checked += checked ? 1 : 0;
-    links_with_geom_unchecked += checked ? 0 : 1;
-  }
-
-  if (recursive)
-  {
-    auto child_joint_it = link->getChildJointNames().begin();
-    const auto child_joint_end = link->getChildJointNames().end();
-    for (; child_joint_it != child_joint_end; ++child_joint_it)
-    {
-      const RobotJoint* child_joint = robot_->getJoint(*child_joint_it);
-      if (child_joint)
-      {
-        int child_links_with_geom;
-        int child_links_with_geom_checked;
-        int child_links_with_geom_unchecked;
-        child_joint->getChildLinkState(child_links_with_geom, child_links_with_geom_checked,
-                                       child_links_with_geom_unchecked, recursive);
-        links_with_geom_checked += child_links_with_geom_checked;
-        links_with_geom_unchecked += child_links_with_geom_unchecked;
-      }
-    }
-  }
-
-  links_with_geom = links_with_geom_checked + links_with_geom_unchecked;
-}
-
 bool RobotJoint::getEnabled() const
 {
-  if (!hasDescendentLinksWithGeometry())
-    return true;
-  return true;
-}
-
-void RobotJoint::updateChildVisibility()
-{
-  if (!hasDescendentLinksWithGeometry())
-    return;
-
-  bool visible = getEnabled();
-
-  RobotLink* link = robot_->getLink(child_link_name_);
-  if (link)
-  {
-    if (link->hasGeometry())
-    {
-      // TODO
-    }
-  }
+  return this->enabled_;
 }
 
 void RobotJoint::setTransforms(
