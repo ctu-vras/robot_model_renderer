@@ -12,6 +12,7 @@
 
   <build_depend>assimp-dev</build_depend>
   <build_depend>camera_info_manager</build_depend>
+  <build_depend>cras_cpp_common</build_depend>
   <build_depend>cv_bridge</build_depend>
   <build_depend>glut</build_depend>
   <build_depend>image_geometry</build_depend>
@@ -29,6 +30,7 @@
 
   <exec_depend>assimp</exec_depend>
   <exec_depend>camera_info_manager</exec_depend>
+  <exec_depend>cras_cpp_common</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>glut</exec_depend>
   <exec_depend>image_geometry</exec_depend>

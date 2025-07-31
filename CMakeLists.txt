@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(catkin REQUIRED COMPONENTS
   camera_info_manager
+  cras_cpp_common
   cv_bridge
   image_geometry
   image_transport
