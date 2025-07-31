@@ -35,6 +35,7 @@
 
 #include <OgreQuaternion.h>
 
+#include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <rosconsole/macros_generated.h>
 #include <tf2_ros/buffer.h>
@@ -53,7 +54,8 @@ std::string concat(const std::string& prefix, const std::string& frame)
   return composite;
 }
 
-TFLinkUpdater::TFLinkUpdater(tf2_ros::Buffer* tf, const std::string& fixed_frame, const std::string& tf_prefix)
+TFLinkUpdater::TFLinkUpdater(const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
+  const std::string& fixed_frame, const std::string& tf_prefix)
   : tf_(tf), fixed_frame_(fixed_frame), tf_prefix_(tf_prefix)
 {
 }

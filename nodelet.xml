@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- SPDX-FileCopyrightText: Czech Technical University in Prague -->
+<library path="lib/librobot_model_renderer_nodelet">
+  <class name="robot_model_renderer/robot_model_renderer_nodelet" type="robot_model_renderer::RobotModelRendererNodelet" base_class_type="nodelet::Nodelet">
+    <description>
+      Renderer of URDF robot models.
+    </description>
+  </class>
+</library>

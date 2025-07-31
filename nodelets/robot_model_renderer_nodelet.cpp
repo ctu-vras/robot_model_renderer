@@ -1,10 +1,14 @@
 #include <memory>
+#include <thread>
 
 #include <urdf/model.h>
 
-#include <cras_cpp_common/node_utils.hpp>
+#include <cras_cpp_common/nodelet_utils.hpp>
 #include <cras_cpp_common/param_utils.hpp>
 #include <image_transport/image_transport.h>
+#include <pluginlib/class_list_macros.h>
+#include <nodelet/nodelet.h>
+#include <robot_model_renderer/ogre_helpers/render_system.h>
 #include <robot_model_renderer/RosCameraRobotModelRenderer.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/image_encodings.h>
@@ -35,21 +39,22 @@ DEFINE_CONVERTING_GET_PARAM(std_msgs::ColorRGBA, std::vector<float>, "", [](cons
 namespace robot_model_renderer
 {
 
-class RobotModelRendererNode
+class RobotModelRendererNodelet : public cras::Nodelet
 {
 public:
-  RobotModelRendererNode(const ros::NodeHandle& nh, const ros::NodeHandle& pnh, tf2_ros::Buffer* tf)
-    : nh(nh), pnh(pnh), it(nh), tf(tf)
+  ~RobotModelRendererNodelet() override
   {
-    this->onInitialize();
+    this->requestStop();
   }
 
-  virtual ~RobotModelRendererNode()
+  void onInit() override
   {
-    this->unsubscribe();
+    this->it = std::make_unique<image_transport::ImageTransport>(this->getNodeHandle());
+    this->ogreQueue.reset(new ros::CallbackQueue);
+    this->ogreThread = std::thread(&RobotModelRendererNodelet::ogreLoop, this);
   }
 
-  void reset()
+  void reset() override
   {
     this->unsubscribe();
     this->renderer->reset();
@@ -57,15 +62,40 @@ public:
     this->onInitialize();
   }
 
+  void requestStop() override
+  {
+    cras::Nodelet::requestStop();
+    this->unsubscribe();
+    this->ogreThread.join();
+  }
+
 private:
+  /**
+   * \brief All OGRE code has to run in a separate thread. When we're launched as a nodelet, the subscription callbacks
+   *        are normally distributed over many threads. However, OGRE doesn't like this. So we'll instead do almost
+   *        nothing on the normal callback queue and we'll spin our own callback queue for everything OGRE-related.
+   *        It is important to also do the OGRE initialization in this same thread.
+   */
+  void ogreLoop()
+  {
+    this->updateThreadName();
+
+    this->onInitialize();
+
+    while (this->ok())
+    {
+      this->ogreQueue->callAvailable(ros::WallDuration(0.1));
+    }
+  }
+
   void onInitialize()
   {
-    const auto publicParams = cras::nodeParams(this->nh);
-    const auto params = cras::nodeParams(this->pnh);
+    const auto& publicParams = this->publicParams();
+    const auto& params = this->privateParams();
 
     urdf::Model robotModel;
 
-    while (ros::ok())
+    while (this->ok())
     {
       try
       {
@@ -88,7 +118,7 @@ private:
       }
       catch (const cras::GetParamException& e)
       {
-        CRAS_ERROR("Failed parsing robot_decription: %s", e.what());
+        CRAS_ERROR("Failed parsing robot_description: %s", e.what());
       }
 
       CRAS_WARN("Parameter robot_description will be read again in 1 second.");
@@ -108,6 +138,7 @@ private:
     if (!sensor_msgs::image_encodings::isColor(imageEncoding) && !sensor_msgs::image_encodings::isMono(imageEncoding))
     {
       CRAS_FATAL("The given image encoding is not a color or mono encoding.");
+      this->requestStop();
       return;
     }
 
@@ -120,25 +151,36 @@ private:
     config.doDistort = params->getParam("do_distort", config.doDistort);
     config.gpuDistortion = params->getParam("gpu_distortion", config.gpuDistortion);
 
-    this->renderer = std::make_unique<RosCameraRobotModelRenderer>(robotModel, this->tf, config);
+    this->renderer = std::make_unique<RosCameraRobotModelRenderer>(robotModel, this->getBufferPtr(), config);
 
     this->subscribe();
   }
 
   void subscribe()
   {
-    maskPub = it.advertise("mask", 10);
-    caminfoSub = nh.subscribe("camera_info", 1, &RobotModelRendererNode::processCamInfoMessage, this);
+    this->maskPub = this->it->advertise("mask", 10);
+
+    ros::SubscribeOptions caminfoSubOpts;
+    caminfoSubOpts.init<sensor_msgs::CameraInfo>(
+      "camera_info", 1, boost::bind(&RobotModelRendererNodelet::processCamInfoMessage, this, boost::placeholders::_1));
+    caminfoSubOpts.callback_queue = this->ogreQueue.get();
+    this->caminfoSub = this->getNodeHandle().subscribe(caminfoSubOpts);
   }
 
   void unsubscribe()
   {
-    caminfoSub.shutdown();
-    maskPub.shutdown();
+    this->caminfoSub.shutdown();
+    this->maskPub.shutdown();
   }
 
   void processCamInfoMessage(const sensor_msgs::CameraInfo::ConstPtr& msg)
   {
+    if (!this->ogreInited)
+    {
+      RenderSystem::get()->root()->getRenderSystem()->registerThread();
+      this->ogreInited = true;
+    }
+
     const auto img = this->renderer->render(msg);
     if (img != nullptr)
       maskPub.publish(img);
@@ -146,10 +188,11 @@ private:
       CRAS_WARN_THROTTLE(1.0, "Robot model rendering failed");
   }
 
-  ros::NodeHandle nh;
-  ros::NodeHandle pnh;
-  image_transport::ImageTransport it;
-  tf2_ros::Buffer* tf;
+  std::unique_ptr<image_transport::ImageTransport> it;
+  ros::CallbackQueuePtr ogreQueue;
+  std::thread ogreThread;
+  bool ogreInited {false};
+
   ros::Subscriber caminfoSub;
   image_transport::Publisher maskPub;
 
@@ -158,18 +201,4 @@ private:
 
 }
 
-int main(int argc, char **argv)
-{
-  ros::init(argc, argv, "robot_model_renderer_node");
-
-  ros::NodeHandle nh;
-  ros::NodeHandle pnh("~");
-
-  tf2_ros::Buffer tf;
-  tf2_ros::TransformListener tf_listener(tf);
-
-  robot_model_renderer::RobotModelRendererNode renderer(nh, pnh, &tf);
-  ros::spin();
-
-  return 0;
-}
+PLUGINLIB_EXPORT_CLASS(robot_model_renderer::RobotModelRendererNodelet, nodelet::Nodelet)

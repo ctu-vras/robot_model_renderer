@@ -31,14 +31,16 @@
 
 #include <memory>
 
+#include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
+#include <robot_model_renderer/RobotModelRenderer.h>
+#include <robot_model_renderer/robot/tf_link_updater.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/ColorRGBA.h>
 #include <tf2_ros/buffer.h>
 
-#include <robot_model_renderer/RobotModelRenderer.h>
-#include <robot_model_renderer/robot/tf_link_updater.h>
+
 
 namespace robot_model_renderer
 {
@@ -63,7 +65,7 @@ struct RosCameraRobotModelRendererConfig
 class RosCameraRobotModelRenderer
 {
 public:
-  RosCameraRobotModelRenderer(const urdf::Model& model, tf2_ros::Buffer* tf,
+  RosCameraRobotModelRenderer(const urdf::Model& model, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
     const RosCameraRobotModelRendererConfig& config = {},
     Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr);
   virtual ~RosCameraRobotModelRenderer();

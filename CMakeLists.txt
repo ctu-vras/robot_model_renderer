@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_geometry
   image_transport
+  nodelet
   resource_retriever
   roscpp
   sensor_msgs
@@ -18,8 +19,9 @@ find_package(catkin REQUIRED COMPONENTS
   urdf
 )
 
-find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(Threads REQUIRED)
 
 # Prefer newer vendor-specific OpenGL library
 if (POLICY CMP0072)
@@ -141,16 +143,17 @@ target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${ASSIMP_LIBRARIES} ${OPENGL_LIBRARIES} ${OGRE_LIBRARIES}
 )
 
-add_executable(${PROJECT_NAME}_node
-  src/${PROJECT_NAME}_node.cpp
+add_library(${PROJECT_NAME}_nodelet
+  nodelets/${PROJECT_NAME}_nodelet.cpp
 )
-target_link_libraries(${PROJECT_NAME}_node
-  ${PROJECT_NAME} ${catkin_LIBRARIES}
+target_link_libraries(${PROJECT_NAME}_nodelet
+  ${PROJECT_NAME} ${catkin_LIBRARIES} Threads::Threads
 )
+cras_node_from_nodelet(${PROJECT_NAME}_nodelet ${PROJECT_NAME}::RobotModelRendererNodelet OUTPUT_NAME ${PROJECT_NAME} ANONYMOUS)
 
 install(TARGETS
   ${PROJECT_NAME}_ogre_helpers
-  ${PROJECT_NAME}_node
+  ${PROJECT_NAME}_nodelet
   ${PROJECT_NAME}_robot
   ${PROJECT_NAME}_distortion
   ${PROJECT_NAME}
@@ -160,6 +163,11 @@ install(TARGETS
 )
 
 install(FILES
-  launch/${PROJECT_NAME}launch
+  launch/${PROJECT_NAME}.launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
+
+install(FILES
+  nodelet.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )

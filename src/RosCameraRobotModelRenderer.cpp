@@ -33,6 +33,7 @@
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
 
+#include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <cv_bridge/cv_bridge.h>
 #include <robot_model_renderer/pinhole_camera.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
@@ -44,9 +45,10 @@
 namespace robot_model_renderer
 {
 
-RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(const urdf::Model& model, tf2_ros::Buffer* tf,
-  const RosCameraRobotModelRendererConfig& config, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
-  Ogre::Camera* camera) : config(config)
+RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(const urdf::Model& model,
+  const std::shared_ptr<cras::InterruptibleTFBuffer>& tf, const RosCameraRobotModelRendererConfig& config,
+  Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera)
+  : config(config)
 {
   RobotModelRendererConfig robotConfig;
   robotConfig.pixelFormat = sensorMsgsEncodingToOgrePixelFormat(config.imageEncoding);

@@ -523,11 +523,16 @@ void RobotLink::setTransforms(const Ogre::Vector3& visual_position, const Ogre::
 void RobotLink::setToErrorMaterial()
 {
   setMaterialMode(material_mode_flags_ | ERROR);
+  if (visual_node_)
+    visual_node_->setVisible(false);
+  if (collision_node_)
+    collision_node_->setVisible(false);
 }
 
 void RobotLink::setToNormalMaterial()
 {
   setMaterialMode(material_mode_flags_ & ~ERROR);
+  this->updateVisibility();
 }
 
 void RobotLink::setMaterialMode(const unsigned char mode_flags)
