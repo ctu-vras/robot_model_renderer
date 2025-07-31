@@ -43,7 +43,7 @@ namespace robot_model_renderer
 class RosCameraRobotModelRenderer
 {
 public:
-  RosCameraRobotModelRenderer(const urdf::Model& model, tf2_ros::Buffer* tf,
+  RosCameraRobotModelRenderer(const urdf::Model& model, tf2_ros::Buffer* tf, const std::string& imageEncoding = "rgba8",
     Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr,
     bool setupDefaultLighting = true);
   virtual ~RosCameraRobotModelRenderer();
@@ -63,6 +63,7 @@ protected:
 
   std::unique_ptr<TFLinkUpdater> linkUpdater;
   std::unique_ptr<RobotModelRenderer> renderer;
+  std::string imageEncoding;
 };
 
 } // namespace robot_model_renderer

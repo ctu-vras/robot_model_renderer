@@ -5,6 +5,7 @@
 #include <image_transport/image_transport.h>
 #include <robot_model_renderer/RosCameraRobotModelRenderer.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/image_encodings.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/message_filter.h>
 #include <tf2_ros/transform_listener.h>
@@ -46,7 +47,14 @@ private:
       return;
     }
 
-    this->renderer_ = std::make_unique<RosCameraRobotModelRenderer>(descr, this->tf_);
+    const auto imageEncoding = pnh_.param("image_encoding", sensor_msgs::image_encodings::RGBA8);
+    if (!sensor_msgs::image_encodings::isColor(imageEncoding) && !sensor_msgs::image_encodings::isMono(imageEncoding))
+    {
+      ROS_FATAL("The given image encoding is not a color or mono encoding.");
+      return;
+    }
+
+    this->renderer_ = std::make_unique<RosCameraRobotModelRenderer>(descr, this->tf_, imageEncoding);
 
     this->renderer_->setVisualVisible(pnh_.param("visual", true));
     this->renderer_->setCollisionVisible(pnh_.param("collision", false));

@@ -37,6 +37,7 @@
 #include <robot_model_renderer/pinhole_camera.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
 #include <robot_model_renderer/RosCameraRobotModelRenderer.h>
+#include <robot_model_renderer/utils/sensor_msgs_ogre.h>
 #include <robot_model_renderer/utils/validate_floats.h>
 #include <sensor_msgs/image_encodings.h>
 #include <tf2_ros/buffer.h>
@@ -45,12 +46,14 @@ namespace robot_model_renderer
 {
 
 RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(const urdf::Model& model, tf2_ros::Buffer* tf,
-  Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera, const bool setupDefaultLighting)
+  const std::string& imageEncoding, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera,
+  const bool setupDefaultLighting) : imageEncoding(imageEncoding)
 {
   this->linkUpdater = std::make_unique<TFLinkUpdater>(tf);
   this->renderer = std::make_unique<RobotModelRenderer>(model, this->linkUpdater.get(),
     sceneManager, sceneNode, camera, setupDefaultLighting);
-  this->renderer->setPixelFormat(Ogre::PixelFormat::PF_A8B8G8R8);
+  const auto pixelFormat = sensorMsgsEncodingToOgrePixelFormat(imageEncoding);
+  this->renderer->setPixelFormat(pixelFormat);
 }
 
 RosCameraRobotModelRenderer::~RosCameraRobotModelRenderer() = default;
@@ -87,7 +90,7 @@ sensor_msgs::ImageConstPtr RosCameraRobotModelRenderer::render(const sensor_msgs
 
   this->linkUpdater->setFixedFrame(msg->header.frame_id);
 
-  cv_bridge::CvImage cvImg(msg->header, "bgra8");
+  cv_bridge::CvImage cvImg(msg->header, this->imageEncoding);
   cvImg.image = this->renderer->render(msg->header.stamp);
 
   return cvImg.toImageMsg();  // TODO here's an unneeded memcpy, we should rather preallocate and share the buffer

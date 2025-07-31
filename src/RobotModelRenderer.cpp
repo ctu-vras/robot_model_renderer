@@ -62,7 +62,7 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
   Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera, const bool setupDefaultLighting) :
     linkUpdater(linkUpdater), isDistorted(false), visualVisible(true), collisionVisible(false),
     scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(false),
-    pixelFormat(Ogre::PF_A8R8G8B8), cvImageType(ogrePixelFormatToCvMatType(Ogre::PF_A8R8G8B8))
+    pixelFormat(Ogre::PF_BYTE_RGBA), cvImageType(ogrePixelFormatToCvMatType(Ogre::PF_BYTE_RGBA))
 {
   if (sceneManager == nullptr && sceneNode != nullptr)
     throw std::runtime_error("When sceneManager is not passed, sceneNode has to be null too.");
@@ -251,11 +251,10 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
 
   tex_ = Ogre::TextureManager::getSingleton().createManual(
     "MainRenderTarget", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
-    res.width, res.height, 32, 0, Ogre::PF_R8G8B8A8, Ogre::TU_RENDERTARGET);
+    res.width, res.height, 32, 0, this->pixelFormat, Ogre::TU_RENDERTARGET);
   rt_ = tex_->getBuffer()->getRenderTarget();
 
   viewPort_ = rt_->addViewport(camera_);
-  // The color is interpreted as BGRA
   viewPort_->setBackgroundColour(Ogre::ColourValue(1, 0, 0, 0));  // TODO change to 0 0 0 0
   viewPort_->setClearEveryFrame(true);
 
@@ -292,10 +291,8 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
 
   if (this->isDistorted && !this->gpuDistortion)
   {
-    const auto bgColor = viewPort_->getBackgroundColour();
-
     // This will be the raw image, but still with the size of the rectified one. It will get cropped later.
-    cv::Mat rawImg(rectRows, rectCols, this->cvImageType, cv::Scalar(bgColor.b, bgColor.g, bgColor.r, bgColor.a));
+    cv::Mat rawImg(rectRows, rectCols, this->cvImageType);
 
     this->rectifiedCameraModel.unrectifyImage(rectImg, rawImg);
     outputImg = rawImg;

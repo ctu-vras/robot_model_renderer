@@ -1,3 +1,5 @@
+#pragma once
+
 #include <OgrePixelFormat.h>
 
 namespace robot_model_renderer
