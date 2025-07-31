@@ -59,10 +59,11 @@ namespace robot_model_renderer
 {
 
 RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdater* linkUpdater,
-  Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera, const bool setupDefaultLighting) :
-    linkUpdater(linkUpdater), isDistorted(false), visualVisible(true), collisionVisible(false),
+  const RobotModelRendererConfig& config, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
+  Ogre::Camera* camera) :
+    linkUpdater(linkUpdater), config(config), isDistorted(false),
     scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(false),
-    pixelFormat(Ogre::PF_BYTE_RGBA), cvImageType(ogrePixelFormatToCvMatType(Ogre::PF_BYTE_RGBA))
+    cvImageType(ogrePixelFormatToCvMatType(config.pixelFormat))
 {
   if (sceneManager == nullptr && sceneNode != nullptr)
     throw std::runtime_error("When sceneManager is not passed, sceneNode has to be null too.");
@@ -79,7 +80,7 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
 #endif
   }
 
-  if (setupDefaultLighting)
+  if (this->config.setupDefaultLighting)
   {
     this->directional_light_ = this->scene_manager_->createLight("MainDirectional");
     this->directional_light_->setType(Ogre::Light::LT_DIRECTIONAL);
@@ -94,7 +95,10 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
   if (camera == nullptr)
   {
     this->camera_ = this->scene_manager_->createCamera("RobotModelCamera");
-    this->camera_->setNearClipDistance(0.03f);
+    if (this->config.nearClipDistance > 0.0f)
+      this->camera_->setNearClipDistance(this->config.nearClipDistance);
+    if (this->config.farClipDistance > 0.0f)
+      this->camera_->setFarClipDistance(this->config.farClipDistance);
     // convert vision (Z-forward) frame to ogre frame (Z-out)
     this->camera_->setOrientation(Ogre::Quaternion(Ogre::Degree(180), Ogre::Vector3::UNIT_X));
   }
@@ -110,8 +114,8 @@ void RobotModelRenderer::setModel(const urdf::Model& model)
 {
   this->robot_ = std::make_unique<Robot>(this->scene_node_, this->scene_manager_, "robot");
   this->robot_->load(model, true, true);
-  this->setVisualVisible(this->visualVisible);
-  this->setCollisionVisible(this->collisionVisible);
+  this->setVisualVisible(this->config.visualVisible);
+  this->setCollisionVisible(this->config.collisionVisible);
 }
 
 void RobotModelRenderer::setNearClipDistance(const double nearClip)
@@ -126,21 +130,21 @@ void RobotModelRenderer::setFarClipDistance(const double farClip)
 
 void RobotModelRenderer::setVisualVisible(const bool visible)
 {
-  this->visualVisible = visible;
+  this->config.visualVisible = visible;
   if (this->robot_ != nullptr)
     this->robot_->setVisualVisible(visible);
 }
 
 void RobotModelRenderer::setCollisionVisible(const bool visible)
 {
-  this->collisionVisible = visible;
+  this->config.collisionVisible = visible;
   if (this->robot_ != nullptr)
     this->robot_->setCollisionVisible(visible);
 }
 
 void RobotModelRenderer::setPixelFormat(const Ogre::PixelFormat& pf)
 {
-  this->pixelFormat = pf;
+  this->config.pixelFormat = pf;
   this->cvImageType = ogrePixelFormatToCvMatType(pf);
 }
 
@@ -207,7 +211,7 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
     return false;
   }
 
-  this->isDistorted = this->doDistort && numD > 0 &&
+  this->isDistorted = this->config.doDistort && numD > 0 &&
     std::any_of(model.distortionCoeffs().begin(), model.distortionCoeffs().end(),
       [](const double x) { return fabs(x) > 1e-6; });
 
@@ -236,7 +240,7 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
     const auto prevRectCamMsg = this->rectifiedCameraModel.cameraInfo();
     this->rectifiedCameraModel = this->origCameraModel.getModelForResolution(rectifiedRes);
 
-    if (this->gpuDistortion && !distortionPass_.SetCameraModel(this->rectifiedCameraModel))
+    if (this->config.gpuDistortion && !distortionPass_.SetCameraModel(this->rectifiedCameraModel))
     {
       this->origCameraModel.fromCameraInfo(prevOrigCamMsg);
       this->rectifiedCameraModel.fromCameraInfo(prevRectCamMsg);
@@ -251,14 +255,14 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
 
   tex_ = Ogre::TextureManager::getSingleton().createManual(
     "MainRenderTarget", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
-    res.width, res.height, 32, 0, this->pixelFormat, Ogre::TU_RENDERTARGET);
+    res.width, res.height, 32, 0, this->config.pixelFormat, Ogre::TU_RENDERTARGET);
   rt_ = tex_->getBuffer()->getRenderTarget();
 
   viewPort_ = rt_->addViewport(camera_);
-  viewPort_->setBackgroundColour(Ogre::ColourValue(1, 0, 0, 0));  // TODO change to 0 0 0 0
+  viewPort_->setBackgroundColour(this->config.backgroundColor);
   viewPort_->setClearEveryFrame(true);
 
-  if (this->isDistorted && this->gpuDistortion)
+  if (this->isDistorted && this->config.gpuDistortion)
     distortionPass_.CreateRenderPass();
 
   this->updateOgreCamera();
@@ -278,7 +282,7 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
   // If distortion is done on GPU, this will already be raw image
   cv::Mat rectImg(rectRows, rectCols, this->cvImageType);
 
-  const Ogre::PixelBox pb(rt_->getWidth(), rt_->getHeight(), 1, this->pixelFormat, rectImg.data);
+  const Ogre::PixelBox pb(rt_->getWidth(), rt_->getHeight(), 1, this->config.pixelFormat, rectImg.data);
   rt_->copyContentsToMemory(pb);
 
   const auto rawRows = this->origCameraModel.reducedResolution().height;
@@ -289,7 +293,7 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
 
   auto outputImg = rectImg;
 
-  if (this->isDistorted && !this->gpuDistortion)
+  if (this->isDistorted && !this->config.gpuDistortion)
   {
     // This will be the raw image, but still with the size of the rectified one. It will get cropped later.
     cv::Mat rawImg(rectRows, rectCols, this->cvImageType);

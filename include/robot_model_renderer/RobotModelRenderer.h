@@ -31,34 +31,57 @@
 
 #include <memory>
 
+#include <OgreCamera.h>
 #include <OgrePixelFormat.h>
+#include <OgreSceneManager.h>
+#include <OgreSceneNode.h>
 #include <OgreSharedPtr.h>
 
 #include <opencv2/core/core.hpp>
 
+#include <robot_model_renderer/distortion/OgreDistortionPass.hh>
 #include <robot_model_renderer/pinhole_camera.h>
 #include <robot_model_renderer/robot/link_updater.h>
 #include <robot_model_renderer/robot/robot.h>
-#include <robot_model_renderer/distortion/OgreDistortionPass.hh>
+#include <urdf/model.h>
 
 namespace Ogre
 {
+
 class Root;
 class SceneManager;
 class SceneNode;
 class ManualObject;
 class Rectangle2D;
 class Camera;
-} // namespace Ogre
+
+}
 
 namespace robot_model_renderer
 {
+
+struct RobotModelRendererConfig
+{
+  bool setupDefaultLighting {true};
+
+  Ogre::PixelFormat pixelFormat {Ogre::PF_BYTE_RGBA};
+  Ogre::ColourValue backgroundColor {0, 0, 0, 0};
+
+  bool doDistort {true};
+  bool gpuDistortion {true};
+
+  float nearClipDistance {0.03f};
+  float farClipDistance {0.0f};
+  bool visualVisible {true};
+  bool collisionVisible {false};
+};
+
 class RobotModelRenderer
 {
 public:
   RobotModelRenderer(const urdf::Model& model, const LinkUpdater* linkUpdater,
-    Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr,
-    bool setupDefaultLighting = true);
+    const RobotModelRendererConfig& config = {},
+    Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr);
   virtual ~RobotModelRenderer();
 
   virtual void setModel(const urdf::Model& model);
@@ -81,13 +104,11 @@ protected:
   robot_model_renderer::PinholeCameraModel origCameraModel;
   robot_model_renderer::PinholeCameraModel rectifiedCameraModel;
 
-  bool doDistort {true};
+  RobotModelRendererConfig config;
+
   bool isDistorted;
-  bool gpuDistortion {true};
 
   std::unique_ptr<Robot> robot_;
-  bool visualVisible;
-  bool collisionVisible;
 
   Ogre::SceneManager* scene_manager_ {nullptr};
   Ogre::Light* directional_light_ {nullptr};
@@ -97,8 +118,7 @@ protected:
   Ogre::Camera* camera_ {nullptr};
   Ogre::Viewport* viewPort_ {nullptr};
   OgreDistortionPass distortionPass_;
-  Ogre::PixelFormat pixelFormat;
   int cvImageType;
 };
 
-} // namespace robot_model_renderer
+}

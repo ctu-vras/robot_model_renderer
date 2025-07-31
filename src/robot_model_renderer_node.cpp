@@ -47,19 +47,24 @@ private:
       return;
     }
 
-    const auto imageEncoding = pnh_.param("image_encoding", sensor_msgs::image_encodings::RGBA8);
+    RosCameraRobotModelRendererConfig config;
+
+    const auto imageEncoding = pnh_.param("image_encoding", config.imageEncoding);
     if (!sensor_msgs::image_encodings::isColor(imageEncoding) && !sensor_msgs::image_encodings::isMono(imageEncoding))
     {
       ROS_FATAL("The given image encoding is not a color or mono encoding.");
       return;
     }
 
-    this->renderer_ = std::make_unique<RosCameraRobotModelRenderer>(descr, this->tf_, imageEncoding);
+    config.imageEncoding = imageEncoding;
+    config.visualVisible = pnh_.param("visual", config.visualVisible);
+    config.collisionVisible = pnh_.param("collision", config.collisionVisible);
+    config.nearClipDistance = pnh_.param("near_clip", config.nearClipDistance);
+    config.farClipDistance = pnh_.param("far_clip", config.farClipDistance);
+    config.doDistort = pnh_.param("do_distort", config.doDistort);
+    config.gpuDistortion = pnh_.param("gpu_distortion", config.gpuDistortion);
 
-    this->renderer_->setVisualVisible(pnh_.param("visual", true));
-    this->renderer_->setCollisionVisible(pnh_.param("collision", false));
-    this->renderer_->setNearClipDistance(pnh_.param("near_clip", 0.03));
-    this->renderer_->setFarClipDistance(pnh_.param("far_clip", 10.0));
+    this->renderer_ = std::make_unique<RosCameraRobotModelRenderer>(descr, this->tf_, config);
 
     this->subscribe();
   }

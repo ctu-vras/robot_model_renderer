@@ -27,11 +27,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <OgreCamera.h>
 #include <OgreRenderSystem.h>
 #include <OgreRoot.h>
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
-#include <OgreCamera.h>
 
 #include <cv_bridge/cv_bridge.h>
 #include <robot_model_renderer/pinhole_camera.h>
@@ -39,21 +39,29 @@
 #include <robot_model_renderer/RosCameraRobotModelRenderer.h>
 #include <robot_model_renderer/utils/sensor_msgs_ogre.h>
 #include <robot_model_renderer/utils/validate_floats.h>
-#include <sensor_msgs/image_encodings.h>
 #include <tf2_ros/buffer.h>
 
 namespace robot_model_renderer
 {
 
 RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(const urdf::Model& model, tf2_ros::Buffer* tf,
-  const std::string& imageEncoding, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera,
-  const bool setupDefaultLighting) : imageEncoding(imageEncoding)
+  const RosCameraRobotModelRendererConfig& config, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
+  Ogre::Camera* camera) : config(config)
 {
+  RobotModelRendererConfig robotConfig;
+  robotConfig.pixelFormat = sensorMsgsEncodingToOgrePixelFormat(config.imageEncoding);
+  robotConfig.backgroundColor = Ogre::ColourValue(
+    config.backgroundColor.r, config.backgroundColor.g, config.backgroundColor.b, config.backgroundColor.a);
+  robotConfig.nearClipDistance = config.nearClipDistance;
+  robotConfig.farClipDistance = config.farClipDistance;
+  robotConfig.visualVisible = config.visualVisible;
+  robotConfig.collisionVisible = config.collisionVisible;
+  robotConfig.doDistort = config.doDistort;
+  robotConfig.gpuDistortion = config.gpuDistortion;
+
   this->linkUpdater = std::make_unique<TFLinkUpdater>(tf);
   this->renderer = std::make_unique<RobotModelRenderer>(model, this->linkUpdater.get(),
-    sceneManager, sceneNode, camera, setupDefaultLighting);
-  const auto pixelFormat = sensorMsgsEncodingToOgrePixelFormat(imageEncoding);
-  this->renderer->setPixelFormat(pixelFormat);
+    robotConfig, sceneManager, sceneNode, camera);
 }
 
 RosCameraRobotModelRenderer::~RosCameraRobotModelRenderer() = default;
@@ -90,7 +98,7 @@ sensor_msgs::ImageConstPtr RosCameraRobotModelRenderer::render(const sensor_msgs
 
   this->linkUpdater->setFixedFrame(msg->header.frame_id);
 
-  cv_bridge::CvImage cvImg(msg->header, this->imageEncoding);
+  cv_bridge::CvImage cvImg(msg->header, this->config.imageEncoding);
   cvImg.image = this->renderer->render(msg->header.stamp);
 
   return cvImg.toImageMsg();  // TODO here's an unneeded memcpy, we should rather preallocate and share the buffer
@@ -126,4 +134,4 @@ void RosCameraRobotModelRenderer::reset()
   this->renderer->reset();
 }
 
-} // namespace robot_model_renderer
+}

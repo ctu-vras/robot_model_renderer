@@ -33,6 +33,8 @@
 
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/image_encodings.h>
+#include <std_msgs/ColorRGBA.h>
 #include <tf2_ros/buffer.h>
 
 #include <robot_model_renderer/RobotModelRenderer.h>
@@ -40,12 +42,30 @@
 
 namespace robot_model_renderer
 {
+
+struct RosCameraRobotModelRendererConfig
+{
+  bool setupDefaultLighting {true};
+
+  std::string imageEncoding {sensor_msgs::image_encodings::RGBA8};
+  std_msgs::ColorRGBA backgroundColor;
+
+  bool doDistort {true};
+  bool gpuDistortion {true};
+
+  float nearClipDistance {0.03f};
+  float farClipDistance {0.0f};
+
+  bool visualVisible {true};
+  bool collisionVisible {false};
+};
+
 class RosCameraRobotModelRenderer
 {
 public:
-  RosCameraRobotModelRenderer(const urdf::Model& model, tf2_ros::Buffer* tf, const std::string& imageEncoding = "rgba8",
-    Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr,
-    bool setupDefaultLighting = true);
+  RosCameraRobotModelRenderer(const urdf::Model& model, tf2_ros::Buffer* tf,
+    const RosCameraRobotModelRendererConfig& config = {},
+    Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr);
   virtual ~RosCameraRobotModelRenderer();
 
   sensor_msgs::ImageConstPtr render(const sensor_msgs::CameraInfo::ConstPtr& msg);
@@ -63,7 +83,8 @@ protected:
 
   std::unique_ptr<TFLinkUpdater> linkUpdater;
   std::unique_ptr<RobotModelRenderer> renderer;
-  std::string imageEncoding;
+
+  RosCameraRobotModelRendererConfig config;
 };
 
-} // namespace robot_model_renderer
+}
