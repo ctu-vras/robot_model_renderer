@@ -134,6 +134,7 @@ add_library(${PROJECT_NAME}
   src/RobotModelRenderer.cpp
   src/RosCameraRobotModelRenderer.cpp
   src/utils/ogre_opencv.cpp
+  src/utils/sensor_msgs.cpp
   src/utils/sensor_msgs_ogre.cpp
 )
 target_link_libraries(${PROJECT_NAME}

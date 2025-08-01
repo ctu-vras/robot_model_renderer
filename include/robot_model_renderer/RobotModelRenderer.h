@@ -121,7 +121,7 @@ protected:
   std::unique_ptr<Robot> robot_;
 
   Ogre::SceneManager* scene_manager_ {nullptr};
-  Ogre::Light* directional_light_ {nullptr};
+  Ogre::Light* default_light_ {nullptr};
   Ogre::SceneNode* scene_node_ {nullptr};
   Ogre::TexturePtr tex_;
   Ogre::RenderTarget* rt_ {nullptr};

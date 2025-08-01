@@ -53,6 +53,7 @@
 #include <robot_model_renderer/ogre_helpers/render_system.h>
 #include <robot_model_renderer/distortion/OgreDistortionPass.hh>
 #include <robot_model_renderer/utils/ogre_opencv.h>
+#include <robot_model_renderer/utils/sensor_msgs.h>
 #include <sensor_msgs/image_encodings.h>
 
 namespace robot_model_renderer
@@ -82,10 +83,9 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
 
   if (this->config.setupDefaultLighting)
   {
-    this->directional_light_ = this->scene_manager_->createLight("MainDirectional");
-    this->directional_light_->setType(Ogre::Light::LT_DIRECTIONAL);
-    this->directional_light_->setDirection(Ogre::Vector3(0, 0, 1));
-    this->directional_light_->setDiffuseColour(Ogre::ColourValue(1.0f, 1.0f, 1.0f));
+    this->default_light_ = this->scene_manager_->createLight("MainLight");
+    this->default_light_->setType(Ogre::Light::LT_POINT);
+    this->default_light_->setDiffuseColour(Ogre::ColourValue(1.0f, 1.0f, 1.0f));
     this->scene_manager_->setAmbientLight(Ogre::ColourValue(.5, .5, .5));
   }
 
@@ -231,12 +231,12 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
       ROS_ERROR_THROTTLE_NAMED(1.0, "Camera Info", "Could not determine rectified image dimensions.");
       return false;
     }
+    // Do not allow the rectified image to be smaller (for pincushion distortion).
+    if (rectifiedRes.area() < model.reducedResolution().area())
+      rectifiedRes = model.reducedResolution();
   }
 
-  auto ci = model.cameraInfo();
-  ci.header.stamp = this->origCameraModel.cameraInfo().header.stamp;
-  ci.header.seq = this->origCameraModel.cameraInfo().header.seq;
-  if (ci == this->origCameraModel.cameraInfo())
+  if (areCameraInfosAlmostEqual(model.cameraInfo(), this->origCameraModel.cameraInfo(), 0))
     return true;
 
   const auto prevOrigCamMsg = this->origCameraModel.cameraInfo();
@@ -286,32 +286,38 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
   const auto rectRows = static_cast<int>(rt_->getHeight());
   const auto rectCols = static_cast<int>(rt_->getWidth());
 
-  // If distortion is done on GPU, this will already be raw image
   cv::Mat rectImg(rectRows, rectCols, this->cvImageType);
 
   const Ogre::PixelBox pb(rt_->getWidth(), rt_->getHeight(), 1, this->config.pixelFormat, rectImg.data);
   rt_->copyContentsToMemory(pb);
 
-  const auto rawRows = this->origCameraModel.reducedResolution().height;
-  const auto rawCols = this->origCameraModel.reducedResolution().width;
-  // Compute the offset of top left corner of the desired output image in the actual (possibly larger) rendered image.
-  const int rowOffset = (rectRows - rawRows) / 2;
-  const int colOffset = (rectCols - rawCols) / 2;
+  // If distortion is not applied, this is all, we have a rectified image of correct size
+  if (!this->isDistorted)
+    return rectImg;
 
-  auto outputImg = rectImg;
+  // If distortion is done on GPU, this will already be raw image
+  auto rawImg = rectImg;
 
-  if (this->isDistorted && !this->config.gpuDistortion)
+  // Otherwise, perform the distortion on CPU now
+  if (!this->config.gpuDistortion)
   {
     // This will be the raw image, but still with the size of the rectified one. It will get cropped later.
-    cv::Mat rawImg(rectRows, rectCols, this->cvImageType);
+    cv::Mat unrectImg(rectRows, rectCols, this->cvImageType);
 
-    this->rectifiedCameraModel.unrectifyImage(rectImg, rawImg);
-    outputImg = rawImg;
+    this->rectifiedCameraModel.unrectifyImage(rectImg, unrectImg);
+    rawImg = unrectImg;
   }
 
-  // The image may be larger than desired, so we crop it.
-  outputImg = outputImg(cv::Rect(colOffset, rowOffset, rawCols, rawRows));
-  return outputImg;
+  // The raw image can be larger than the original resolution, so we need to crop it appropriately
+  const auto origRows = this->origCameraModel.reducedResolution().height;
+  const auto origCols = this->origCameraModel.reducedResolution().width;
+
+  // Compute the offset of the top left corner of the desired output image in the possibly larger rendered image.
+  const auto topLeft = this->rectifiedCameraModel.unrectifyPoint({0, 0});
+  const auto colOffset = std::max(0, static_cast<int>(topLeft.x));
+  const auto rowOffset = std::max(0, static_cast<int>(topLeft.y));
+
+  return rawImg(cv::Rect(colOffset, rowOffset, origCols, origRows));
 }
 
 void RobotModelRenderer::reset()

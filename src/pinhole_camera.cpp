@@ -451,6 +451,9 @@ cv::Size PinholeCameraModel::getRectifiedResolution() const
 
 PinholeCameraModel PinholeCameraModel::getModelForResolution(const cv::Size& res) const
 {
+  if (this->reducedResolution() == res)
+    return *this;
+
   const cv::Matx33d K = cv::getOptimalNewCameraMatrix(
       this->intrinsicMatrix(), this->distortionCoeffs(), this->reducedResolution(), 1.0, res);
 

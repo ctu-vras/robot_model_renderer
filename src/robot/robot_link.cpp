@@ -79,14 +79,17 @@ RobotLink::RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const s
         nullptr, material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
     color_material_->setReceiveShadows(false);
     color_material_->getTechnique(0)->setLightingEnabled(true);
+    color_material_->setCullingMode(Ogre::CULL_NONE);
+    color_material_->setManualCullingMode(Ogre::MANUAL_CULL_NONE);
   }
 
   {
     // create material for drawing masks
     std::string material_name = "robot link " + link->name + ":mask material";
-    mask_material_ = Ogre::MaterialPtr(new Ogre::Material(
-        nullptr, material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
-    *mask_material_ = *Ogre::MaterialManager::getSingleton().getByName("BaseWhiteNoLighting");
+    mask_material_ = Ogre::MaterialManager::getSingleton().getByName("BaseWhiteNoLighting")->clone(
+      material_name, true, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+    mask_material_->setCullingMode(Ogre::CULL_NONE);
+    mask_material_->setManualCullingMode(Ogre::MANUAL_CULL_NONE);
   }
 
   // create the ogre objects to display

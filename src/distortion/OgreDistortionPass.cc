@@ -128,6 +128,7 @@ void OgreDistortionPass::CreateRenderPass()
   const auto matName = this->dataPtr->useDistortionMap ? "CameraMappedDistortion" : "InverseRectification";
   const auto& mat = Ogre::MaterialManager::getSingleton().getByName(matName);
   this->dataPtr->distortionMaterial = mat->clone(this->ogreCamera->getName() + "_Distortion");
+  this->dataPtr->distortionMaterial->getTechnique(0)->getPass(0)->setTextureFiltering(Ogre::TFO_BILINEAR);
 
   if (this->dataPtr->useDistortionMap)
   {
