@@ -71,6 +71,7 @@ class RobotLink
     ORIGINAL = 0,
     COLOR = 1,
     ERROR = 2,
+    MASK = 4,
   };
 
 public:
@@ -120,9 +121,13 @@ public:
 
   void setToNormalMaterial();
 
-  void setColor(float red, float green, float blue);
+  void setMaskMode();
 
-  void unsetColor();
+  void unsetMaskMode();
+
+  void setColorMode(float red, float green, float blue);
+
+  void unsetColorMode();
 
   Ogre::Vector3 getPosition() const;
 
@@ -203,6 +208,7 @@ protected:
   std::string errors_;
 
   Ogre::MaterialPtr color_material_;
+  Ogre::MaterialPtr mask_material_;
   unsigned char material_mode_flags_;
 };
 

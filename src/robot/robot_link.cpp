@@ -72,12 +72,22 @@ RobotLink::RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const s
   visual_node_ = robot_->getVisualNode()->createChildSceneNode();
   collision_node_ = robot_->getCollisionNode()->createChildSceneNode();
 
-  // create material for coloring links
-  std::string material_name = "robot link " + link->name + ":color material";
-  color_material_ = Ogre::MaterialPtr(new Ogre::Material(
-      nullptr, material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
-  color_material_->setReceiveShadows(false);
-  color_material_->getTechnique(0)->setLightingEnabled(true);
+  {
+    // create material for coloring links
+    std::string material_name = "robot link " + link->name + ":color material";
+    color_material_ = Ogre::MaterialPtr(new Ogre::Material(
+        nullptr, material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
+    color_material_->setReceiveShadows(false);
+    color_material_->getTechnique(0)->setLightingEnabled(true);
+  }
+
+  {
+    // create material for drawing masks
+    std::string material_name = "robot link " + link->name + ":mask material";
+    mask_material_ = Ogre::MaterialPtr(new Ogre::Material(
+        nullptr, material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
+    *mask_material_ = *Ogre::MaterialManager::getSingleton().getByName("BaseWhiteNoLighting");
+  }
 
   // create the ogre objects to display
 
@@ -549,9 +559,25 @@ void RobotLink::setMaterialMode(const unsigned char mode_flags)
     return;
   }
 
-  auto error_material = Ogre::MaterialManager::getSingleton().getByName(
-      "BaseWhiteNoLighting", Ogre::ResourceGroupManager::INTERNAL_RESOURCE_GROUP_NAME);
-  auto material = mode_flags == COLOR ? color_material_ : error_material;
+  Ogre::MaterialPtr material;
+
+  if (mode_flags & ERROR)
+  {
+    material = Ogre::MaterialManager::getSingleton().getByName(
+        "BaseWhiteNoLighting", Ogre::ResourceGroupManager::INTERNAL_RESOURCE_GROUP_NAME);
+  }
+  else if (mode_flags & MASK)
+  {
+    material = mask_material_;
+  }
+  else if (mode_flags & COLOR)
+  {
+    material = color_material_;
+  }
+  else
+  {
+    throw std::runtime_error("Unsupported mode_flags");
+  }
 
   for (const auto& mesh : visual_meshes_)
     mesh->setMaterial(material);
@@ -559,7 +585,17 @@ void RobotLink::setMaterialMode(const unsigned char mode_flags)
     mesh->setMaterial(material);
 }
 
-void RobotLink::setColor(const float red, const float green, const float blue)
+void RobotLink::setMaskMode()
+{
+  setMaterialMode(material_mode_flags_ | MASK);
+}
+
+void RobotLink::unsetMaskMode()
+{
+  setMaterialMode(material_mode_flags_ & ~MASK);
+}
+
+void RobotLink::setColorMode(const float red, const float green, const float blue)
 {
   Ogre::ColourValue color = color_material_->getTechnique(0)->getPass(0)->getDiffuse();
   color.r = red;
@@ -568,12 +604,12 @@ void RobotLink::setColor(const float red, const float green, const float blue)
   color_material_->getTechnique(0)->setAmbient(0.5 * color);
   color_material_->getTechnique(0)->setDiffuse(color);
 
-  setMaterialMode(COLOR | (material_mode_flags_ & ERROR));
+  setMaterialMode(material_mode_flags_ | COLOR);
 }
 
-void RobotLink::unsetColor()
+void RobotLink::unsetColorMode()
 {
-  setMaterialMode(ORIGINAL | (material_mode_flags_ & ERROR));
+  setMaterialMode(material_mode_flags_ & ~COLOR);
 }
 
 Ogre::Vector3 RobotLink::getPosition() const

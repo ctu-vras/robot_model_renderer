@@ -40,17 +40,17 @@
 #include <std_msgs/ColorRGBA.h>
 #include <tf2_ros/buffer.h>
 
-
-
 namespace robot_model_renderer
 {
+
+std_msgs::ColorRGBA createColor(float red, float green, float blue, float alpha);
 
 struct RosCameraRobotModelRendererConfig
 {
   bool setupDefaultLighting {true};
 
   std::string imageEncoding {sensor_msgs::image_encodings::RGBA8};
-  std_msgs::ColorRGBA backgroundColor;
+  std_msgs::ColorRGBA backgroundColor {createColor(0, 0, 0, 0)};
 
   bool doDistort {true};
   bool gpuDistortion {true};
@@ -60,6 +60,9 @@ struct RosCameraRobotModelRendererConfig
 
   bool visualVisible {true};
   bool collisionVisible {false};
+
+  RenderingMode renderingMode {RenderingMode::NORMAL};
+  std_msgs::ColorRGBA colorModeColor {createColor(1, 0, 0, 1)};
 };
 
 class RosCameraRobotModelRenderer

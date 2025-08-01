@@ -114,8 +114,15 @@ void RobotModelRenderer::setModel(const urdf::Model& model)
 {
   this->robot_ = std::make_unique<Robot>(this->scene_node_, this->scene_manager_, "robot");
   this->robot_->load(model, true, true);
+
   this->setVisualVisible(this->config.visualVisible);
   this->setCollisionVisible(this->config.collisionVisible);
+
+  if (this->config.renderingMode == RenderingMode::MASK)
+    this->robot_->setMaskMode();
+  else if (this->config.renderingMode == RenderingMode::COLOR)
+    this->robot_->setColorMode(
+      this->config.colorModeColor.r, this->config.colorModeColor.g, this->config.colorModeColor.b);
 }
 
 void RobotModelRenderer::setNearClipDistance(const double nearClip)

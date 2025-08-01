@@ -315,6 +315,30 @@ void Robot::setScale(const Ogre::Vector3& scale)
   root_collision_node_->setScale(scale);
 }
 
+void Robot::setMaskMode()
+{
+  for (const auto& [link_name, link] : links_)
+    link->setMaskMode();
+}
+
+void Robot::unsetMaskMode()
+{
+  for (const auto& [link_name, link] : links_)
+    link->unsetMaskMode();
+}
+
+void Robot::setColorMode(const float red, const float green, const float blue)
+{
+  for (const auto& [link_name, link] : links_)
+    link->setColorMode(red, green, blue);
+}
+
+void Robot::unsetColorMode()
+{
+  for (const auto& [link_name, link] : links_)
+    link->unsetColorMode();
+}
+
 const Ogre::Vector3& Robot::getPosition()
 {
   return root_visual_node_->getPosition();

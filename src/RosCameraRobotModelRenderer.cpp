@@ -45,8 +45,19 @@
 namespace robot_model_renderer
 {
 
-RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(const urdf::Model& model,
-  const std::shared_ptr<cras::InterruptibleTFBuffer>& tf, const RosCameraRobotModelRendererConfig& config,
+std_msgs::ColorRGBA createColor(const float red, const float green, const float blue, const float alpha)
+{
+  std_msgs::ColorRGBA color;
+  color.r = red;
+  color.g = green;
+  color.b = blue;
+  color.a = alpha;
+  return color;
+}
+
+RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
+  const urdf::Model& model, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
+  const RosCameraRobotModelRendererConfig& config,
   Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera)
   : config(config)
 {
@@ -60,6 +71,9 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(const urdf::Model& mode
   robotConfig.collisionVisible = config.collisionVisible;
   robotConfig.doDistort = config.doDistort;
   robotConfig.gpuDistortion = config.gpuDistortion;
+  robotConfig.renderingMode = config.renderingMode;
+  robotConfig.colorModeColor = Ogre::ColourValue(
+    config.colorModeColor.r, config.colorModeColor.g, config.colorModeColor.b, config.colorModeColor.a);
 
   this->linkUpdater = std::make_unique<TFLinkUpdater>(tf);
   this->renderer = std::make_unique<RobotModelRenderer>(model, this->linkUpdater.get(),

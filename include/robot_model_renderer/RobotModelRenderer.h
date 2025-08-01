@@ -60,6 +60,13 @@ class Camera;
 namespace robot_model_renderer
 {
 
+enum class RenderingMode
+{
+  NORMAL,
+  COLOR,
+  MASK,
+};
+
 struct RobotModelRendererConfig
 {
   bool setupDefaultLighting {true};
@@ -74,6 +81,9 @@ struct RobotModelRendererConfig
   float farClipDistance {0.0f};
   bool visualVisible {true};
   bool collisionVisible {false};
+
+  RenderingMode renderingMode {RenderingMode::NORMAL};
+  Ogre::ColourValue colorModeColor {1, 0, 0, 1};
 };
 
 class RobotModelRenderer

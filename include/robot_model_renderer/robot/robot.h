@@ -176,6 +176,14 @@ public:
 
   virtual void setScale(const Ogre::Vector3& scale);
 
+  virtual void setMaskMode();
+
+  virtual void unsetMaskMode();
+
+  virtual void setColorMode(float red, float green, float blue);
+
+  virtual void unsetColorMode();
+
   virtual const Ogre::Vector3& getPosition();
 
   virtual const Ogre::Quaternion& getOrientation();

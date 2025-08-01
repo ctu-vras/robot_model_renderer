@@ -20,7 +20,7 @@
 namespace cras
 {
 
-DEFINE_CONVERTING_GET_PARAM(std_msgs::ColorRGBA, std::vector<float>, "", [](const std::vector<float>& v)
+DEFINE_CONVERTING_GET_PARAM(std_msgs::ColorRGBA, std::vector<float>, "[0-1]", [](const std::vector<float>& v)
 {
   if (v.size() != 3 && v.size() != 4 && v.size() != 1) \
     throw std::runtime_error( \
@@ -32,6 +32,34 @@ DEFINE_CONVERTING_GET_PARAM(std_msgs::ColorRGBA, std::vector<float>, "", [](cons
   m.b = v.size() > 2 ? v[2] : v[0]; \
   m.a = v.size() > 3 ? v[3] : 1; \
   return m; \
+})
+
+inline ::std::string to_string(const robot_model_renderer::RenderingMode& value)
+{
+  switch (value)
+  {
+    case robot_model_renderer::RenderingMode::NORMAL:
+      return "normal";
+    case robot_model_renderer::RenderingMode::COLOR:
+      return "color";
+    case robot_model_renderer::RenderingMode::MASK:
+      return "mask";
+  }
+  return "unknown";
+}
+
+DEFINE_CONVERTING_GET_PARAM(robot_model_renderer::RenderingMode, std::string, "", [](const std::string& v)
+{
+  const auto mode = cras::toLower(v); \
+  if (mode.empty() || mode == "normal") \
+    return robot_model_renderer::RenderingMode::NORMAL; \
+  else if (mode == "color") \
+    return robot_model_renderer::RenderingMode::COLOR; \
+  else if (mode == "mask") \
+    return robot_model_renderer::RenderingMode::MASK; \
+  else \
+    throw std::runtime_error( \
+      cras::format("Invalid value %s for rendering mode. Allowed are: normal, color, mask", mode.c_str())); \
 })
 
 }
@@ -134,6 +162,11 @@ private:
 
     RosCameraRobotModelRendererConfig config;
 
+    config.renderingMode = params->getParam("rendering_mode", config.renderingMode);
+
+    if (config.renderingMode == RenderingMode::MASK)
+      config.imageEncoding = sensor_msgs::image_encodings::MONO8;
+
     const auto imageEncoding = params->getParam("image_encoding", config.imageEncoding);
     if (!sensor_msgs::image_encodings::isColor(imageEncoding) && !sensor_msgs::image_encodings::isMono(imageEncoding))
     {
@@ -143,13 +176,14 @@ private:
     }
 
     config.imageEncoding = imageEncoding;
-    config.backgroundColor = params->getParam("background_color", config.backgroundColor, "[0-1]");
+    config.backgroundColor = params->getParam("background_color", config.backgroundColor);
     config.visualVisible = params->getParam("visual", config.visualVisible);
     config.collisionVisible = params->getParam("collision", config.collisionVisible);
     config.nearClipDistance = params->getParam("near_clip", config.nearClipDistance, "m");
     config.farClipDistance = params->getParam("far_clip", config.farClipDistance, "m");
     config.doDistort = params->getParam("do_distort", config.doDistort);
     config.gpuDistortion = params->getParam("gpu_distortion", config.gpuDistortion);
+    config.colorModeColor = params->getParam("color_mode_color", config.colorModeColor);
 
     this->renderer = std::make_unique<RosCameraRobotModelRenderer>(robotModel, this->getBufferPtr(), config);
 
@@ -175,12 +209,6 @@ private:
 
   void processCamInfoMessage(const sensor_msgs::CameraInfo::ConstPtr& msg)
   {
-    if (!this->ogreInited)
-    {
-      RenderSystem::get()->root()->getRenderSystem()->registerThread();
-      this->ogreInited = true;
-    }
-
     const auto img = this->renderer->render(msg);
     if (img != nullptr)
       maskPub.publish(img);
@@ -191,7 +219,6 @@ private:
   std::unique_ptr<image_transport::ImageTransport> it;
   ros::CallbackQueuePtr ogreQueue;
   std::thread ogreThread;
-  bool ogreInited {false};
 
   ros::Subscriber caminfoSub;
   image_transport::Publisher maskPub;
