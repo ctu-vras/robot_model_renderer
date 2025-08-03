@@ -1,0 +1,115 @@
+fragment_program BlurV_ps glsl
+{
+    source BlurV_ps20.glsl
+    default_params
+    {
+        param_named_auto texel_size inverse_texture_size 0
+        param_named outline_width float 5
+    }
+}
+
+fragment_program BlurH_ps glsl
+{
+    source BlurH_ps20.glsl
+    default_params
+    {
+        param_named_auto texel_size inverse_texture_size 0
+        param_named outline_width float 5
+    }
+}
+
+fragment_program OutlineEdgeFS_glsl glsl
+{
+    source outline_edge_fs.glsl
+    default_params
+    {
+        param_named rt_scene int 0
+        param_named blurred int 1
+        param_named outline_color float4 0 0 0 1
+        param_named use_closest_color int 0
+    }
+}
+
+//Blur: Horizontal Gaussian pass
+material Outline/BlurH
+{
+    technique
+    {
+        pass
+        {
+            cull_hardware none
+            cull_software none
+            depth_check off
+            scene_blend one zero
+
+            fragment_program_ref BlurH_ps
+            {
+            }
+            texture_unit
+            {
+                tex_coord_set 0
+                tex_address_mode border
+                tex_border_colour 0.0 0.0 0.0 0.0
+                filtering bilinear
+            }
+        }
+    }
+}
+
+//Blur: Vertical Gaussian pass
+material Outline/BlurV
+{
+    technique
+    {
+        pass
+        {
+            cull_hardware none
+            cull_software none
+            depth_check off
+            scene_blend one zero
+
+            fragment_program_ref BlurV_ps
+            {
+            }
+            texture_unit
+            {
+                tex_coord_set 0
+                tex_address_mode border
+                tex_border_colour 0.0 0.0 0.0 0.0
+                filtering bilinear
+            }
+        }
+    }
+}
+
+material Outline/PostProcess
+{
+    technique
+    {
+        pass
+        {
+            lighting off
+            depth_check off
+
+            scene_blend one zero
+
+            fragment_program_ref OutlineEdgeFS_glsl {}
+
+            texture_unit rt_scene
+            {
+                tex_coord_set 0
+                tex_address_mode border
+                tex_border_colour 0.0 0.0 0.0 0.0
+                filtering none
+            }
+
+            texture_unit blurred
+            {
+                tex_coord_set 0
+                tex_address_mode border
+                tex_border_colour 0.0 0.0 0.0 0.0
+                filtering bilinear
+            }
+        }
+    }
+}

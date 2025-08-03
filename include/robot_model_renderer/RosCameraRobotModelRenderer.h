@@ -63,6 +63,11 @@ struct RosCameraRobotModelRendererConfig
 
   RenderingMode renderingMode {RenderingMode::NORMAL};
   std_msgs::ColorRGBA colorModeColor {createColor(1, 0, 0, 1)};
+
+  bool drawOutline {false};
+  double outlineWidth {5.0};
+  std_msgs::ColorRGBA outlineColor {createColor(0, 0, 0, 1)};
+  bool outlineFromClosestColor {false};
 };
 
 class RosCameraRobotModelRenderer

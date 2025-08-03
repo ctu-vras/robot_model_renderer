@@ -40,6 +40,7 @@
 #include <opencv2/core/core.hpp>
 
 #include <robot_model_renderer/distortion/OgreDistortionPass.hh>
+#include <robot_model_renderer/distortion/OgreOutline.hh>
 #include <robot_model_renderer/pinhole_camera.h>
 #include <robot_model_renderer/robot/link_updater.h>
 #include <robot_model_renderer/robot/robot.h>
@@ -83,7 +84,12 @@ struct RobotModelRendererConfig
   bool collisionVisible {false};
 
   RenderingMode renderingMode {RenderingMode::NORMAL};
-  Ogre::ColourValue colorModeColor {1, 0, 0, 1};
+  Ogre::ColourValue colorModeColor {Ogre::ColourValue::Red};
+
+  bool drawOutline {false};
+  double outlineWidth {5.0};
+  Ogre::ColourValue outlineColor {Ogre::ColourValue::Black};
+  bool outlineFromClosestColor {false};
 };
 
 class RobotModelRenderer
@@ -128,6 +134,7 @@ protected:
   Ogre::Camera* camera_ {nullptr};
   Ogre::Viewport* viewPort_ {nullptr};
   OgreDistortionPass distortionPass_;
+  OgreOutline outlinePass_;
   int cvImageType;
 };
 

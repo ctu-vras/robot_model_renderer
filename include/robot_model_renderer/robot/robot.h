@@ -160,11 +160,6 @@ public:
     return root_collision_node_;
   }
 
-  Ogre::SceneNode* getOtherNode()
-  {
-    return root_other_node_;
-  }
-
   Ogre::SceneManager* getSceneManager()
   {
     return scene_manager_;
@@ -207,7 +202,6 @@ protected:
 
   Ogre::SceneNode* root_visual_node_;  //!< Node all our visual nodes are children of
   Ogre::SceneNode* root_collision_node_;  //!< Node all our collision nodes are children of
-  Ogre::SceneNode* root_other_node_;
 
   bool visible_;  //!< Should we show anything at all? (affects visual, collision, axes, and trails)
   bool visual_visible_;  //!< Should we show the visual representation?

@@ -31,7 +31,8 @@ compositor RenderPass/CameraMappedDistortion
     {
       // Start with clear output
       input none
-      // Draw a fullscreen quad with noise
+
+      // Draw a fullscreen quad with distortion
       pass render_quad
       {
           // Renders a fullscreen quad with a material
@@ -58,6 +59,8 @@ compositor RenderPass/InverseRectification
     {
       // Start with clear output
       input none
+
+      // Draw a fullscreen quad with distortion
       pass render_quad
       {
           // Renders a fullscreen quad with a material

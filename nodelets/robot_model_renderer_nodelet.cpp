@@ -184,6 +184,10 @@ private:
     config.doDistort = params->getParam("do_distort", config.doDistort);
     config.gpuDistortion = params->getParam("gpu_distortion", config.gpuDistortion);
     config.colorModeColor = params->getParam("color_mode_color", config.colorModeColor);
+    config.drawOutline = params->getParam("draw_outline", config.drawOutline);
+    config.outlineWidth = params->getParam("outline_width", config.outlineWidth);
+    config.outlineColor = params->getParam("outline_color", config.outlineColor);
+    config.outlineFromClosestColor = params->getParam("outline_from_closest_color", config.outlineFromClosestColor);
 
     this->renderer = std::make_unique<RosCameraRobotModelRenderer>(robotModel, this->getBufferPtr(), config);
 

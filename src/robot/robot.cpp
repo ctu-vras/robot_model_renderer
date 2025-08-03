@@ -55,7 +55,6 @@ Robot::Robot(Ogre::SceneNode* root_node, Ogre::SceneManager* scene_manager, cons
 {
   root_visual_node_ = root_node->createChildSceneNode();
   root_collision_node_ = root_node->createChildSceneNode();
-  root_other_node_ = root_node->createChildSceneNode();
 
   setVisualVisible(visual_visible_);
   setCollisionVisible(collision_visible_);
@@ -68,7 +67,6 @@ Robot::~Robot()
 
   scene_manager_->destroySceneNode(root_visual_node_);
   scene_manager_->destroySceneNode(root_collision_node_);
-  scene_manager_->destroySceneNode(root_other_node_);
 }
 
 void Robot::setVisible(const bool visible)
@@ -149,7 +147,6 @@ void Robot::clear()
   joints_.clear();
   root_visual_node_->removeAndDestroyAllChildren();
   root_collision_node_->removeAndDestroyAllChildren();
-  root_other_node_->removeAndDestroyAllChildren();
 }
 
 RobotLink* Robot::createLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,

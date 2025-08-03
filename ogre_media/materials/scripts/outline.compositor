@@ -1,0 +1,52 @@
+compositor Outline
+{
+    technique
+    {
+        texture rt0 target_width_scaled 0.25 target_height_scaled 0.25 PF_R8G8B8A8
+        texture blurred target_width_scaled 0.25 target_height_scaled 0.25 PF_R8G8B8A8
+        texture rt_scene target_width target_height PF_R8G8B8A8
+
+        // Pass 1: Render the scene to our temporary texture.
+        target rt_scene
+        {
+            input previous
+        }
+
+        target rt0
+        {
+            input none
+            pass clear {}
+            // Vertical blur pass
+            pass render_quad
+            {
+                material Outline/BlurV
+                input 0 rt_scene
+            }
+        }
+
+        target blurred
+        {
+            input none
+            pass clear {}
+            // Horizontal blur pass
+            pass render_quad
+            {
+                material Outline/BlurH
+                input 0 rt0
+            }
+        }
+
+        // Pass 2: The final output
+        target_output
+        {
+            input previous
+
+            pass render_quad
+            {
+                material Outline/PostProcess
+                input 0 rt_scene
+                input 1 blurred
+            }
+        }
+    }
+}

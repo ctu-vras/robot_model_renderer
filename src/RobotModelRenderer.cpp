@@ -52,6 +52,7 @@
 #include <robot_model_renderer/RobotModelRenderer.h>
 #include <robot_model_renderer/ogre_helpers/render_system.h>
 #include <robot_model_renderer/distortion/OgreDistortionPass.hh>
+#include <robot_model_renderer/distortion/OgreOutline.hh>
 #include <robot_model_renderer/utils/ogre_opencv.h>
 #include <robot_model_renderer/utils/sensor_msgs.h>
 #include <sensor_msgs/image_encodings.h>
@@ -64,6 +65,7 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
   Ogre::Camera* camera) :
     linkUpdater(linkUpdater), config(config), isDistorted(false),
     scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(false),
+    outlinePass_(config.outlineWidth, config.outlineColor, config.outlineFromClosestColor),
     cvImageType(ogrePixelFormatToCvMatType(config.pixelFormat))
 {
   if (sceneManager == nullptr && sceneNode != nullptr)
@@ -104,6 +106,7 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
   }
 
   distortionPass_.SetCamera(camera_);
+  outlinePass_.SetCamera(camera_);
 
   this->setModel(model);
 }
@@ -272,6 +275,9 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
   if (this->isDistorted && this->config.gpuDistortion)
     distortionPass_.CreateRenderPass();
 
+  if (this->config.drawOutline)
+    outlinePass_.CreateRenderPass();
+
   this->updateOgreCamera();
 
   return true;
@@ -322,7 +328,9 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
 
 void RobotModelRenderer::reset()
 {
-  distortionPass_.Destroy();  // Unregister the previously created render pass if any
+  // Unregister the previously created render passes if any
+  outlinePass_.Destroy();
+  distortionPass_.Destroy();
 
   if (rt_)
   {

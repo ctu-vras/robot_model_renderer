@@ -97,6 +97,7 @@ configure_file(src/env_config.cpp.in ${ENV_CONFIG_FILE} @ONLY)
 
 add_library(${PROJECT_NAME}_distortion
   src/distortion/OgreDistortionPass.cc
+  src/distortion/OgreOutline.cc
 )
 target_link_libraries(${PROJECT_NAME}_distortion PUBLIC
   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${OGRE_LIBRARIES} Eigen3::Eigen

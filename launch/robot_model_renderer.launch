@@ -14,7 +14,7 @@
 		<!-- Value of near clip of frustrum. Default value is 0.05. -->
                 <param name="near_clip" type="double" value="0.03" />
                 <!-- Safety margin with the mask. Value represents radius of circle which is used as kernel of dilation element.-->
-                <param name="margin" type="int" value="20" />
+                <param name="outline_width" type="int" value="5" />
 		<!-- camera setting-->
                 <param name="use_rectified" type="bool" value="true" />
 	</node>
