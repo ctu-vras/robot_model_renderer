@@ -39,8 +39,8 @@
 
 #include <opencv2/core/core.hpp>
 
-#include <robot_model_renderer/distortion/OgreDistortionPass.hh>
-#include <robot_model_renderer/distortion/OgreOutline.hh>
+#include <robot_model_renderer/compositors/OgreDistortionPass.hh>
+#include <robot_model_renderer/compositors/OgreOutline.hh>
 #include <robot_model_renderer/pinhole_camera.h>
 #include <robot_model_renderer/robot/link_updater.h>
 #include <robot_model_renderer/robot/robot.h>

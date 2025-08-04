@@ -1,4 +1,4 @@
-#include <robot_model_renderer/distortion/OgreOutline.hh>
+#include <robot_model_renderer/compositors/OgreOutline.hh>
 
 #include <OgreCamera.h>
 #include <OgreCompositionPass.h>
@@ -17,7 +17,7 @@ struct OgreOutline::Implementation
   //! \brief Distortion compositor.
   Ogre::CompositorInstance* distortionInstance = nullptr;
 
-  //! \brief Ogre Material that contains the distortion shader
+  //! \brief Ogre Material that contains the compositorsoutline shader
   Ogre::MaterialPtr distortionMaterial;
 
   //! \brief Width of the outline.

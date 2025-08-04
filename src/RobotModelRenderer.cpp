@@ -51,8 +51,8 @@
 #include <image_geometry/pinhole_camera_model.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
 #include <robot_model_renderer/ogre_helpers/render_system.h>
-#include <robot_model_renderer/distortion/OgreDistortionPass.hh>
-#include <robot_model_renderer/distortion/OgreOutline.hh>
+#include <robot_model_renderer/compositors/OgreDistortionPass.hh>
+#include <robot_model_renderer/compositors/OgreOutline.hh>
 #include <robot_model_renderer/utils/ogre_opencv.h>
 #include <robot_model_renderer/utils/sensor_msgs.h>
 #include <sensor_msgs/image_encodings.h>

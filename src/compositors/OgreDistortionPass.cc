@@ -31,7 +31,7 @@
 #include <opencv2/calib3d.hpp>
 
 #include <image_geometry/pinhole_camera_model.h>
-#include <robot_model_renderer/distortion/OgreDistortionPass.hh>
+#include <robot_model_renderer/compositors/OgreDistortionPass.hh>
 #include <robot_model_renderer/pinhole_camera.h>
 
 namespace robot_model_renderer
