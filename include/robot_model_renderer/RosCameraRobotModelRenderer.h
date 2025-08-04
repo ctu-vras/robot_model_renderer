@@ -68,6 +68,9 @@ struct RosCameraRobotModelRendererConfig
   double outlineWidth {5.0};
   std_msgs::ColorRGBA outlineColor {createColor(0, 0, 0, 1)};
   bool outlineFromClosestColor {false};
+
+  bool invertColors {false};
+  bool invertAlpha {false};
 };
 
 class RosCameraRobotModelRenderer

@@ -65,6 +65,7 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
   Ogre::Camera* camera) :
     linkUpdater(linkUpdater), config(config), isDistorted(false),
     scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(false),
+    invertColorsPass_(config.invertAlpha),
     outlinePass_(config.outlineWidth, config.outlineColor, config.outlineFromClosestColor),
     cvImageType(ogrePixelFormatToCvMatType(config.pixelFormat))
 {
@@ -107,6 +108,7 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
 
   distortionPass_.SetCamera(camera_);
   outlinePass_.SetCamera(camera_);
+  invertColorsPass_.SetCamera(camera_);
 
   this->setModel(model);
 }
@@ -278,6 +280,9 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
   if (this->config.drawOutline)
     outlinePass_.CreateRenderPass();
 
+  if (this->config.invertColors)
+    invertColorsPass_.CreateRenderPass();
+
   this->updateOgreCamera();
 
   return true;
@@ -329,6 +334,7 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
 void RobotModelRenderer::reset()
 {
   // Unregister the previously created render passes if any
+  invertColorsPass_.Destroy();
   outlinePass_.Destroy();
   distortionPass_.Destroy();
 

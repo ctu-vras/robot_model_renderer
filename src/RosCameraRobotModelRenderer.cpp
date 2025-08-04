@@ -79,6 +79,8 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   robotConfig.outlineColor = Ogre::ColourValue(
     config.outlineColor.r, config.outlineColor.g, config.outlineColor.b, config.outlineColor.a);
   robotConfig.outlineFromClosestColor = config.outlineFromClosestColor;
+  robotConfig.invertColors = config.invertColors;
+  robotConfig.invertAlpha = config.invertAlpha;
 
   this->linkUpdater = std::make_unique<TFLinkUpdater>(tf);
   this->renderer = std::make_unique<RobotModelRenderer>(model, this->linkUpdater.get(),

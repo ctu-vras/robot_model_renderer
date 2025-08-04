@@ -10,7 +10,7 @@
                 <remap from="robot_description" to="nifti_robot_description" />
 		<!-- Default value of parameter "inverted = false" means that pixels where is robot have white color(255) and
 		     other pixels black color(0). If value of parameter is true then pixels have opposite values."   -->
-                <param name="inverted" type="bool" value="false" />
+                <param name="invert_colors" type="bool" value="false" />
 		<!-- Value of near clip of frustrum. Default value is 0.05. -->
                 <param name="near_clip" type="double" value="0.03" />
                 <!-- Safety margin with the mask. Value represents radius of circle which is used as kernel of dilation element.-->

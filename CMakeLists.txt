@@ -97,6 +97,7 @@ configure_file(src/env_config.cpp.in ${ENV_CONFIG_FILE} @ONLY)
 
 add_library(${PROJECT_NAME}_distortion
   src/compositors/OgreDistortionPass.cc
+  src/compositors/OgreInvertColors.cc
   src/compositors/OgreOutline.cc
 )
 target_link_libraries(${PROJECT_NAME}_distortion PUBLIC

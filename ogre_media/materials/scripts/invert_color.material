@@ -1,0 +1,28 @@
+fragment_program InvertColorFS glsl
+{
+  source invert_color_fs.glsl
+  default_params
+  {
+    param_named RT int 0
+    param_named invert_alpha int 0
+  }
+}
+
+material InvertColor
+{
+  technique
+  {
+    pass
+    {
+      fragment_program_ref InvertColorFS { }
+
+      texture_unit RT
+      {
+        tex_coord_set 0
+        tex_address_mode border
+        tex_border_colour 0.0 0.0 0.0 0.0
+        filtering linear linear linear
+      }
+    }
+  }
+}

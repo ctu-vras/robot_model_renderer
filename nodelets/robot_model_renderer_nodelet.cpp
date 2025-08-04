@@ -188,6 +188,8 @@ private:
     config.outlineWidth = params->getParam("outline_width", config.outlineWidth);
     config.outlineColor = params->getParam("outline_color", config.outlineColor);
     config.outlineFromClosestColor = params->getParam("outline_from_closest_color", config.outlineFromClosestColor);
+    config.invertColors = params->getParam("invert_colors", config.invertColors);
+    config.invertAlpha = params->getParam("invert_alpha", config.invertAlpha);
 
     this->renderer = std::make_unique<RosCameraRobotModelRenderer>(robotModel, this->getBufferPtr(), config);
 
