@@ -57,6 +57,7 @@
 #include <robot_model_renderer/robot/mesh_loader.h>
 #include <robot_model_renderer/robot/robot.h>
 #include <robot_model_renderer/robot/robot_joint.h>
+#include <robot_model_renderer/robot/shape_filter.h>
 
 namespace fs = boost::filesystem;
 
@@ -64,7 +65,7 @@ namespace robot_model_renderer
 {
 
 RobotLink::RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
-  const bool visual, const bool collision)
+  const std::shared_ptr<ShapeFilter>& shape_filter)
   : robot_(robot), scene_manager_(robot->getSceneManager()), name_(link->name), parent_joint_name_(parent_joint_name),
     visual_node_(nullptr), collision_node_(nullptr), robot_alpha_(1.0), only_render_depth_(false),
     material_mode_flags_(ORIGINAL), enabled_(true)
@@ -94,14 +95,14 @@ RobotLink::RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const s
 
   // create the ogre objects to display
 
-  if (visual)
+  if (shape_filter->isVisualAllowed())
   {
-    createVisual(link);
+    createVisual(link, shape_filter);
   }
 
-  if (collision)
+  if (shape_filter->isCollisionAllowed())
   {
-    createCollision(link);
+    createCollision(link, shape_filter);
   }
 }
 
@@ -451,14 +452,18 @@ void RobotLink::createEntityForGeometryElement(
   }
 }
 
-void RobotLink::createCollision(const urdf::LinkConstSharedPtr& link)
+void RobotLink::createCollision(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter)
 {
   bool valid_collision_found = false;
 
-  for (const auto& collision : link->collision_array)
+  for (size_t i = 0; i < link->collision_array.size(); ++i)
   {
+    const auto& collision = link->collision_array[i];
     if (collision && collision->geometry)
     {
+      if (!shape_filter->considerShape(false, link->name, collision->name, i))
+        continue;
+
       Ogre::Entity* collision_mesh = nullptr;
       createEntityForGeometryElement(
         link, *collision->geometry, nullptr, collision->origin, collision_node_, collision_mesh);
@@ -472,26 +477,33 @@ void RobotLink::createCollision(const urdf::LinkConstSharedPtr& link)
 
   if (!valid_collision_found && link->collision && link->collision->geometry)
   {
-    Ogre::Entity* collision_mesh = nullptr;
-    createEntityForGeometryElement(
-      link, *link->collision->geometry, nullptr, link->collision->origin, collision_node_, collision_mesh);
-    if (collision_mesh)
+    if (shape_filter->considerShape(false, link->name, link->collision->name, 0))
     {
-      collision_meshes_.push_back(collision_mesh);
+      Ogre::Entity* collision_mesh = nullptr;
+      createEntityForGeometryElement(
+        link, *link->collision->geometry, nullptr, link->collision->origin, collision_node_, collision_mesh);
+      if (collision_mesh)
+      {
+        collision_meshes_.push_back(collision_mesh);
+      }
     }
   }
 
   collision_node_->setVisible(getEnabled());
 }
 
-void RobotLink::createVisual(const urdf::LinkConstSharedPtr& link)
+void RobotLink::createVisual(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter)
 {
   bool valid_visual_found = false;
 
-  for (const auto& visual : link->visual_array)
+  for (size_t i = 0; i < link->visual_array.size(); ++i)
   {
+    const auto& visual = link->visual_array[i];
     if (visual && visual->geometry)
     {
+      if (!shape_filter->considerShape(true, link->name, visual->name, i))
+        continue;
+
       Ogre::Entity* visual_mesh = nullptr;
       createEntityForGeometryElement(
         link, *visual->geometry, visual->material, visual->origin, visual_node_, visual_mesh);
@@ -505,12 +517,15 @@ void RobotLink::createVisual(const urdf::LinkConstSharedPtr& link)
 
   if (!valid_visual_found && link->visual && link->visual->geometry)
   {
-    Ogre::Entity* visual_mesh = nullptr;
-    createEntityForGeometryElement(
-      link, *link->visual->geometry, link->visual->material, link->visual->origin, visual_node_, visual_mesh);
-    if (visual_mesh)
+    if (shape_filter->considerShape(true, link->name, link->visual->name, 0))
     {
-      visual_meshes_.push_back(visual_mesh);
+      Ogre::Entity* visual_mesh = nullptr;
+      createEntityForGeometryElement(
+        link, *link->visual->geometry, link->visual->material, link->visual->origin, visual_node_, visual_mesh);
+      if (visual_mesh)
+      {
+        visual_meshes_.push_back(visual_mesh);
+      }
     }
   }
 

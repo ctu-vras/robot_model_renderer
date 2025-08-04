@@ -124,6 +124,7 @@ add_library(${PROJECT_NAME}_robot
   src/robot/robot.cpp
   src/robot/robot_joint.cpp
   src/robot/robot_link.cpp
+  src/robot/shape_filter.cpp
   src/robot/tf_link_updater.cpp
 )
 target_link_libraries(${PROJECT_NAME}_robot PUBLIC

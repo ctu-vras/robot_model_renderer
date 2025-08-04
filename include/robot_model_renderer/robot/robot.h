@@ -31,8 +31,9 @@
 
 // This file is taken from rviz and slightly edited to be usable in this package.
 
-#include <string>
 #include <map>
+#include <memory>
+#include <string>
 
 #include <OgrePrerequisites.h>
 #include <OgreQuaternion.h>
@@ -41,6 +42,7 @@
 
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <robot_model_renderer/robot/link_updater.h>
+#include <robot_model_renderer/robot/shape_filter.h>
 
 namespace robot_model_renderer
 {
@@ -66,10 +68,9 @@ public:
    * \brief Loads meshes/primitives from a robot description.  Calls clear() before loading.
    *
    * \param[in] urdf The robot description to read from
-   * \param[in] visual Whether or not to load the visual representation
-   * \param[in] collision Whether or not to load the collision representation
+   * \param[in] shape_filter Filter for the shapes to load
    */
-  virtual void load(const urdf::ModelInterface& urdf, bool visual, bool collision);
+  virtual void load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter);
 
   /**
    * \brief Clears all data loaded from a URDF
@@ -184,7 +185,7 @@ public:
   virtual const Ogre::Quaternion& getOrientation();
 
   virtual RobotLink* createLink(Robot* robot, const urdf::LinkConstSharedPtr& link,
-    const std::string& parent_joint_name, bool visual, bool collision);
+    const std::string& parent_joint_name, const std::shared_ptr<ShapeFilter>& shape_filter);
 
   virtual RobotJoint* createJoint(Robot* robot, const urdf::JointConstSharedPtr& joint);
 

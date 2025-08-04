@@ -30,6 +30,9 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <OgreCamera.h>
 #include <OgrePixelFormat.h>
@@ -45,6 +48,7 @@
 #include <robot_model_renderer/pinhole_camera.h>
 #include <robot_model_renderer/robot/link_updater.h>
 #include <robot_model_renderer/robot/robot.h>
+#include <robot_model_renderer/robot/shape_filter.h>
 #include <urdf/model.h>
 
 namespace Ogre
@@ -81,8 +85,6 @@ struct RobotModelRendererConfig
 
   float nearClipDistance {0.03f};
   float farClipDistance {0.0f};
-  bool visualVisible {true};
-  bool collisionVisible {false};
 
   RenderingMode renderingMode {RenderingMode::NORMAL};
   Ogre::ColourValue colorModeColor {Ogre::ColourValue::Red};
@@ -94,6 +96,8 @@ struct RobotModelRendererConfig
 
   bool invertColors {false};
   bool invertAlpha {false};
+
+  std::shared_ptr<ShapeFilter> shapeFilter {nullptr};
 };
 
 class RobotModelRenderer

@@ -27,6 +27,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <set>
+#include <string>
+
 #include <boost/bind/bind.hpp>
 
 #include <OgreManualObject.h>
@@ -43,16 +46,16 @@
 #include <OgreCamera.h>
 #include <OgreHardwarePixelBuffer.h>
 
-#include <robot_model_renderer/ogre_helpers/compatibility.h>
-#include <robot_model_renderer/utils/validate_floats.h>
-
+#include <cras_cpp_common/set_utils.hpp>
 #include <image_transport/camera_common.h>
-
 #include <image_geometry/pinhole_camera_model.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
-#include <robot_model_renderer/ogre_helpers/render_system.h>
 #include <robot_model_renderer/compositors/OgreDistortionPass.hh>
+#include <robot_model_renderer/compositors/OgreInvertColors.hh>
 #include <robot_model_renderer/compositors/OgreOutline.hh>
+#include <robot_model_renderer/ogre_helpers/render_system.h>
+#include <robot_model_renderer/ogre_helpers/compatibility.h>
+#include <robot_model_renderer/utils/validate_floats.h>
 #include <robot_model_renderer/utils/ogre_opencv.h>
 #include <robot_model_renderer/utils/sensor_msgs.h>
 #include <sensor_msgs/image_encodings.h>
@@ -118,10 +121,10 @@ RobotModelRenderer::~RobotModelRenderer() = default;
 void RobotModelRenderer::setModel(const urdf::Model& model)
 {
   this->robot_ = std::make_unique<Robot>(this->scene_node_, this->scene_manager_, "robot");
-  this->robot_->load(model, true, true);
+  this->robot_->load(model, this->config.shapeFilter);
 
-  this->setVisualVisible(this->config.visualVisible);
-  this->setCollisionVisible(this->config.collisionVisible);
+  this->setVisualVisible(this->config.shapeFilter->isVisualAllowed());
+  this->setCollisionVisible(this->config.shapeFilter->isCollisionAllowed());
 
   if (this->config.renderingMode == RenderingMode::MASK)
     this->robot_->setMaskMode();
@@ -142,14 +145,12 @@ void RobotModelRenderer::setFarClipDistance(const double farClip)
 
 void RobotModelRenderer::setVisualVisible(const bool visible)
 {
-  this->config.visualVisible = visible;
   if (this->robot_ != nullptr)
     this->robot_->setVisualVisible(visible);
 }
 
 void RobotModelRenderer::setCollisionVisible(const bool visible)
 {
-  this->config.collisionVisible = visible;
   if (this->robot_ != nullptr)
     this->robot_->setCollisionVisible(visible);
 }

@@ -150,9 +150,9 @@ void Robot::clear()
 }
 
 RobotLink* Robot::createLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
-  const bool visual, const bool collision)
+  const std::shared_ptr<ShapeFilter>& shape_filter)
 {
-  return new RobotLink(robot, link, parent_joint_name, visual, collision);
+  return new RobotLink(robot, link, parent_joint_name, shape_filter);
 }
 
 RobotJoint* Robot::createJoint(Robot* robot, const urdf::JointConstSharedPtr& joint)
@@ -160,7 +160,7 @@ RobotJoint* Robot::createJoint(Robot* robot, const urdf::JointConstSharedPtr& jo
   return new RobotJoint(robot, joint);
 }
 
-void Robot::load(const urdf::ModelInterface& urdf, const bool visual, const bool collision)
+void Robot::load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter)
 {
   robot_loaded_ = false;
 
@@ -175,13 +175,16 @@ void Robot::load(const urdf::ModelInterface& urdf, const bool visual, const bool
   {
     for (const auto& [link_name, urdf_link] : urdf.links_)
     {
+      if (!shape_filter->considerLink(link_name))
+        continue;
+
       std::string parent_joint_name;
       if (urdf_link != urdf.getRoot() && urdf_link->parent_joint)
       {
         parent_joint_name = urdf_link->parent_joint->name;
       }
 
-      RobotLink* link = this->createLink(this, urdf_link, parent_joint_name, visual, collision);
+      RobotLink* link = this->createLink(this, urdf_link, parent_joint_name, shape_filter);
 
       if (urdf_link == urdf.getRoot())
       {

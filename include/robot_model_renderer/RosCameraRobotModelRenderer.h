@@ -30,6 +30,9 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
@@ -58,9 +61,6 @@ struct RosCameraRobotModelRendererConfig
   float nearClipDistance {0.03f};
   float farClipDistance {0.0f};
 
-  bool visualVisible {true};
-  bool collisionVisible {false};
-
   RenderingMode renderingMode {RenderingMode::NORMAL};
   std_msgs::ColorRGBA colorModeColor {createColor(1, 0, 0, 1)};
 
@@ -71,6 +71,8 @@ struct RosCameraRobotModelRendererConfig
 
   bool invertColors {false};
   bool invertAlpha {false};
+
+  std::shared_ptr<ShapeFilter> shapeFilter {nullptr};
 };
 
 class RosCameraRobotModelRenderer

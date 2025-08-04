@@ -32,6 +32,7 @@
 // This file is taken from rviz and slightly edited to be usable in this package.
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -46,6 +47,7 @@
 
 #include <robot_model_renderer/ogre_helpers/object.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
+#include <robot_model_renderer/robot/shape_filter.h>
 
 namespace Ogre
 {
@@ -76,7 +78,7 @@ class RobotLink
 
 public:
   RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
-    bool visual, bool collision);
+    const std::shared_ptr<ShapeFilter>& shape_filter);
 
   virtual ~RobotLink();
 
@@ -170,9 +172,9 @@ private:
 
   void addError(const char* format, ...);
 
-  void createVisual(const urdf::LinkConstSharedPtr& link);
+  void createVisual(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter);
 
-  void createCollision(const urdf::LinkConstSharedPtr& link);
+  void createCollision(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter);
 
   Ogre::MaterialPtr getMaterialForLink(const urdf::LinkConstSharedPtr& link, urdf::MaterialConstSharedPtr material);
 

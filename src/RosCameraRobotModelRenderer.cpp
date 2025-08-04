@@ -67,8 +67,6 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
     config.backgroundColor.r, config.backgroundColor.g, config.backgroundColor.b, config.backgroundColor.a);
   robotConfig.nearClipDistance = config.nearClipDistance;
   robotConfig.farClipDistance = config.farClipDistance;
-  robotConfig.visualVisible = config.visualVisible;
-  robotConfig.collisionVisible = config.collisionVisible;
   robotConfig.doDistort = config.doDistort;
   robotConfig.gpuDistortion = config.gpuDistortion;
   robotConfig.renderingMode = config.renderingMode;
@@ -81,6 +79,7 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   robotConfig.outlineFromClosestColor = config.outlineFromClosestColor;
   robotConfig.invertColors = config.invertColors;
   robotConfig.invertAlpha = config.invertAlpha;
+  robotConfig.shapeFilter = config.shapeFilter;
 
   this->linkUpdater = std::make_unique<TFLinkUpdater>(tf);
   this->renderer = std::make_unique<RobotModelRenderer>(model, this->linkUpdater.get(),

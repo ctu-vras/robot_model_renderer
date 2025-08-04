@@ -9,6 +9,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <nodelet/nodelet.h>
 #include <robot_model_renderer/ogre_helpers/render_system.h>
+#include <robot_model_renderer/robot/shape_filter.h>
 #include <robot_model_renderer/RosCameraRobotModelRenderer.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/image_encodings.h>
@@ -177,8 +178,6 @@ private:
 
     config.imageEncoding = imageEncoding;
     config.backgroundColor = params->getParam("background_color", config.backgroundColor);
-    config.visualVisible = params->getParam("visual", config.visualVisible);
-    config.collisionVisible = params->getParam("collision", config.collisionVisible);
     config.nearClipDistance = params->getParam("near_clip", config.nearClipDistance, "m");
     config.farClipDistance = params->getParam("far_clip", config.farClipDistance, "m");
     config.doDistort = params->getParam("do_distort", config.doDistort);
@@ -190,6 +189,15 @@ private:
     config.outlineFromClosestColor = params->getParam("outline_from_closest_color", config.outlineFromClosestColor);
     config.invertColors = params->getParam("invert_colors", config.invertColors);
     config.invertAlpha = params->getParam("invert_alpha", config.invertAlpha);
+
+    const auto visualVisible = params->getParam("visual", true);
+    const auto collisionVisible = params->getParam("collision", false);
+
+    // can contain either whole link names, or scoped names of their collisions
+    // (i.e. "link::collision_1" or "link::my_collision")
+    config.shapeFilter = std::make_shared<ShapeFilter>(visualVisible, collisionVisible);
+    config.shapeFilter->setIgnoreShapes(params->getParam("ignored_shapes", std::set<std::string>{}));
+    config.shapeFilter->setOnlyShapes(params->getParam("only_shapes", std::set<std::string>{}));
 
     this->renderer = std::make_unique<RosCameraRobotModelRenderer>(robotModel, this->getBufferPtr(), config);
 
