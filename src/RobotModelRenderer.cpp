@@ -30,7 +30,6 @@
 #include <OgreHardwarePixelBuffer.h>
 
 #include <cras_cpp_common/set_utils.hpp>
-#include <image_transport/camera_common.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
 #include <robot_model_renderer/compositors/OgreCameraDistortion.hh>
@@ -41,7 +40,6 @@
 #include <robot_model_renderer/utils/validate_floats.h>
 #include <robot_model_renderer/utils/ogre_opencv.h>
 #include <robot_model_renderer/utils/sensor_msgs.h>
-#include <sensor_msgs/image_encodings.h>
 
 namespace robot_model_renderer
 {
@@ -64,9 +62,9 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
   if (sceneManager == nullptr)
   {
 #if (OGRE_VERSION < OGRE_VERSION_CHECK(13, 0, 0))
-    scene_manager_ = RenderSystem::get()->root()->createSceneManager(Ogre::ST_GENERIC);
+    scene_manager_ = render_system_.root()->createSceneManager(Ogre::ST_GENERIC);
 #else
-    scene_manager_ = RenderSystem::get()->root()->createSceneManager();
+    scene_manager_ = render_system_.root()->createSceneManager();
 #endif
   }
 

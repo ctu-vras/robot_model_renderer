@@ -168,4 +168,4 @@ inline bool validateFloats(const sensor_msgs::CameraInfo& msg)
   return valid;
 }
 
-} // namespace robot_model_renderer
+}

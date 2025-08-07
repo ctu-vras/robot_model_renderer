@@ -25,10 +25,10 @@ public:
 #if defined(Q_OS_MAC) || defined(Q_OS_WIN)
   typedef size_t WindowIDType;
 #else
-  typedef unsigned long WindowIDType;
+  typedef unsigned long WindowIDType;  // NOLINT(runtime/int)
 #endif
 
-  static RenderSystem* get();
+  explicit RenderSystem(int force_gl_version = 0, bool use_antialiasing = true);
 
   Ogre::RenderWindow* makeRenderWindow(
     WindowIDType window_id, unsigned int width, unsigned int height, double pixel_ratio = 1.0);
@@ -50,15 +50,7 @@ public:
     return glsl_version_;
   }
 
-  // @brief Disables the use of Anti Aliasing
-  static void disableAntiAliasing();
-
-  // @brief Force to use the provided OpenGL version on startup
-  static void forceGlVersion(int version);
-
 private:
-  RenderSystem();
-  void setupDummyWindowId();
   void loadOgrePlugins();
 
   // helper for makeRenderWindow()
@@ -71,8 +63,6 @@ private:
   void setupResources();
   void detectGlVersion();
 
-  static RenderSystem* instance_;
-
   // ID for a dummy window of size 1x1, used to keep Ogre happy.
   WindowIDType dummy_window_id_;
 
@@ -80,8 +70,8 @@ private:
 
   int gl_version_;
   int glsl_version_;
-  static bool use_anti_aliasing_;
-  static int force_gl_version_;
+  bool use_anti_aliasing_;
+  int force_gl_version_;
 };
 
 }

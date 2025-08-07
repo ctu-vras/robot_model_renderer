@@ -165,7 +165,7 @@ void RobotLink::updateAlpha()
       color.a = robot_alpha_ * material_alpha * link_alpha;
       activeMat->setDiffuse(color);
 
-      if (color.a < 0.9998) // transparent
+      if (color.a < 0.9998)  // transparent
       {
         activeMat->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
         activeMat->setDepthWriteEnabled(false);
@@ -175,7 +175,7 @@ void RobotLink::updateAlpha()
         activeMat->setSceneBlending(Ogre::SBT_REPLACE);
         activeMat->setDepthWriteEnabled(true);
       }
-      else // restore original material
+      else  // restore original material
       {
         originalMat->copyDetailsTo(activeMat);
       }
@@ -229,7 +229,7 @@ Ogre::MaterialPtr RobotLink::getMaterialForLink(
     }
   }
   if (!material && link->visual && link->visual->material)
-    material = link->visual->material; // fallback to visual's material
+    material = link->visual->material;  // fallback to visual's material
 
   std::string name = "robot link " + link->name;
   if (material)
@@ -500,7 +500,7 @@ void RobotLink::createEntityForGeometryElement(
   const urdf::LinkConstSharedPtr& link, const urdf::Geometry& geom, const urdf::MaterialSharedPtr& material,
   const urdf::Pose& origin, Ogre::SceneNode* scene_node, Ogre::Entity*& entity, const ScaleAndPadding& inflation)
 {
-  entity = nullptr; // default in case nothing works.
+  entity = nullptr;  // default in case nothing works.
   Ogre::SceneNode* offset_node = scene_node->createChildSceneNode();
 
   static unsigned count = 0;
@@ -649,7 +649,7 @@ void RobotLink::createCollision(const urdf::LinkConstSharedPtr& link, const std:
       {
         collision_meshes_.push_back(collision_mesh);
       }
-      valid_collision_found |= collision == link->collision; // don't consider the same geometry twice
+      valid_collision_found |= collision == link->collision;  // don't consider the same geometry twice
     }
   }
 
@@ -692,7 +692,7 @@ void RobotLink::createVisual(const urdf::LinkConstSharedPtr& link, const std::sh
       {
         visual_meshes_.push_back(visual_mesh);
       }
-      valid_visual_found |= visual == link->visual; // don't consider the same geometry again
+      valid_visual_found |= visual == link->visual;  // don't consider the same geometry again
     }
   }
 
@@ -748,7 +748,7 @@ void RobotLink::setToNormalMaterial()
 void RobotLink::setMaterialMode(const unsigned char mode_flags)
 {
   if (material_mode_flags_ == mode_flags)
-    return; // nothing to change
+    return;  // nothing to change
 
   material_mode_flags_ = mode_flags;
 

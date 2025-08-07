@@ -5,36 +5,18 @@
 
 #include <robot_model_renderer/ogre_helpers/render_system.h>
 
-#include <GL/glx.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-
-#include <robot_model_renderer/ogre_helpers/version_check.h>
 #include <OgreRenderWindow.h>
 #include <OgreSceneManager.h>
 
+#include <cras_cpp_common/string_utils.hpp>
 #include <robot_model_renderer/ogre_helpers/env_config.h>
 #include <robot_model_renderer/ogre_helpers/ogre_logging.h>
+#include <robot_model_renderer/ogre_helpers/version_check.h>
 #include <ros/console.h>
-#include <ros/package.h> // This dependency should be moved out of here, it is just used for a search path.
+#include <ros/package.h>
 
 namespace robot_model_renderer
 {
-
-RenderSystem* RenderSystem::instance_ = nullptr;
-
-int RenderSystem::force_gl_version_ = 0;
-
-bool RenderSystem::use_anti_aliasing_ = true;
-
-RenderSystem* RenderSystem::get()
-{
-  if (instance_ == nullptr)
-  {
-    instance_ = new RenderSystem();
-  }
-  return instance_;
-}
 
 void createColorMaterial(const std::string& name, const Ogre::ColourValue& color, const bool use_self_illumination)
 {
@@ -62,62 +44,21 @@ void createColorMaterials()
   createColorMaterial("RVIZ/ShadedCyan", Ogre::ColourValue(0.0f, 1.0f, 1.0f, 1.0f), false);
 }
 
-void RenderSystem::forceGlVersion(int version)
-{
-  force_gl_version_ = version;
-  ROS_INFO_STREAM("Forcing OpenGl version " << (float)version / 100.0 << ".");
-}
-
-void RenderSystem::disableAntiAliasing()
-{
-  use_anti_aliasing_ = false;
-  ROS_INFO("Disabling Anti-Aliasing");
-}
-
-RenderSystem::RenderSystem()
+RenderSystem::RenderSystem(int force_gl_version, bool use_antialiasing)
+  : force_gl_version_(force_gl_version), use_anti_aliasing_(use_antialiasing)
 {
   OgreLogging::useRosLog();
   OgreLogging::configureLogging();
 
-  setupDummyWindowId();
   ogre_root_ = new Ogre::Root("");
   loadOgrePlugins();
   setupRenderSystem();
   ogre_root_->initialise(false);
-  makeRenderWindow(dummy_window_id_, 1, 1);
+  makeRenderWindow(0, 1, 1);
   detectGlVersion();
   setupResources();
   Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
   createColorMaterials();
-}
-
-void RenderSystem::setupDummyWindowId()
-{
-  Display* display = XOpenDisplay(nullptr);
-
-  if (display == nullptr)
-  {
-    ROS_WARN("$DISPLAY is invalid, falling back on default :0");
-    display = XOpenDisplay(":0");
-
-    if (display == nullptr)
-    {
-      ROS_FATAL("Can't open default or :0 display. Try setting DISPLAY environment variable.");
-      throw std::runtime_error("Can't open default or :0 display!\n");
-    }
-  }
-
-  int screen = DefaultScreen(display);
-
-  int attribList[] = {GLX_RGBA, GLX_DOUBLEBUFFER, GLX_DEPTH_SIZE, 16, GLX_STENCIL_SIZE, 8, None};
-
-  XVisualInfo* visual = glXChooseVisual(display, screen, (int*)attribList);
-
-  dummy_window_id_ = XCreateSimpleWindow(display, RootWindow(display, screen), 0, 0, 1, 1, 0, 0, 0);
-
-  GLXContext context = glXCreateContext(display, visual, nullptr, 1);
-
-  glXMakeCurrent(display, dummy_window_id_, context);
 }
 
 void RenderSystem::loadOgrePlugins()
@@ -239,7 +180,7 @@ void RenderSystem::setupResources()
       std::string path;
       int pos1 = 0;
       int pos2 = iter->find(delim);
-      while (pos2 != (int)std::string::npos)
+      while (pos2 != std::string::npos)
       {
         path = iter->substr(pos1, pos2 - pos1);
         ROS_DEBUG("adding resource location: '%s'\n", path.c_str());
@@ -261,15 +202,21 @@ static bool x_baddrawable_error = false;
 Ogre::RenderWindow* RenderSystem::makeRenderWindow(
   WindowIDType window_id, unsigned int width, unsigned int height, double pixel_ratio)
 {
-  static int windowCounter = 0; // Every RenderWindow needs a unique name, oy.
+  static int windowCounter = 0;  // Every RenderWindow needs a unique name, oy.
 
   Ogre::NameValuePairList params;
   Ogre::RenderWindow* window = nullptr;
 
-  params["externalWindowHandle"] = Ogre::StringConverter::toString(window_id);
-  params["parentWindowHandle"] = Ogre::StringConverter::toString(window_id);
-
-  params["externalGLControl"] = true;
+  if (window_id != 0)
+  {
+    params["externalWindowHandle"] = Ogre::StringConverter::toString(window_id);
+    params["parentWindowHandle"] = Ogre::StringConverter::toString(window_id);
+    params["externalGLControl"] = "true";
+  }
+  else
+  {
+    params["hidden"] = "true";
+  }
 
   // Enable antialiasing
   if (use_anti_aliasing_)
@@ -278,7 +225,7 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(
   }
 
   // Set the macAPI for Ogre based on the Qt implementation
-  params["contentScalingFactor"] = std::to_string(pixel_ratio);
+  params["contentScalingFactor"] = cras::to_string(pixel_ratio);
 
   std::ostringstream stream;
   stream << "OgreWindow(" << windowCounter++ << ")";

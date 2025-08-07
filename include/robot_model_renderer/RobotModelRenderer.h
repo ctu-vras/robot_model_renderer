@@ -22,6 +22,7 @@
 #include <robot_model_renderer/compositors/OgreInvertColors.hh>
 #include <robot_model_renderer/compositors/OgreOutline.hh>
 #include <robot_model_renderer/pinhole_camera.h>
+#include <robot_model_renderer/ogre_helpers/render_system.h>
 #include <robot_model_renderer/robot/link_updater.h>
 #include <robot_model_renderer/robot/robot.h>
 #include <robot_model_renderer/robot/shape_filter.h>
@@ -121,6 +122,7 @@ protected:
 
   std::unique_ptr<Robot> robot_;
 
+  robot_model_renderer::RenderSystem render_system_;
   Ogre::SceneManager* scene_manager_ {nullptr};
   Ogre::Light* default_light_ {nullptr};
   Ogre::SceneNode* scene_node_ {nullptr};

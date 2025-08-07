@@ -421,7 +421,7 @@ void loadMaterials(const std::string& resource_path, const aiScene* scene,
 #endif
   boost::algorithm::to_lower(ext);
   if (ext == ".stl" ||
-      ext == ".stlb") // STL meshes don't support proper materials: use Ogre's default material
+      ext == ".stlb")  // STL meshes don't support proper materials: use Ogre's default material
   {
     material_table_out.push_back(Ogre::MaterialManager::getSingleton().getByName("BaseWhiteNoLighting"));
     return;
@@ -607,7 +607,7 @@ Ogre::MeshPtr loadMeshFromResource(const std::string& resource_path, const bool 
       {
         return Ogre::MeshPtr();
       }
-      loadSkeletonFromResource(resource_path, enable_shadow_buffers); // load skeleton to the resource manager
+      loadSkeletonFromResource(resource_path, enable_shadow_buffers);  // load skeleton to the resource manager
 
       Ogre::MeshSerializer ser;
       Ogre::DataStreamPtr stream(new Ogre::MemoryDataStream(res.data.get(), res.size));

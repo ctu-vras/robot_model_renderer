@@ -19,8 +19,6 @@
 #include <algorithm>
 #include <functional>
 
-using namespace Ogre;
-
 namespace robot_model_renderer
 {
 
@@ -39,48 +37,50 @@ UniqueVertex::UniqueVertex(
     float *pFloat;
     elem.baseVertexPointerToElement(buffers[elem.getSource()], &pFloat);
 
-    switch(elem.getSemantic())
+    switch (elem.getSemantic())
     {
-      case VES_POSITION:
+      case Ogre::VES_POSITION:
         this->position.x = *pFloat++;
         this->position.y = *pFloat++;
         this->position.z = *pFloat++;
         break;
-      case VES_NORMAL:
+      case Ogre::VES_NORMAL:
         this->normal.x = *pFloat++;
         this->normal.y = *pFloat++;
         this->normal.z = *pFloat++;
         break;
-      case VES_TANGENT:
+      case Ogre::VES_TANGENT:
         this->tangent.x = *pFloat++;
         this->tangent.y = *pFloat++;
         this->tangent.z = *pFloat++;
         // support w-component on tangent if present
-        if (VertexElement::getTypeCount(elem.getType()) == 4)
+        if (Ogre::VertexElement::getTypeCount(elem.getType()) == 4)
           this->tangent.w = *pFloat++;
         break;
-      case VES_BINORMAL:
+      case Ogre::VES_BINORMAL:
         this->binormal.x = *pFloat++;
         this->binormal.y = *pFloat++;
         this->binormal.z = *pFloat++;
         break;
-      case VES_TEXTURE_COORDINATES:
+      case Ogre::VES_TEXTURE_COORDINATES:
         // supports up to 4 dimensions
-        for (unsigned short dim = 0; dim < VertexElement::getTypeCount(elem.getType()); ++dim)
+        for (unsigned short dim = 0;  // NOLINT(runtime/int)
+            dim < Ogre::VertexElement::getTypeCount(elem.getType()); ++dim)
           this->uv[elem.getIndex()][dim] = *pFloat++;
         ++num_uv_sets;
         break;
-      case VES_BLEND_INDICES:
-      case VES_BLEND_WEIGHTS:
-      case VES_DIFFUSE:
-      case VES_SPECULAR:
+      case Ogre::VES_BLEND_INDICES:
+      case Ogre::VES_BLEND_WEIGHTS:
+      case Ogre::VES_DIFFUSE:
+      case Ogre::VES_SPECULAR:
         // No action needed for these semantics.
         break;
     }
   }
 }
 
-MeshOptimizer::MeshOptimizer() : mPosTolerance(1e-3), mNormTolerance(1e-3), mUVTolerance(1e-3), mTargetVertexData(nullptr)
+MeshOptimizer::MeshOptimizer()
+  : mPosTolerance(1e-3), mNormTolerance(1e-3), mUVTolerance(1e-3), mTargetVertexData(nullptr)
 {
 }
 
@@ -99,7 +99,7 @@ Ogre::MeshPtr MeshOptimizer::optimizeMesh(const Ogre::MeshPtr& mesh,
   {
     setTargetVertexData(mesh->sharedVertexData);
 
-    for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)
+    for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)  // NOLINT(runtime/int)
     {
       const auto& sm = mesh->getSubMesh(i);
       if (sm->useSharedVertices)
@@ -112,23 +112,23 @@ Ogre::MeshPtr MeshOptimizer::optimizeMesh(const Ogre::MeshPtr& mesh,
     {
       if (mesh->getSkeletonName() != Ogre::StringUtil::BLANK)
       {
-        const auto& bas = mesh->getBoneAssignments ();
+        const auto& bas = mesh->getBoneAssignments();
         auto newList = getAdjustedBoneAssignments(bas.begin(), bas.end());
         mesh->clearBoneAssignments();
         for (const auto& boneAssignment : newList)
-          mesh->addBoneAssignment (boneAssignment.second);
+          mesh->addBoneAssignment(boneAssignment.second);
       }
 
-      for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)
+      for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)  // NOLINT(runtime/int)
       {
-        SubMesh* sm = mesh->getSubMesh(i);
+        Ogre::SubMesh* sm = mesh->getSubMesh(i);
         if (mesh->getSkeletonName() != Ogre::StringUtil::BLANK)
         {
-          const auto& bas = sm->getBoneAssignments ();
+          const auto& bas = sm->getBoneAssignments();
           auto newList = getAdjustedBoneAssignments(bas.begin(), bas.end());
           sm->clearBoneAssignments();
           for (const auto& boneAssignment : newList)
-            sm->addBoneAssignment (boneAssignment.second);
+            sm->addBoneAssignment(boneAssignment.second);
         }
         if (sm->useSharedVertices)
         {
@@ -141,9 +141,9 @@ Ogre::MeshPtr MeshOptimizer::optimizeMesh(const Ogre::MeshPtr& mesh,
   }
 
   // Dedicated geometry
-  for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)
+  for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)  // NOLINT(runtime/int)
   {
-    SubMesh* sm = mesh->getSubMesh(i);
+    Ogre::SubMesh* sm = mesh->getSubMesh(i);
     if (!sm->useSharedVertices)
     {
       setTargetVertexData(sm->vertexData);
@@ -178,23 +178,22 @@ Ogre::MeshPtr MeshOptimizer::optimizeMesh(const Ogre::MeshPtr& mesh,
   return mesh;
 }
 
-void MeshOptimizer::fixLOD(const SubMesh::LODFaceList& lodFaces)
+void MeshOptimizer::fixLOD(const Ogre::SubMesh::LODFaceList& lodFaces)
 {
   for (const auto& l : lodFaces)
   {
     remapIndexes(l);
   }
-
 }
 
-Mesh::VertexBoneAssignmentList MeshOptimizer::getAdjustedBoneAssignments(
+Ogre::Mesh::VertexBoneAssignmentList MeshOptimizer::getAdjustedBoneAssignments(
   Ogre::SubMesh::VertexBoneAssignmentList::const_iterator bit,
   Ogre::SubMesh::VertexBoneAssignmentList::const_iterator eit)
 {
-  Mesh::VertexBoneAssignmentList newList;
+  Ogre::Mesh::VertexBoneAssignmentList newList;
   for (; bit != eit; ++bit)
   {
-    VertexBoneAssignment ass = bit->second;
+    Ogre::VertexBoneAssignment ass = bit->second;
     IndexInfo& ii = mIndexRemap[ass.vertexIndex];
 
     // If this is the originating vertex index  we want to add the (adjusted)
@@ -203,14 +202,11 @@ Mesh::VertexBoneAssignmentList MeshOptimizer::getAdjustedBoneAssignments(
     if (ii.isOriginal)
     {
       ass.vertexIndex = static_cast<unsigned int>(ii.targetIndex);
-      assert (ass.vertexIndex < mUniqueVertexMap.size());
-      newList.insert(Mesh::VertexBoneAssignmentList::value_type(
+      assert(ass.vertexIndex < mUniqueVertexMap.size());
+      newList.insert(Ogre::Mesh::VertexBoneAssignmentList::value_type(
         ass.vertexIndex, ass));
-
     }
-
   }
-
   return newList;
 }
 
@@ -223,7 +219,7 @@ void MeshOptimizer::setTargetVertexData(Ogre::VertexData* vd)
   mIndexRemap.clear();
 }
 
-void MeshOptimizer::addIndexData(Ogre::IndexData* id, const RenderOperation::OperationType ot)
+void MeshOptimizer::addIndexData(Ogre::IndexData* id, const Ogre::RenderOperation::OperationType ot)
 {
   mIndexDataList.emplace_back(id, ot);
 }
@@ -261,7 +257,7 @@ bool MeshOptimizer::calculateDuplicateVertices()
   buffers.resize(mTargetVertexData->vertexBufferBinding->getLastBoundIndex() + 1);
   for (const auto& [buf_idx, buf] : bindings)
   {
-    buffer_locks.emplace_back(buf, HardwareBuffer::HBL_READ_ONLY);
+    buffer_locks.emplace_back(buf, Ogre::HardwareBuffer::HBL_READ_ONLY);
     buffers[buf_idx] = static_cast<uint8_t*>(buffer_locks.back().pData);
   }
 
@@ -277,7 +273,7 @@ bool MeshOptimizer::calculateDuplicateVertices()
     }
 
     // try to locate equivalent vertex in the list already
-    uint32 indexUsed;
+    Ogre::uint32 indexUsed;
     bool isOrig = false;
     if (const auto vertexIt = mUniqueVertexMap.find(uniqueVertex); vertexIt != mUniqueVertexMap.end())
     {
@@ -289,14 +285,13 @@ bool MeshOptimizer::calculateDuplicateVertices()
     {
       // new vertex
       isOrig = true;
-      indexUsed = static_cast<uint32>(mUniqueVertexMap.size());
+      indexUsed = static_cast<Ogre::uint32>(mUniqueVertexMap.size());
       // store the originating and new vertex index in the unique map
       VertexInfo newInfo(v, indexUsed);
       // lookup
       mUniqueVertexMap[uniqueVertex] = newInfo;
       // ordered
       mUniqueVertexList.push_back(newInfo);
-
     }
     // Insert remap entry (may map to itself)
     mIndexRemap.emplace_back(indexUsed, isOrig);
@@ -308,7 +303,6 @@ bool MeshOptimizer::calculateDuplicateVertices()
 
   // Were there duplicates?
   return duplicates;
-
 }
 
 void MeshOptimizer::rebuildVertexBuffers()
@@ -320,14 +314,14 @@ void MeshOptimizer::rebuildVertexBuffers()
   {
     // Lock source and dest buffers and copy data
     typedef Ogre::HardwareBufferLockGuard<Ogre::HardwareVertexBufferSharedPtr> VertexLockGuard;
-    std::list<HardwareVertexBufferSharedPtr> new_buffers;
+    std::list<Ogre::HardwareVertexBufferSharedPtr> new_buffers;
     std::list<VertexLockGuard> src_buffer_locks, dest_buffer_locks;
     std::vector<uint8_t*> src_buffers, dest_buffers;
     src_buffers.resize(mTargetVertexData->vertexBufferBinding->getLastBoundIndex()+1);
     dest_buffers.resize(mTargetVertexData->vertexBufferBinding->getLastBoundIndex()+1);
     for (const auto& [buf_idx, buf] : srcBindings)
     {
-      src_buffer_locks.emplace_back(buf, HardwareBuffer::HBL_READ_ONLY);
+      src_buffer_locks.emplace_back(buf, Ogre::HardwareBuffer::HBL_READ_ONLY);
       src_buffers[buf_idx] = static_cast<uint8_t*>(src_buffer_locks.back().pData);
 
       // Add a new vertex buffer and binding
@@ -336,7 +330,7 @@ void MeshOptimizer::rebuildVertexBuffers()
       newBind->setBinding(buf_idx, newBuf);
       new_buffers.push_back(newBuf);
 
-      dest_buffer_locks.emplace_back(new_buffers.back(), HardwareBuffer::HBL_DISCARD);
+      dest_buffer_locks.emplace_back(new_buffers.back(), Ogre::HardwareBuffer::HBL_DISCARD);
       dest_buffers[buf_idx] = static_cast<uint8_t*>(dest_buffer_locks.back().pData);
     }
     const auto& destBindings = newBind->getBindings();
@@ -344,7 +338,7 @@ void MeshOptimizer::rebuildVertexBuffers()
     // Iterate over the new vertices
     for (const auto& ui : mUniqueVertexList)
     {
-      const uint32 origVertexIndex = ui.oldIndex;
+      const Ogre::uint32 origVertexIndex = ui.oldIndex;
       // copy vertex from each buffer in turn
       auto srci = srcBindings.begin();
       auto desti = destBindings.begin();
@@ -364,7 +358,7 @@ void MeshOptimizer::rebuildVertexBuffers()
   }
 
   // now switch over the bindings, and thus the buffers
-  VertexBufferBinding* oldBind = mTargetVertexData->vertexBufferBinding;
+  Ogre::VertexBufferBinding* oldBind = mTargetVertexData->vertexBufferBinding;
   mTargetVertexData->vertexBufferBinding = newBind;
   Ogre::HardwareBufferManager::getSingleton().destroyVertexBufferBinding(oldBind);
 
@@ -378,31 +372,31 @@ void MeshOptimizer::remapIndexDataList()
     remapIndexes(i.indexData);
 }
 
-void MeshOptimizer::remapIndexes(IndexData* idata)
+void MeshOptimizer::remapIndexes(Ogre::IndexData* idata)
 {
   // Time to repoint indexes at the new shared vertices
-  uint16* p16 = nullptr;
-  uint32* p32 = nullptr;
+  Ogre::uint16* p16 = nullptr;
+  Ogre::uint32* p32 = nullptr;
 
   // Lock for read & write
-  Ogre::HardwareBufferLockGuard index_lock(idata->indexBuffer, HardwareBuffer::HBL_NORMAL);
+  Ogre::HardwareBufferLockGuard index_lock(idata->indexBuffer, Ogre::HardwareBuffer::HBL_NORMAL);
   // Lock for read only, we'll build another list
-  if (idata->indexBuffer->getType() == HardwareIndexBuffer::IT_32BIT)
-    p32 = static_cast<uint32*>(index_lock.pData);
+  if (idata->indexBuffer->getType() == Ogre::HardwareIndexBuffer::IT_32BIT)
+    p32 = static_cast<Ogre::uint32*>(index_lock.pData);
   else
-    p16 = static_cast<uint16*>(index_lock.pData);
+    p16 = static_cast<Ogre::uint16*>(index_lock.pData);
 
   for (size_t j = 0; j < idata->indexCount; ++j)
   {
-    uint32 oldIndex = p32? *p32 : *p16;
-    uint32 newIndex = static_cast<uint32>(mIndexRemap[oldIndex].targetIndex);
+    Ogre::uint32 oldIndex = p32? *p32 : *p16;
+    Ogre::uint32 newIndex = static_cast<Ogre::uint32>(mIndexRemap[oldIndex].targetIndex);
     assert(newIndex < mUniqueVertexMap.size());
     if (newIndex != oldIndex)
     {
       if (p32)
         *p32 = newIndex;
       else
-        *p16 = static_cast<uint16>(newIndex);
+        *p16 = static_cast<Ogre::uint16>(newIndex);
     }
     if (p32)
       ++p32;
@@ -416,7 +410,7 @@ void MeshOptimizer::removeDegenerateFaces()
   for (const auto& index : mIndexDataList)
   {
     // Only remove degenerate faces from triangle lists, strips & fans need them
-    if (index.operationType == RenderOperation::OT_TRIANGLE_LIST)
+    if (index.operationType == Ogre::RenderOperation::OT_TRIANGLE_LIST)
       removeDegenerateFaces(index.indexData);
   }
 }
@@ -426,47 +420,47 @@ void MeshOptimizer::removeDegenerateFaces(Ogre::IndexData* idata)
   // Remove any faces that do not include 3 unique positions
 
   // Only for triangle lists
-  uint16* p16 = nullptr;
-  uint32* p32 = nullptr;
-  uint16* pnewbuf16 = nullptr;
-  uint32* pnewbuf32 = nullptr;
-  uint16* pdest16 = nullptr;
-  uint32* pdest32 = nullptr;
+  Ogre::uint16* p16 = nullptr;
+  Ogre::uint32* p32 = nullptr;
+  Ogre::uint16* pnewbuf16 = nullptr;
+  Ogre::uint32* pnewbuf32 = nullptr;
+  Ogre::uint16* pdest16 = nullptr;
+  Ogre::uint32* pdest32 = nullptr;
   size_t newIndexCount = 0u;
 
   {
-    Ogre::HardwareBufferLockGuard index_lock(idata->indexBuffer, HardwareBuffer::HBL_READ_ONLY);
+    Ogre::HardwareBufferLockGuard index_lock(idata->indexBuffer, Ogre::HardwareBuffer::HBL_READ_ONLY);
     // Lock for read only, we'll build another list
-    if (idata->indexBuffer->getType() == HardwareIndexBuffer::IT_32BIT)
+    if (idata->indexBuffer->getType() == Ogre::HardwareIndexBuffer::IT_32BIT)
     {
-      p32 = static_cast<uint32*>(index_lock.pData);
-      pnewbuf32 = pdest32 = OGRE_ALLOC_T(uint32, idata->indexCount, MEMCATEGORY_GENERAL);
+      p32 = static_cast<Ogre::uint32*>(index_lock.pData);
+      pnewbuf32 = pdest32 = OGRE_ALLOC_T(Ogre::uint32, idata->indexCount, Ogre::MEMCATEGORY_GENERAL);
     }
     else
     {
-      p16 = static_cast<uint16*>(index_lock.pData);
-      pnewbuf16 = pdest16 = OGRE_ALLOC_T(uint16, idata->indexCount, MEMCATEGORY_GENERAL);
+      p16 = static_cast<Ogre::uint16*>(index_lock.pData);
+      pnewbuf16 = pdest16 = OGRE_ALLOC_T(Ogre::uint16, idata->indexCount, Ogre::MEMCATEGORY_GENERAL);
     }
 
-    const auto& posElem = mTargetVertexData->vertexDeclaration->findElementBySemantic(VES_POSITION);
+    const auto& posElem = mTargetVertexData->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
     const auto posBuf = mTargetVertexData->vertexBufferBinding->getBuffer(posElem->getSource());
-    const Ogre::HardwareBufferLockGuard pos_lock(posBuf, HardwareBuffer::HBL_READ_ONLY);
+    const Ogre::HardwareBufferLockGuard pos_lock(posBuf, Ogre::HardwareBuffer::HBL_READ_ONLY);
     auto pVertBase = static_cast<unsigned char*>(pos_lock.pData);
     const auto vsize = posBuf->getVertexSize();
 
     for (size_t j = 0; j < idata->indexCount; j += 3)
     {
-      uint32 i0 = p32 ? *p32++ : *p16++;
-      uint32 i1 = p32 ? *p32++ : *p16++;
-      uint32 i2 = p32 ? *p32++ : *p16++;
+      Ogre::uint32 i0 = p32 ? *p32++ : *p16++;
+      Ogre::uint32 i1 = p32 ? *p32++ : *p16++;
+      Ogre::uint32 i2 = p32 ? *p32++ : *p16++;
 
       float* pPosVert;
       posElem->baseVertexPointerToElement(pVertBase + i0 * vsize, &pPosVert);
-      Vector3 v0(pPosVert[0], pPosVert[1], pPosVert[2]);
+      Ogre::Vector3 v0(pPosVert[0], pPosVert[1], pPosVert[2]);
       posElem->baseVertexPointerToElement(pVertBase + i1 * vsize, &pPosVert);
-      Vector3 v1(pPosVert[0], pPosVert[1], pPosVert[2]);
+      Ogre::Vector3 v1(pPosVert[0], pPosVert[1], pPosVert[2]);
       posElem->baseVertexPointerToElement(pVertBase + i2 * vsize, &pPosVert);
-      Vector3 v2(pPosVert[0], pPosVert[1], pPosVert[2]);
+      Ogre::Vector3 v2(pPosVert[0], pPosVert[1], pPosVert[2]);
 
       // No double-indexing
       bool validTri = i0 != i1 && i1 != i2 && i0 != i2;
@@ -478,11 +472,12 @@ void MeshOptimizer::removeDegenerateFaces(Ogre::IndexData* idata)
       if (validTri)
       {
         // Make sure triangle has some area
-        Vector3 vec1 = v1 - v0;
-        Vector3 vec2 = v2 - v0;
+        Ogre::Vector3 vec1 = v1 - v0;
+        Ogre::Vector3 vec2 = v2 - v0;
         // triangle area is 1/2 magnitude of the cross-product of 2 sides
         // if zero, not a valid triangle
-        validTri = !Math::RealEqual((Real)0.0f, (Real)(0.5f * vec1.crossProduct(vec2).length()), 1e-08f);
+        validTri = !Ogre::Math::RealEqual(static_cast<Ogre::Real>(0.0f),
+          static_cast<Ogre::Real>(0.5f * vec1.crossProduct(vec2).length()), 1e-08f);
       }
 
       if (validTri)
@@ -495,9 +490,9 @@ void MeshOptimizer::removeDegenerateFaces(Ogre::IndexData* idata)
         }
         else
         {
-          *pdest16++ = static_cast<uint16>(i0);
-          *pdest16++ = static_cast<uint16>(i1);
-          *pdest16++ = static_cast<uint16>(i2);
+          *pdest16++ = static_cast<Ogre::uint16>(i0);
+          *pdest16++ = static_cast<Ogre::uint16>(i1);
+          *pdest16++ = static_cast<Ogre::uint16>(i2);
         }
         newIndexCount += 3;
       }
@@ -513,9 +508,9 @@ void MeshOptimizer::removeDegenerateFaces(Ogre::IndexData* idata)
       auto newIBuf = Ogre::HardwareBufferManager::getSingleton().createIndexBuffer(
         idata->indexBuffer->getType(), newIndexCount, idata->indexBuffer->getUsage());
       if (pdest32)
-        newIBuf->writeData(0, sizeof(uint32) * newIndexCount, pnewbuf32, true);
+        newIBuf->writeData(0, sizeof(Ogre::uint32) * newIndexCount, pnewbuf32, true);
       else
-        newIBuf->writeData(0, sizeof(uint16) * newIndexCount, pnewbuf16, true);
+        newIBuf->writeData(0, sizeof(Ogre::uint16) * newIndexCount, pnewbuf16, true);
       idata->indexBuffer = newIBuf;
     }
     else
@@ -525,20 +520,21 @@ void MeshOptimizer::removeDegenerateFaces(Ogre::IndexData* idata)
     idata->indexCount = newIndexCount;
   }
 
-  OGRE_FREE(pnewbuf16, MEMCATEGORY_GENERAL);
-  OGRE_FREE(pnewbuf32, MEMCATEGORY_GENERAL);
+  OGRE_FREE(pnewbuf16, Ogre::MEMCATEGORY_GENERAL);
+  OGRE_FREE(pnewbuf32, Ogre::MEMCATEGORY_GENERAL);
 }
 
 inline void get_triangle_vertices(const Ogre::RenderOperation::OperationType op,
-  const uint16* p16, const uint32* p32, const size_t j, uint32& i0, uint32& i1, uint32& i2)
+  const Ogre::uint16* p16, const Ogre::uint32* p32, const size_t j,
+  Ogre::uint32& i0, Ogre::uint32& i1, Ogre::uint32& i2)
 {
-  if (op == RenderOperation::OT_TRIANGLE_LIST)
+  if (op == Ogre::RenderOperation::OT_TRIANGLE_LIST)
   {
     i0 = p32 ? p32[j + 0] : p16[j + 0];
     i1 = p32 ? p32[j + 1] : p16[j + 1];
     i2 = p32 ? p32[j + 2] : p16[j + 2];
   }
-  else if (op == RenderOperation::OT_TRIANGLE_STRIP)
+  else if (op == Ogre::RenderOperation::OT_TRIANGLE_STRIP)
   {
     if (j % 2 == 0)
     {
@@ -603,22 +599,22 @@ void MeshOptimizer::recomputeNormals()
   {
     const auto op = index.operationType;
 
-    if (op != RenderOperation::OT_TRIANGLE_LIST && op != RenderOperation::OT_TRIANGLE_STRIP &&
-      op != RenderOperation::OT_TRIANGLE_FAN)
+    if (op != Ogre::RenderOperation::OT_TRIANGLE_LIST && op != Ogre::RenderOperation::OT_TRIANGLE_STRIP &&
+      op != Ogre::RenderOperation::OT_TRIANGLE_FAN)
       continue;
 
     const auto idata = index.indexData;
     if (idata->indexCount < 3)
       continue;
 
-    uint16* p16 = nullptr;
-    uint32* p32 = nullptr;
+    Ogre::uint16* p16 = nullptr;
+    Ogre::uint32* p32 = nullptr;
 
-    const Ogre::HardwareBufferLockGuard index_lock(idata->indexBuffer, HardwareBuffer::HBL_READ_ONLY);
-    if (idata->indexBuffer->getType() == HardwareIndexBuffer::IT_32BIT)
-      p32 = static_cast<uint32*>(index_lock.pData);
+    const Ogre::HardwareBufferLockGuard index_lock(idata->indexBuffer, Ogre::HardwareBuffer::HBL_READ_ONLY);
+    if (idata->indexBuffer->getType() == Ogre::HardwareIndexBuffer::IT_32BIT)
+      p32 = static_cast<Ogre::uint32*>(index_lock.pData);
     else
-      p16 = static_cast<uint16*>(index_lock.pData);
+      p16 = static_cast<Ogre::uint16*>(index_lock.pData);
 
     typedef Ogre::HardwareBufferLockGuard<Ogre::HardwareVertexBufferSharedPtr> VertexLockGuard;
     const VertexLockGuard pos_lock(pos_buffer, Ogre::HardwareBuffer::LockOptions::HBL_READ_ONLY);
@@ -631,15 +627,15 @@ void MeshOptimizer::recomputeNormals()
     const auto pos_vertices_data = static_cast<unsigned char*>(pos_lock.pData);
     const auto norm_vertices_data = static_cast<unsigned char*>(norm_lock ? norm_lock->pData : pos_lock.pData);
 
-    const auto max_idx = op == RenderOperation::OT_TRIANGLE_LIST ? idata->indexCount : idata->indexCount - 2;
-    const auto inc_idx = op == RenderOperation::OT_TRIANGLE_LIST ? 3 : 1;
+    const auto max_idx = op == Ogre::RenderOperation::OT_TRIANGLE_LIST ? idata->indexCount : idata->indexCount - 2;
+    const auto inc_idx = op == Ogre::RenderOperation::OT_TRIANGLE_LIST ? 3 : 1;
 
     std::vector<Ogre::Vector3> triangleNormals;
     triangleNormals.reserve(max_idx);
 
     for (size_t j = 0; j < max_idx; j += inc_idx)
     {
-      uint32 i0, i1, i2;
+      Ogre::uint32 i0, i1, i2;
       get_triangle_vertices(op, p16, p32, j, i0, i1, i2);
 
       // No double-indexing
@@ -699,7 +695,7 @@ void MeshOptimizer::recomputeNormals()
 }
 
 bool MeshOptimizer::UniqueVertexLess::equals(
-  const Vector3& a, const Vector3& b, Real tolerance) const
+  const Ogre::Vector3& a, const Ogre::Vector3& b, Ogre::Real tolerance) const
 {
   // note during this comparison we treat directions as positions
   // becuase we're interested in numerical equality, not semantics
@@ -708,24 +704,24 @@ bool MeshOptimizer::UniqueVertexLess::equals(
 }
 
 bool MeshOptimizer::UniqueVertexLess::equals(
-  const Vector4& a, const Vector4& b, Real tolerance) const
+  const Ogre::Vector4& a, const Ogre::Vector4& b, Ogre::Real tolerance) const
 {
   // no built-in position equals
   for (int i = 0; i < 4; ++i)
   {
-    if (Math::RealEqual(a[i], b[i], tolerance))
+    if (Ogre::Math::RealEqual(a[i], b[i], tolerance))
       return true;
   }
   return false;
 }
 
 bool MeshOptimizer::UniqueVertexLess::less(
-  const Vector3& a, const Vector3& b, Real tolerance) const
+  const Ogre::Vector3& a, const Ogre::Vector3& b, Ogre::Real tolerance) const
 {
   // don't use built-in operator, we need sorting
   for (int i = 0; i < 3; ++i)
   {
-    if (!Math::RealEqual(a[i], b[i], tolerance))
+    if (!Ogre::Math::RealEqual(a[i], b[i], tolerance))
       return a[i] < b[i];
   }
   // should never get here if equals() has been checked first
@@ -733,12 +729,12 @@ bool MeshOptimizer::UniqueVertexLess::less(
 }
 
 bool MeshOptimizer::UniqueVertexLess::less(
-  const Vector4& a, const Vector4& b, Real tolerance) const
+  const Ogre::Vector4& a, const Ogre::Vector4& b, Ogre::Real tolerance) const
 {
   // don't use built-in operator, we need sorting
   for (int i = 0; i < 4; ++i)
   {
-    if (!Math::RealEqual(a[i], b[i], tolerance))
+    if (!Ogre::Math::RealEqual(a[i], b[i], tolerance))
       return a[i] < b[i];
   }
   // should never get here if equals() has been checked first
@@ -768,18 +764,16 @@ bool MeshOptimizer::UniqueVertexLess::operator ()(
   else
   {
     // position, normal, tangent and binormal are all the same, try UVs
-    for (unsigned short i = 0; i < uvSets; ++i)
+    for (unsigned short i = 0; i < uvSets; ++i)  // NOLINT(runtime/int)
     {
       if (!equals(a.uv[i], b.uv[i], uv_tolerance))
       {
         return less(a.uv[i], b.uv[i], uv_tolerance);
       }
     }
-
     // if we get here, must be equal (with tolerance)
     return false;
   }
-
 }
 
 }

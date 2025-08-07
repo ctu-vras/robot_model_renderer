@@ -23,7 +23,6 @@ namespace robot_model_renderer
 class Object
 {
 public:
-
   /**
    * \param[in] scene_manager The scene manager this object should be part of.
    */
@@ -84,7 +83,7 @@ public:
   virtual void setUserData(const Ogre::Any& data) = 0;
 
 protected:
-  Ogre::SceneManager* scene_manager_; //!< Ogre scene manager this object is part of
+  Ogre::SceneManager* scene_manager_;  //!< Ogre scene manager this object is part of
 };
 
 }

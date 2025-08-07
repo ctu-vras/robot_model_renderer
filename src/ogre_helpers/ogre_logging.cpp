@@ -37,7 +37,7 @@ public:
 };
 
 OgreLogging::Preference OgreLogging::preference_ = OgreLogging::NoLogging;
-std::string OgreLogging::filename_;
+std::string OgreLogging::filename_;  // NOLINT(runtime/string)
 
 void OgreLogging::useRosLog()
 {
