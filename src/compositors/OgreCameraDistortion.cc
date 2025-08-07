@@ -31,13 +31,13 @@
 #include <opencv2/calib3d.hpp>
 
 #include <image_geometry/pinhole_camera_model.h>
-#include <robot_model_renderer/compositors/OgreDistortionPass.hh>
+#include <robot_model_renderer/compositors/OgreCameraDistortion.hh>
 #include <robot_model_renderer/pinhole_camera.h>
 
 namespace robot_model_renderer
 {
 
-struct OgreDistortionPass::Implementation
+struct OgreCameraDistortion::Implementation
 {
   //! \brief Distortion compositor.
   Ogre::CompositorInstance* distortionInstance = nullptr;
@@ -78,30 +78,30 @@ Ogre::Matrix3 ogreMatFromCv(const cv::Matx34d& cv)
   };
 }
 
-OgreDistortionPass::OgreDistortionPass(const bool useDistortionMap) : dataPtr(std::make_unique<Implementation>())
+OgreCameraDistortion::OgreCameraDistortion(const bool useDistortionMap) : dataPtr(std::make_unique<Implementation>())
 {
   this->dataPtr->useDistortionMap = useDistortionMap;
   this->dataPtr->compositorName = this->dataPtr->useDistortionMap ?
     "RenderPass/CameraMappedDistortion" : "RenderPass/InverseRectification";
 }
 
-OgreDistortionPass::~OgreDistortionPass()
+OgreCameraDistortion::~OgreCameraDistortion()
 {
   this->Destroy();
 }
 
-void OgreDistortionPass::SetCamera(Ogre::Camera* camera)
+void OgreCameraDistortion::SetCamera(Ogre::Camera* camera)
 {
   this->ogreCamera = camera;
 }
 
-bool OgreDistortionPass::SetCameraModel(const PinholeCameraModel& cam)
+bool OgreCameraDistortion::SetCameraModel(const PinholeCameraModel& cam)
 {
   this->dataPtr->pinholeCameraModel = cam;
   return true;
 }
 
-void OgreDistortionPass::CreateRenderPass()
+void OgreCameraDistortion::CreateRenderPass()
 {
   if (!this->ogreCamera)
   {
@@ -192,7 +192,7 @@ void OgreDistortionPass::CreateRenderPass()
   this->dataPtr->distortionInstance->setEnabled(true);
 }
 
-void OgreDistortionPass::Destroy()
+void OgreCameraDistortion::Destroy()
 {
   if (this->dataPtr->distortionInstance)
   {

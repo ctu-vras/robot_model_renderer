@@ -42,7 +42,7 @@
 
 #include <opencv2/core/core.hpp>
 
-#include <robot_model_renderer/compositors/OgreDistortionPass.hh>
+#include <robot_model_renderer/compositors/OgreCameraDistortion.hh>
 #include <robot_model_renderer/compositors/OgreInvertColors.hh>
 #include <robot_model_renderer/compositors/OgreOutline.hh>
 #include <robot_model_renderer/pinhole_camera.h>
@@ -143,7 +143,7 @@ protected:
   Ogre::RenderTarget* rt_ {nullptr};
   Ogre::Camera* camera_ {nullptr};
   Ogre::Viewport* viewPort_ {nullptr};
-  OgreDistortionPass distortionPass_;
+  OgreCameraDistortion distortionPass_;
   OgreInvertColors invertColorsPass_;
   OgreOutline outlinePass_;
   int cvImageType;

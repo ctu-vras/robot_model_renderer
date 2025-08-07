@@ -96,7 +96,7 @@ set(ENV_CONFIG_FILE ${CMAKE_CURRENT_BINARY_DIR}/src/env_config.cpp)
 configure_file(src/env_config.cpp.in ${ENV_CONFIG_FILE} @ONLY)
 
 add_library(${PROJECT_NAME}_distortion
-  src/compositors/OgreDistortionPass.cc
+  src/compositors/OgreCameraDistortion.cc
   src/compositors/OgreInvertColors.cc
   src/compositors/OgreOutline.cc
 )

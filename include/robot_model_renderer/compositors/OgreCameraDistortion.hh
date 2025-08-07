@@ -32,7 +32,7 @@ namespace robot_model_renderer
 /**
  * \brief Ogre implementation of camera distortion pass.
  */
-class OgreDistortionPass
+class OgreCameraDistortion
 {
 public:
   /**
@@ -42,9 +42,9 @@ public:
    *                             The results should be the same if the inverse rectification shader is written
    *                             correctly. The distortion map should be the map returned from PinholeCameraModel.
    */
-  explicit OgreDistortionPass(bool useDistortionMap = false);
+  explicit OgreCameraDistortion(bool useDistortionMap = false);
 
-  virtual ~OgreDistortionPass();
+  virtual ~OgreCameraDistortion();
 
   /**
    * \brief Destroy the pass and unregister it where needed.

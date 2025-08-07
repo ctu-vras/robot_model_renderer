@@ -50,7 +50,7 @@
 #include <image_transport/camera_common.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
-#include <robot_model_renderer/compositors/OgreDistortionPass.hh>
+#include <robot_model_renderer/compositors/OgreCameraDistortion.hh>
 #include <robot_model_renderer/compositors/OgreInvertColors.hh>
 #include <robot_model_renderer/compositors/OgreOutline.hh>
 #include <robot_model_renderer/ogre_helpers/render_system.h>
