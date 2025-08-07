@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
 uniform sampler2D rt_scene; // The RTT from the compositor
 uniform sampler2D blurred; // The RTT from the compositor
 

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# SPDX-FileCopyrightText: Czech Technical University in Prague
+
 cmake_minimum_required(VERSION 3.10.2)
 project(robot_model_renderer)
 
@@ -168,10 +171,9 @@ install(TARGETS
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
-install(FILES
-  launch/${PROJECT_NAME}.launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
-)
+install(DIRECTORY launch/ DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch)
+install(DIRECTORY ogre_media/ DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/ogre_media)
+install(DIRECTORY rviz/ DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/rviz)
 
 install(FILES
   nodelet.xml

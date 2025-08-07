@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
+/**
+ * \file
+ * \brief OGRE compositor drawing an outline around the rendered objects.
+ * \author Martin Pecka
+ */
+
 #include <robot_model_renderer/compositors/OgreOutline.hh>
 
 #include <OgreCamera.h>
@@ -17,7 +26,7 @@ struct OgreOutline::Implementation
   //! \brief Distortion compositor.
   Ogre::CompositorInstance* distortionInstance = nullptr;
 
-  //! \brief Ogre Material that contains the compositorsoutline shader
+  //! \brief Ogre Material that contains the outline shader
   Ogre::MaterialPtr distortionMaterial;
 
   //! \brief Width of the outline.

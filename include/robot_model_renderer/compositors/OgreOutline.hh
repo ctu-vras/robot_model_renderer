@@ -1,6 +1,16 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
 #pragma once
 
+/**
+ * \file
+ * \brief OGRE compositor drawing an outline around the rendered objects.
+ * \author Martin Pecka
+ */
+
 #include <memory>
+
 #include <OgreColourValue.h>
 
 namespace Ogre

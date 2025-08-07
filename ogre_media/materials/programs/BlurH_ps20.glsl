@@ -1,5 +1,11 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: OGRE authors
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
+// Adapted from https://github.com/OGRECave/ogre/blob/master/Samples/Media/materials/programs/GLSL/BlurH_ps20.glsl
+
 //-------------------------------
-//BlurH_ps20.glsl
+// BlurH_ps20.glsl
 // Horizontal Gaussian-Blur pass
 //-------------------------------
 

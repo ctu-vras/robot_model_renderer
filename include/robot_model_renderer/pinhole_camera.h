@@ -1,12 +1,28 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
 #pragma once
+
+/**
+ * \file
+ * \brief Extension of image_geometry PinholeCameraModel that allows better support for the distortion shader.
+ * \author Martin Pecka
+ */
 
 #include <memory>
 
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+
 #include <image_geometry/pinhole_camera_model.h>
+#include <sensor_msgs/CameraInfo.h>
 
 namespace robot_model_renderer
 {
 
+/**
+ * \brief Extension of image_geometry PinholeCameraModel that allows better support for the distortion shader.
+ */
 class PinholeCameraModel : public image_geometry::PinholeCameraModel
 {
   struct ExtraCache;

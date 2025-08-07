@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
 // The input texture, which is set up by the Ogre Compositor infrastructure.
 uniform sampler2D RT;
 uniform int invert_alpha;

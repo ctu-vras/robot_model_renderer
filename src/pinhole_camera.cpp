@@ -1,8 +1,31 @@
-#include <opencv2/calib3d.hpp>
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+// SPDX-FileCopyrightText: image_geometry authors
+
+/**
+ * \file
+ * \brief Extension of image_geometry PinholeCameraModel that allows better support for the distortion shader.
+ * \author image_geometry authors
+ * \author Martin Pecka
+ */
+
+// Parts of this file are taken from
+// https://github.com/ros-perception/vision_opencv/blob/noetic/image_geometry/src/pinhole_camera_model.cpp
+
 #include <robot_model_renderer/pinhole_camera.h>
+
+#include <memory>
+
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+
+#include <image_geometry/pinhole_camera_model.h>
+#include <sensor_msgs/CameraInfo.h>
 
 namespace image_geometry
 {
+
 enum DistortionState { NONE, CALIBRATED, UNKNOWN };
 enum DistortionModel { EQUIDISTANT, PLUMB_BOB_OR_RATIONAL_POLYNOMIAL, UNKNOWN_MODEL };
 
@@ -39,6 +62,7 @@ struct PinholeCameraModel::Cache
   {
   }
 };
+
 }
 
 namespace robot_model_renderer
@@ -501,4 +525,4 @@ const cv::Mat& PinholeCameraModel::getReducedUnrectifyFloatMap() const
   return this->extraCache->unrectify_reduced_float_map;
 }
 
-} // namespace robot_model_renderer
+}

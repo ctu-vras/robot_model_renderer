@@ -1,3 +1,13 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
+/**
+ * \file
+ * \brief Nodelet that renders the robot from robot_description using a camera described by a sensor_msgs/CameraInfo
+ *        topic.
+ * \author Martin Pecka
+ */
+
 #include <memory>
 #include <thread>
 
@@ -69,6 +79,10 @@ DEFINE_CONVERTING_GET_PARAM(robot_model_renderer::RenderingMode, std::string, ""
 namespace robot_model_renderer
 {
 
+/**
+ * \brief Nodelet that renders the robot from robot_description using a camera described by a sensor_msgs/CameraInfo
+ *        topic.
+ */
 class RobotModelRendererNodelet : public cras::Nodelet
 {
 public:

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
 fragment_program InvertColorFS glsl
 {
   source invert_color_fs.glsl

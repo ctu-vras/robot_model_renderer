@@ -1,5 +1,11 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: OGRE authors
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
+// Adapted from https://github.com/OGRECave/ogre/blob/master/Samples/Media/materials/programs/GLSL/BlurV_ps20.glsl
+
 //-------------------------------
-//BlurV_ps20.glsl
+// BlurV_ps20.glsl
 // Vertical Gaussian-Blur pass
 //-------------------------------
 
