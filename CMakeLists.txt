@@ -125,7 +125,9 @@ add_library(${PROJECT_NAME}_robot
   src/robot/robot_joint.cpp
   src/robot/robot_link.cpp
   src/robot/shape_filter.cpp
+  src/robot/shape_inflation_registry.cpp
   src/robot/tf_link_updater.cpp
+        src/robot/mesh_optimizer.cpp
 )
 target_link_libraries(${PROJECT_NAME}_robot PUBLIC
   ${PROJECT_NAME}_ogre_helpers

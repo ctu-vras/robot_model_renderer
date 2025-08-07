@@ -43,6 +43,7 @@
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <robot_model_renderer/robot/link_updater.h>
 #include <robot_model_renderer/robot/shape_filter.h>
+#include <robot_model_renderer/robot/shape_inflation_registry.h>
 
 namespace robot_model_renderer
 {
@@ -69,8 +70,10 @@ public:
    *
    * \param[in] urdf The robot description to read from
    * \param[in] shape_filter Filter for the shapes to load
+   * \param[in] shape_inflation_registry Registry of per-shape scaling and padding
    */
-  virtual void load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter);
+  virtual void load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter,
+    const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
   /**
    * \brief Clears all data loaded from a URDF
@@ -170,8 +173,6 @@ public:
 
   virtual void setOrientation(const Ogre::Quaternion& orientation);
 
-  virtual void setScale(const Ogre::Vector3& scale);
-
   virtual void setMaskMode();
 
   virtual void unsetMaskMode();
@@ -185,7 +186,8 @@ public:
   virtual const Ogre::Quaternion& getOrientation();
 
   virtual RobotLink* createLink(Robot* robot, const urdf::LinkConstSharedPtr& link,
-    const std::string& parent_joint_name, const std::shared_ptr<ShapeFilter>& shape_filter);
+    const std::string& parent_joint_name, const std::shared_ptr<ShapeFilter>& shape_filter,
+    const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
   virtual RobotJoint* createJoint(Robot* robot, const urdf::JointConstSharedPtr& joint);
 

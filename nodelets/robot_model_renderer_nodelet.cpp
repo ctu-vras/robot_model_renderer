@@ -10,6 +10,7 @@
 #include <nodelet/nodelet.h>
 #include <robot_model_renderer/ogre_helpers/render_system.h>
 #include <robot_model_renderer/robot/shape_filter.h>
+#include <robot_model_renderer/robot/shape_inflation_registry.h>
 #include <robot_model_renderer/RosCameraRobotModelRenderer.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/image_encodings.h>
@@ -189,6 +190,34 @@ private:
     config.outlineFromClosestColor = params->getParam("outline_from_closest_color", config.outlineFromClosestColor);
     config.invertColors = params->getParam("invert_colors", config.invertColors);
     config.invertAlpha = params->getParam("invert_alpha", config.invertAlpha);
+
+    const auto inflationPadding = params->getParamVerbose("body_model/inflation/padding", 0.0, "m");
+    const auto inflationScale = params->getParamVerbose("body_model/inflation/scale", 1.0);
+    config.shapeInflationRegistry = std::make_shared<ShapeInflationRegistry>(inflationScale, inflationPadding);
+
+    std::unordered_map<std::string, ScaleAndPadding> perShapeInflation;
+
+    // read per-link padding
+    const auto perLinkInflationPadding = params->getParam(
+      "body_model/inflation/per_shape/padding", std::unordered_map<std::string, double>(), "m");
+    for (const auto& [linkName, padding] : perLinkInflationPadding)
+    {
+      perShapeInflation[linkName] = ScaleAndPadding(inflationScale, padding);
+    }
+
+    // read per-link scale
+    const auto perLinkInflationScale = params->getParam(
+      "body_model/inflation/per_shape/scale", std::unordered_map<std::string, double>());
+    for (const auto& [linkName, scale] : perLinkInflationScale)
+    {
+      if (perShapeInflation.find(linkName) == perShapeInflation.end())
+        perShapeInflation[linkName] = ScaleAndPadding(scale, inflationPadding);
+      else
+        perShapeInflation[linkName].scale = scale;
+    }
+
+    for (const auto& [linkName, inflation] : perShapeInflation)
+      config.shapeInflationRegistry->addPerShapeInflation(linkName, inflation);
 
     const auto visualVisible = params->getParam("visual", true);
     const auto collisionVisible = params->getParam("collision", false);

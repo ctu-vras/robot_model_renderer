@@ -121,7 +121,7 @@ RobotModelRenderer::~RobotModelRenderer() = default;
 void RobotModelRenderer::setModel(const urdf::Model& model)
 {
   this->robot_ = std::make_unique<Robot>(this->scene_node_, this->scene_manager_, "robot");
-  this->robot_->load(model, this->config.shapeFilter);
+  this->robot_->load(model, this->config.shapeFilter, this->config.shapeInflationRegistry);
 
   this->setVisualVisible(this->config.shapeFilter->isVisualAllowed());
   this->setCollisionVisible(this->config.shapeFilter->isCollisionAllowed());
@@ -354,4 +354,4 @@ void RobotModelRenderer::reset()
   }
 }
 
-} // namespace robot_model_renderer
+}

@@ -44,6 +44,8 @@
 
 #include <robot_model_renderer/robot/robot_joint.h>
 #include <robot_model_renderer/robot/robot_link.h>
+#include <robot_model_renderer/robot/shape_filter.h>
+#include <robot_model_renderer/robot/shape_inflation_registry.h>
 #include <ros/console.h>
 
 namespace robot_model_renderer
@@ -150,9 +152,10 @@ void Robot::clear()
 }
 
 RobotLink* Robot::createLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
-  const std::shared_ptr<ShapeFilter>& shape_filter)
+  const std::shared_ptr<ShapeFilter>& shape_filter,
+  const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
 {
-  return new RobotLink(robot, link, parent_joint_name, shape_filter);
+  return new RobotLink(robot, link, parent_joint_name, shape_filter, shape_inflation_registry);
 }
 
 RobotJoint* Robot::createJoint(Robot* robot, const urdf::JointConstSharedPtr& joint)
@@ -160,7 +163,8 @@ RobotJoint* Robot::createJoint(Robot* robot, const urdf::JointConstSharedPtr& jo
   return new RobotJoint(robot, joint);
 }
 
-void Robot::load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter)
+void Robot::load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter,
+  const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
 {
   robot_loaded_ = false;
 
@@ -184,7 +188,7 @@ void Robot::load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFi
         parent_joint_name = urdf_link->parent_joint->name;
       }
 
-      RobotLink* link = this->createLink(this, urdf_link, parent_joint_name, shape_filter);
+      RobotLink* link = this->createLink(this, urdf_link, parent_joint_name, shape_filter, shape_inflation_registry);
 
       if (urdf_link == urdf.getRoot())
       {
@@ -307,12 +311,6 @@ void Robot::setOrientation(const Ogre::Quaternion& orientation)
 {
   root_visual_node_->setOrientation(orientation);
   root_collision_node_->setOrientation(orientation);
-}
-
-void Robot::setScale(const Ogre::Vector3& scale)
-{
-  root_visual_node_->setScale(scale);
-  root_collision_node_->setScale(scale);
 }
 
 void Robot::setMaskMode()

@@ -39,8 +39,8 @@
 namespace robot_model_renderer
 {
 
-Ogre::MeshPtr loadMeshFromResource(const std::string& resource_path);
+Ogre::MeshPtr loadMeshFromResource(const std::string& resource_path, bool enable_shadow_buffers = false);
 
-Ogre::SkeletonPtr loadSkeletonFromResource(const std::string& resource_path);
+Ogre::SkeletonPtr loadSkeletonFromResource(const std::string& resource_path, bool enable_shadow_buffers = false);
 
 }

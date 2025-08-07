@@ -217,9 +217,11 @@ private:
  * \param[in] material_table Is indexed the same as scene->mMaterials[], and should have been filled out
  *                           already by loadMaterials().
  * \param[in] transform
+ * \param[in] enable_shadow_buffers
  */
 void buildMesh(const aiScene* scene, const aiNode* node, const Ogre::MeshPtr& mesh,
-  Ogre::AxisAlignedBox& aabb, float& radius, std::vector<Ogre::MaterialPtr>& material_table, aiMatrix4x4 transform = {})
+  Ogre::AxisAlignedBox& aabb, float& radius, std::vector<Ogre::MaterialPtr>& material_table, aiMatrix4x4 transform = {},
+  const bool enable_shadow_buffers = false)
 {
   if (!node)
     return;
@@ -277,7 +279,7 @@ void buildMesh(const aiScene* scene, const aiNode* node, const Ogre::MeshPtr& me
     Ogre::HardwareVertexBufferSharedPtr vbuf =
         Ogre::HardwareBufferManager::getSingleton().createVertexBuffer(
             vertex_decl->getVertexSize(0), vertex_data->vertexCount,
-            Ogre::HardwareBuffer::HBU_STATIC_WRITE_ONLY, false);
+            Ogre::HardwareBuffer::HBU_STATIC_WRITE_ONLY, enable_shadow_buffers);
 
     vertex_data->vertexBufferBinding->setBinding(0, vbuf);
     float* vertices = static_cast<float*>(vbuf->lock(Ogre::HardwareBuffer::HBL_DISCARD));
@@ -330,7 +332,7 @@ void buildMesh(const aiScene* scene, const aiNode* node, const Ogre::MeshPtr& me
       // allocate index buffer
       submesh->indexData->indexBuffer = Ogre::HardwareBufferManager::getSingleton().createIndexBuffer(
           Ogre::HardwareIndexBuffer::IT_16BIT, submesh->indexData->indexCount,
-          Ogre::HardwareBuffer::HBU_STATIC_WRITE_ONLY, false);
+          Ogre::HardwareBuffer::HBU_STATIC_WRITE_ONLY, enable_shadow_buffers);
 
       Ogre::HardwareIndexBufferSharedPtr ibuf = submesh->indexData->indexBuffer;
       uint16_t* indices = static_cast<uint16_t*>(ibuf->lock(Ogre::HardwareBuffer::HBL_DISCARD));
@@ -356,7 +358,7 @@ void buildMesh(const aiScene* scene, const aiNode* node, const Ogre::MeshPtr& me
       // allocate index buffer
       submesh->indexData->indexBuffer = Ogre::HardwareBufferManager::getSingleton().createIndexBuffer(
           Ogre::HardwareIndexBuffer::IT_32BIT, submesh->indexData->indexCount,
-          Ogre::HardwareBuffer::HBU_STATIC_WRITE_ONLY, false);
+          Ogre::HardwareBuffer::HBU_STATIC_WRITE_ONLY, enable_shadow_buffers);
 
       Ogre::HardwareIndexBufferSharedPtr ibuf = submesh->indexData->indexBuffer;
       uint32_t* indices = static_cast<uint32_t*>(ibuf->lock(Ogre::HardwareBuffer::HBL_DISCARD));
@@ -381,7 +383,7 @@ void buildMesh(const aiScene* scene, const aiNode* node, const Ogre::MeshPtr& me
 
   for (uint32_t i = 0; i < node->mNumChildren; ++i)
   {
-    buildMesh(scene, node->mChildren[i], mesh, aabb, radius, material_table, transform);
+    buildMesh(scene, node->mChildren[i], mesh, aabb, radius, material_table, transform, enable_shadow_buffers);
   }
 }
 
@@ -571,7 +573,7 @@ void loadMaterials(const std::string& resource_path, const aiScene* scene,
   }
 }
 
-Ogre::MeshPtr meshFromAssimpScene(const std::string& name, const aiScene* scene)
+Ogre::MeshPtr meshFromAssimpScene(const std::string& name, const aiScene* scene, const bool enable_shadow_buffers)
 {
   if (!scene->HasMeshes())
   {
@@ -587,7 +589,7 @@ Ogre::MeshPtr meshFromAssimpScene(const std::string& name, const aiScene* scene)
 
   Ogre::AxisAlignedBox aabb(Ogre::AxisAlignedBox::EXTENT_NULL);
   float radius = 0.0f;
-  buildMesh(scene, scene->mRootNode, mesh, aabb, radius, material_table);
+  buildMesh(scene, scene->mRootNode, mesh, aabb, radius, material_table, {}, enable_shadow_buffers);
 
   mesh->_setBounds(aabb);
   mesh->_setBoundingSphereRadius(radius);
@@ -598,7 +600,7 @@ Ogre::MeshPtr meshFromAssimpScene(const std::string& name, const aiScene* scene)
   return mesh;
 }
 
-Ogre::MeshPtr loadMeshFromResource(const std::string& resource_path)
+Ogre::MeshPtr loadMeshFromResource(const std::string& resource_path, const bool enable_shadow_buffers)
 {
   if (Ogre::MeshManager::getSingleton().resourceExists(resource_path))
   {
@@ -631,7 +633,7 @@ Ogre::MeshPtr loadMeshFromResource(const std::string& resource_path)
       {
         return Ogre::MeshPtr();
       }
-      loadSkeletonFromResource(resource_path); // load skeleton to the resource manager
+      loadSkeletonFromResource(resource_path, enable_shadow_buffers); // load skeleton to the resource manager
 
       Ogre::MeshSerializer ser;
       Ogre::DataStreamPtr stream(new Ogre::MemoryDataStream(res.data.get(), res.size));
@@ -655,14 +657,14 @@ Ogre::MeshPtr loadMeshFromResource(const std::string& resource_path)
         return Ogre::MeshPtr();
       }
 
-      return meshFromAssimpScene(resource_path, scene);
+      return meshFromAssimpScene(resource_path, scene, enable_shadow_buffers);
     }
   }
 
   return Ogre::MeshPtr();
 }
 
-Ogre::SkeletonPtr loadSkeletonFromResource(const std::string& resource_path)
+Ogre::SkeletonPtr loadSkeletonFromResource(const std::string& resource_path, const bool enable_shadow_buffers)
 {
   std::string skeleton_resource_path = resource_path.substr(0, resource_path.length() - 4);
   skeleton_resource_path.append("skeleton");

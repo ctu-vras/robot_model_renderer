@@ -48,6 +48,7 @@
 #include <robot_model_renderer/ogre_helpers/object.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <robot_model_renderer/robot/shape_filter.h>
+#include <robot_model_renderer/robot/shape_inflation_registry.h>
 
 namespace Ogre
 {
@@ -78,7 +79,8 @@ class RobotLink
 
 public:
   RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
-    const std::shared_ptr<ShapeFilter>& shape_filter);
+    const std::shared_ptr<ShapeFilter>& shape_filter,
+    const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
   virtual ~RobotLink();
 
@@ -168,13 +170,13 @@ private:
 
   void createEntityForGeometryElement(const urdf::LinkConstSharedPtr& link, const urdf::Geometry& geom,
     const urdf::MaterialSharedPtr& material, const urdf::Pose& origin, Ogre::SceneNode* scene_node,
-    Ogre::Entity*& entity);
+    Ogre::Entity*& entity, const ScaleAndPadding& inflation);
 
-  void addError(const char* format, ...);
+  void createVisual(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter,
+    const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
-  void createVisual(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter);
-
-  void createCollision(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter);
+  void createCollision(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter,
+    const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
   Ogre::MaterialPtr getMaterialForLink(const urdf::LinkConstSharedPtr& link, urdf::MaterialConstSharedPtr material);
 

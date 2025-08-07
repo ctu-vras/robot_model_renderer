@@ -49,6 +49,7 @@
 #include <robot_model_renderer/robot/link_updater.h>
 #include <robot_model_renderer/robot/robot.h>
 #include <robot_model_renderer/robot/shape_filter.h>
+#include <robot_model_renderer/robot/shape_inflation_registry.h>
 #include <urdf/model.h>
 
 namespace Ogre
@@ -98,6 +99,7 @@ struct RobotModelRendererConfig
   bool invertAlpha {false};
 
   std::shared_ptr<ShapeFilter> shapeFilter {nullptr};
+  std::shared_ptr<ShapeInflationRegistry> shapeInflationRegistry {nullptr};
 };
 
 class RobotModelRenderer

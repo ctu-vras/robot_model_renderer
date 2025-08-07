@@ -73,6 +73,7 @@ struct RosCameraRobotModelRendererConfig
   bool invertAlpha {false};
 
   std::shared_ptr<ShapeFilter> shapeFilter {nullptr};
+  std::shared_ptr<ShapeInflationRegistry> shapeInflationRegistry {nullptr};
 };
 
 class RosCameraRobotModelRenderer

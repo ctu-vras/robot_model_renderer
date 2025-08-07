@@ -80,6 +80,7 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   robotConfig.invertColors = config.invertColors;
   robotConfig.invertAlpha = config.invertAlpha;
   robotConfig.shapeFilter = config.shapeFilter;
+  robotConfig.shapeInflationRegistry = config.shapeInflationRegistry;
 
   this->linkUpdater = std::make_unique<TFLinkUpdater>(tf);
   this->renderer = std::make_unique<RobotModelRenderer>(model, this->linkUpdater.get(),
