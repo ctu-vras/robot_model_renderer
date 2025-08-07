@@ -29,7 +29,10 @@ public:
     {
       if (lml >= min_lml)
       {
-        ROS_LOG((ros::console::levels::Level)(lml - 1), ROSCONSOLE_DEFAULT_NAME, "%s", message.c_str());
+        auto ros_level = static_cast<ros::console::levels::Level>(lml - 1);
+        if (ros_level == ros::console::levels::Info)
+          ros_level = ros::console::levels::Debug;
+        ROS_LOG(ros_level, ROSCONSOLE_DEFAULT_NAME, "%s", message.c_str());
       }
     }
   }
