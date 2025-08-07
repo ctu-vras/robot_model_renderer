@@ -3,6 +3,8 @@
 // SPDX-FileCopyrightText: 2009, Willow Garage Inc., all rights reserved.
 // SPDX-FileCopyrightText: Czech Technical University in Prague
 
+#version 120
+
 // The input texture, which is set up by the Ogre Compositor infrastructure.
 uniform sampler2D RT;
 
