@@ -6,6 +6,7 @@
 // This file is taken from rviz and minimally edited (just code style and different namespace).
 
 #include <cstdint>
+#include <mutex>
 
 #include <OgreRoot.h>
 
@@ -29,6 +30,7 @@ public:
 #endif
 
   explicit RenderSystem(int force_gl_version = 0, bool use_antialiasing = true);
+  ~RenderSystem();
 
   Ogre::RenderWindow* makeRenderWindow(
     WindowIDType window_id, unsigned int width, unsigned int height, double pixel_ratio = 1.0);
@@ -50,6 +52,30 @@ public:
     return glsl_version_;
   }
 
+  Ogre::RenderWindow* window() const
+  {
+    return ogre_window_;
+  }
+
+  /**
+   * \brief A LockGuard for rendering using the given render system. You have to hold it any time your code interacts
+   *        with the GLX backend of the OGRE render system.
+   */
+  class RenderSystemLock : std::lock_guard<std::mutex>
+  {
+  public:
+    explicit RenderSystemLock(RenderSystem* render_system);
+    ~RenderSystemLock();
+  private:
+    RenderSystem* render_system_;
+  };
+
+  /**
+   * \brief Create a lock for rendering operations.
+   * \return The rendering lock.
+   */
+  RenderSystemLock lock();
+
 private:
   void loadOgrePlugins();
 
@@ -63,15 +89,23 @@ private:
   void setupResources();
   void detectGlVersion();
 
+  void setContextCurrent();
+  void endContextCurrent();
+
   // ID for a dummy window of size 1x1, used to keep Ogre happy.
-  WindowIDType dummy_window_id_;
+  static WindowIDType dummy_window_id_;
 
   Ogre::Root* ogre_root_;
+  Ogre::RenderWindow* ogre_window_;
 
   int gl_version_;
   int glsl_version_;
   bool use_anti_aliasing_;
   int force_gl_version_;
+  bool did_init_ogre_root_;
+
+  static std::mutex render_system_mutex_;
+  static bool render_system_inited_;
 };
 
 }

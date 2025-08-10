@@ -59,6 +59,8 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
   if (sceneManager == nullptr && camera != nullptr)
     throw std::runtime_error("When sceneManager is not passed, camera has to be null too.");
 
+  auto renderLock {render_system_.lock()};
+
   if (sceneManager == nullptr)
   {
 #if (OGRE_VERSION < OGRE_VERSION_CHECK(13, 0, 0))
@@ -116,11 +118,13 @@ void RobotModelRenderer::setModel(const urdf::Model& model)
 
 void RobotModelRenderer::setNearClipDistance(const double nearClip)
 {
+  this->config.nearClipDistance = nearClip;
   this->camera_->setNearClipDistance(static_cast<Ogre::Real>(nearClip));
 }
 
 void RobotModelRenderer::setFarClipDistance(const double farClip)
 {
+  this->config.farClipDistance = farClip;
   this->camera_->setFarClipDistance(static_cast<Ogre::Real>(farClip));
 }
 
@@ -247,23 +251,27 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
   const auto& cam = this->isDistorted ? this->rectifiedCameraModel : this->origCameraModel;
   const auto res = cam.reducedResolution();
 
-  tex_ = Ogre::TextureManager::getSingleton().createManual(
-    "MainRenderTarget", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
-    res.width, res.height, 32, 0, this->config.pixelFormat, Ogre::TU_RENDERTARGET);
-  rt_ = tex_->getBuffer()->getRenderTarget();
+  {
+    auto renderLock {render_system_.lock()};
 
-  viewPort_ = rt_->addViewport(camera_);
-  viewPort_->setBackgroundColour(this->config.backgroundColor);
-  viewPort_->setClearEveryFrame(true);
+    tex_ = render_system_.root()->getTextureManager()->createManual(
+      "MainRenderTarget", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
+      res.width, res.height, 32, 0, this->config.pixelFormat, Ogre::TU_RENDERTARGET);
+    rt_ = tex_->getBuffer()->getRenderTarget();
 
-  if (this->isDistorted && this->config.gpuDistortion)
-    distortionPass_.CreateRenderPass();
+    viewPort_ = rt_->addViewport(camera_);
+    viewPort_->setBackgroundColour(this->config.backgroundColor);
+    viewPort_->setClearEveryFrame(true);
 
-  if (this->config.drawOutline)
-    outlinePass_.CreateRenderPass();
+    if (this->isDistorted && this->config.gpuDistortion)
+      distortionPass_.CreateRenderPass();
 
-  if (this->config.invertColors)
-    invertColorsPass_.CreateRenderPass();
+    if (this->config.drawOutline)
+      outlinePass_.CreateRenderPass();
+
+    if (this->config.invertColors)
+      invertColorsPass_.CreateRenderPass();
+  }
 
   this->updateOgreCamera();
 
@@ -274,15 +282,18 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
 {
   robot_->update(*this->linkUpdater, time);
 
-  rt_->update();  // Perform the actual rendering
-
   const auto rectRows = static_cast<int>(rt_->getHeight());
   const auto rectCols = static_cast<int>(rt_->getWidth());
 
   cv::Mat rectImg(rectRows, rectCols, this->cvImageType);
-
   const Ogre::PixelBox pb(rt_->getWidth(), rt_->getHeight(), 1, this->config.pixelFormat, rectImg.data);
-  rt_->copyContentsToMemory(pb);
+
+  {
+    auto renderLock {render_system_.lock()};
+
+    rt_->update();  // Perform the actual rendering
+    rt_->copyContentsToMemory(pb);
+  }
 
   // If distortion is not applied, this is all, we have a rectified image of correct size
   if (!this->isDistorted)
@@ -295,7 +306,7 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
   if (!this->config.gpuDistortion)
   {
     // This will be the raw image, but still with the size of the rectified one. It will get cropped later.
-    cv::Mat unrectImg(rectRows, rectCols, this->cvImageType);
+    cv::Mat unrectImg(rectImg.rows, rectImg.cols, this->cvImageType);
 
     this->rectifiedCameraModel.unrectifyImage(rectImg, unrectImg);
     rawImg = unrectImg;
@@ -315,6 +326,8 @@ cv::Mat RobotModelRenderer::render(const ros::Time& time)
 
 void RobotModelRenderer::reset()
 {
+  auto renderLock {render_system_.lock()};
+
   // Unregister the previously created render passes if any
   invertColorsPass_.Destroy();
   outlinePass_.Destroy();
@@ -330,7 +343,7 @@ void RobotModelRenderer::reset()
 
   if (!tex_.isNull())
   {
-    Ogre::TextureManager::getSingleton().remove(tex_->getHandle());
+    render_system_.root()->getTextureManager()->remove(tex_->getHandle());
     tex_.setNull();
   }
 }

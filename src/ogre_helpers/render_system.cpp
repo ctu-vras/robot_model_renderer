@@ -5,8 +5,13 @@
 
 #include <robot_model_renderer/ogre_helpers/render_system.h>
 
+#include <mutex>
+#include <string>
+
 #include <OgreRenderWindow.h>
 #include <OgreSceneManager.h>
+#include <RenderSystems/GL/OgreGLContext.h>
+#include <RenderSystems/GL/OgreGLRenderSystem.h>
 
 #include <cras_cpp_common/string_utils.hpp>
 #include <robot_model_renderer/ogre_helpers/env_config.h>
@@ -44,21 +49,71 @@ void createColorMaterials()
   createColorMaterial("RVIZ/ShadedCyan", Ogre::ColourValue(0.0f, 1.0f, 1.0f, 1.0f), false);
 }
 
-RenderSystem::RenderSystem(int force_gl_version, bool use_antialiasing)
-  : force_gl_version_(force_gl_version), use_anti_aliasing_(use_antialiasing)
+RenderSystem::WindowIDType RenderSystem::dummy_window_id_ = 0;
+std::mutex RenderSystem::render_system_mutex_ = {};
+bool RenderSystem::render_system_inited_ = false;
+
+RenderSystem::RenderSystem(int force_gl_version, bool use_antialiasing) :
+  ogre_root_(nullptr), ogre_window_(nullptr), gl_version_(0), glsl_version_(0), use_anti_aliasing_(use_antialiasing),
+  force_gl_version_(force_gl_version), did_init_ogre_root_(false)
 {
   OgreLogging::useRosLog();
   OgreLogging::configureLogging();
 
-  ogre_root_ = new Ogre::Root("");
-  loadOgrePlugins();
-  setupRenderSystem();
-  ogre_root_->initialise(false);
-  makeRenderWindow(0, 1, 1);
-  detectGlVersion();
-  setupResources();
-  Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
-  createColorMaterials();
+  std::lock_guard<std::mutex> l(render_system_mutex_);
+
+  if (Ogre::Root::getSingletonPtr() == nullptr)
+  {
+    ogre_root_ = new Ogre::Root("");
+    loadOgrePlugins();
+    setupRenderSystem();
+    ogre_root_->initialise(false);
+    ogre_window_ = makeRenderWindow(0, 1, 1);
+    detectGlVersion();
+    setupResources();
+    Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
+    createColorMaterials();
+    did_init_ogre_root_ = true;
+    render_system_inited_ = true;
+    endContextCurrent();
+  }
+  else
+  {
+    if (!render_system_inited_)
+    {
+      ROS_FATAL("Ogre::Root singleton has been instantiated by some other code running in this process. "
+                "This will probably lead to errors or segfaults. robot_model_renderer is the only nodelet that "
+                "can run OpenGL/OGRE code in one nodelet manager. Sharing the same nodelet manager with other "
+                "OpenGL/OGRE programs will most probably fail.");
+    }
+    ogre_root_ = Ogre::Root::getSingletonPtr();
+    ogre_root_->getRenderSystem()->registerThread();
+    detectGlVersion();
+  }
+}
+
+RenderSystem::~RenderSystem()
+{
+  std::lock_guard<std::mutex> l(render_system_mutex_);
+
+  if (!did_init_ogre_root_)
+    ogre_root_->getRenderSystem()->unregisterThread();
+}
+
+RenderSystem::RenderSystemLock::RenderSystemLock(RenderSystem* render_system) :
+  std::lock_guard<std::mutex>(RenderSystem::render_system_mutex_), render_system_(render_system)
+{
+  render_system_->setContextCurrent();
+}
+
+RenderSystem::RenderSystemLock::~RenderSystemLock()
+{
+  render_system_->endContextCurrent();
+}
+
+RenderSystem::RenderSystemLock RenderSystem::lock()
+{
+  return RenderSystemLock(this);
 }
 
 void RenderSystem::loadOgrePlugins()
@@ -120,6 +175,18 @@ void RenderSystem::detectGlVersion()
   ROS_INFO("OpenGl version: %.1f (GLSL %.1f).", (float)gl_version_ / 100.0, (float)glsl_version_ / 100.0);
 }
 
+void RenderSystem::setContextCurrent()
+{
+  const auto gl_render_system = static_cast<Ogre::GLRenderSystem*>(ogre_root_->getRenderSystem());
+  gl_render_system->_getMainContext()->setCurrent();
+}
+
+void RenderSystem::endContextCurrent()
+{
+  const auto gl_render_system = static_cast<Ogre::GLRenderSystem*>(ogre_root_->getRenderSystem());
+  gl_render_system->_getMainContext()->endCurrent();
+}
+
 void RenderSystem::setupRenderSystem()
 {
   Ogre::RenderSystem* renderSys;
@@ -142,7 +209,6 @@ void RenderSystem::setupRenderSystem()
     throw std::runtime_error("Could not find the opengl rendering subsystem!\n");
   }
 
-  // We operate in windowed mode
   renderSys->setConfigOption("Full Screen", "No");
 
   // Set the Full Screen Anti-Aliasing factor.
@@ -207,10 +273,11 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(
   Ogre::NameValuePairList params;
   Ogre::RenderWindow* window = nullptr;
 
-  if (window_id != 0)
+  auto wid = window_id != 0 ? window_id : dummy_window_id_;
+  if (wid != 0)
   {
-    params["externalWindowHandle"] = Ogre::StringConverter::toString(window_id);
-    params["parentWindowHandle"] = Ogre::StringConverter::toString(window_id);
+    params["externalWindowHandle"] = Ogre::StringConverter::toString(wid);
+    params["parentWindowHandle"] = Ogre::StringConverter::toString(wid);
     params["externalGLControl"] = "true";
   }
   else
@@ -243,6 +310,8 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(
     window->setActive(true);
     // window->setVisible(true);
     window->setAutoUpdated(false);
+    if (window_id == 0 && dummy_window_id_ == 0)
+      window->getCustomAttribute("WINDOW", &dummy_window_id_);
   }
 
   return window;

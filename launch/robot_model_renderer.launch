@@ -9,7 +9,7 @@ SPDX-FileCopyrightText: Czech Technical University in Prague
 	<arg name="image_view" default="false" />
 	<arg name="camera" default="/viz/camera_2" />
 
-	<node pkg="robot_model_renderer" type="robot_model_renderer_node" name="camera_self_filter" output="screen">
+	<node pkg="robot_model_renderer" type="robot_model_renderer" name="camera_self_filter" output="screen">
 		<!-- input topic for camera_info -->
                 <remap from="camera_info" to="$(arg camera)/camera_info" />
 		<!-- ouput topic for mask -->
