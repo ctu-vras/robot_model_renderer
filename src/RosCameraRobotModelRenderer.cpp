@@ -63,7 +63,7 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   robotConfig.shapeFilter = config.shapeFilter;
   robotConfig.shapeInflationRegistry = config.shapeInflationRegistry;
 
-  this->linkUpdater = std::make_unique<TFLinkUpdater>(this->log, tf);
+  this->linkUpdater = std::make_unique<TFLinkUpdater>(this->log, tf, "", "", config.tfTimeout);
   this->renderer = std::make_unique<RobotModelRenderer>(this->log, model, this->linkUpdater.get(),
     robotConfig, sceneManager, sceneNode, camera);
 }

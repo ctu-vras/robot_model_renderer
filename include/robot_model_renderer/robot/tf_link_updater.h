@@ -12,6 +12,7 @@
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/robot/link_updater.h>
+#include <ros/duration.h>
 #include <ros/time.h>
 #include <tf2_ros/buffer.h>
 
@@ -22,7 +23,8 @@ class TFLinkUpdater : public LinkUpdater, public cras::HasLogger
 {
 public:
   explicit TFLinkUpdater(const cras::LogHelperPtr& log, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
-    const std::string& fixed_frame = {}, const std::string& tf_prefix = {});
+    const std::string& fixed_frame = {}, const std::string& tf_prefix = {},
+    const ros::Duration& timeout = ros::Duration(0.01));
 
   void setFixedFrame(const std::string& fixedFrame);
 
@@ -34,6 +36,7 @@ private:
   std::shared_ptr<cras::InterruptibleTFBuffer> tf_;
   std::string fixed_frame_;
   std::string tf_prefix_;
+  ros::Duration timeout_;
 };
 
 }

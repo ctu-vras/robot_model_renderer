@@ -213,6 +213,7 @@ private:
     config.outlineFromClosestColor = params->getParam("outline_from_closest_color", config.outlineFromClosestColor);
     config.invertColors = params->getParam("invert_colors", config.invertColors);
     config.invertAlpha = params->getParam("invert_alpha", config.invertAlpha);
+    config.tfTimeout = params->getParam("tf_timeout", config.tfTimeout, "s");
 
     const auto inflationPadding = params->getParamVerbose("body_model/inflation/padding", 0.0, "m");
     const auto inflationScale = params->getParamVerbose("body_model/inflation/scale", 1.0);

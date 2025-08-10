@@ -18,6 +18,7 @@
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
 #include <robot_model_renderer/robot/tf_link_updater.h>
+#include <ros/duration.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
@@ -58,6 +59,8 @@ struct RosCameraRobotModelRendererConfig
 
   std::shared_ptr<ShapeFilter> shapeFilter {nullptr};
   std::shared_ptr<ShapeInflationRegistry> shapeInflationRegistry {nullptr};
+
+  ros::Duration tfTimeout {0.01};
 };
 
 /**
