@@ -27,6 +27,7 @@
 
 #include <opencv2/calib3d.hpp>
 
+#include <cras_cpp_common/log_utils.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <robot_model_renderer/compositors/OgreCameraDistortion.hh>
 #include <robot_model_renderer/pinhole_camera.h>
@@ -75,7 +76,8 @@ Ogre::Matrix3 ogreMatFromCv(const cv::Matx34d& cv)
   };
 }
 
-OgreCameraDistortion::OgreCameraDistortion(const bool useDistortionMap) : dataPtr(std::make_unique<Implementation>())
+OgreCameraDistortion::OgreCameraDistortion(const cras::LogHelperPtr& log, const bool useDistortionMap)
+  : cras::HasLogger(log), dataPtr(std::make_unique<Implementation>())
 {
   this->dataPtr->useDistortionMap = useDistortionMap;
   this->dataPtr->compositorName = this->dataPtr->useDistortionMap ?
@@ -102,13 +104,13 @@ void OgreCameraDistortion::CreateRenderPass()
 {
   if (!this->ogreCamera)
   {
-    Ogre::LogManager::getSingleton().logMessage("No camera set for applying Distortion Pass", Ogre::LML_CRITICAL);
+    CRAS_ERROR_NAMED("compositors.distortion", "No camera set for applying Distortion Pass");
     return;
   }
 
   if (this->dataPtr->distortionInstance)
   {
-    Ogre::LogManager::getSingleton().logMessage("Distortion pass already created. ", Ogre::LML_CRITICAL);
+    CRAS_ERROR_NAMED("compositors.distortion", "Distortion pass already created.");
     return;
   }
 

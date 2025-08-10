@@ -9,6 +9,7 @@
 
 #include <OgrePrerequisites.h>
 
+#include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/robot/link_updater.h>
 #include <ros/time.h>
@@ -17,10 +18,10 @@
 namespace robot_model_renderer
 {
 
-class TFLinkUpdater : public LinkUpdater
+class TFLinkUpdater : public LinkUpdater, public cras::HasLogger
 {
 public:
-  explicit TFLinkUpdater(const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
+  explicit TFLinkUpdater(const cras::LogHelperPtr& log, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
     const std::string& fixed_frame = {}, const std::string& tf_prefix = {});
 
   void setFixedFrame(const std::string& fixedFrame);

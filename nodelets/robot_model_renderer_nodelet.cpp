@@ -148,21 +148,30 @@ private:
 
         if (robotDescription.empty())
         {
-          CRAS_ERROR("Parameter robot_description is empty.");
+          CRAS_ERROR_NAMED("robot_model", "Parameter %s is empty.",
+            this->getNodeHandle().resolveName("robot_description").c_str());
         }
         else if (robotModel.initString(robotDescription))
         {
           // We have the model!
+          CRAS_DEBUG_NAMED("robot_model", "Parameter %s parsed successfully.",
+            this->getNodeHandle().resolveName("robot_description").c_str());
           break;
         }
         else
         {
-          CRAS_ERROR("Failed to parse URDF model");
+          CRAS_ERROR_NAMED("robot_model", "Failed to parse URDF model");
         }
       }
       catch (const cras::GetParamException& e)
       {
-        CRAS_ERROR("Failed parsing robot_description: %s", e.what());
+        CRAS_ERROR_NAMED("robot_model", "Error reading %s parameter: %s",
+          this->getNodeHandle().resolveName("robot_description").c_str(), e.what());
+      }
+      catch (const urdf::ParseError& e)
+      {
+        CRAS_ERROR_NAMED("robot_model", "Error parsing %s parameter: %s",
+          this->getNodeHandle().resolveName("robot_description").c_str(), e.what());
       }
 
       CRAS_WARN("Parameter robot_description will be read again in 1 second.");
@@ -242,7 +251,7 @@ private:
     config.shapeFilter->setIgnoreShapes(params->getParam("ignored_shapes", std::set<std::string>{}));
     config.shapeFilter->setOnlyShapes(params->getParam("only_shapes", std::set<std::string>{}));
 
-    this->renderer = std::make_unique<RosCameraRobotModelRenderer>(robotModel, this->getBufferPtr(), config);
+    this->renderer = std::make_unique<RosCameraRobotModelRenderer>(this->log, robotModel, this->getBufferPtr(), config);
 
     this->subscribe();
   }

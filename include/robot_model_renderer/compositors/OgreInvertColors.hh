@@ -11,6 +11,8 @@
 
 #include <memory>
 
+#include <cras_cpp_common/log_utils.h>
+
 namespace Ogre
 {
 
@@ -24,10 +26,10 @@ namespace robot_model_renderer
 /**
  * \brief Ogre implementation of color inversion shader.
  */
-class OgreInvertColors
+class OgreInvertColors : public cras::HasLogger
 {
 public:
-  explicit OgreInvertColors(bool invertAlpha = false);
+  explicit OgreInvertColors(const cras::LogHelperPtr& log, bool invertAlpha = false);
 
   virtual ~OgreInvertColors();
 

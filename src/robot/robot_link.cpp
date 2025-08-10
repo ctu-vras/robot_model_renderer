@@ -26,11 +26,11 @@
 #include <OgreTechnique.h>
 #include <OgreTextureManager.h>
 
-#include <resource_retriever/retriever.h>
-#include <ros/console.h>
 #include <urdf_model/model.h>
 #include <urdf_model/link.h>
 
+#include <cras_cpp_common/log_utils.h>
+#include <resource_retriever/retriever.h>
 #include <robot_model_renderer/ogre_helpers/object.h>
 #include <robot_model_renderer/ogre_helpers/shape.h>
 #include <robot_model_renderer/robot/mesh_loader.h>
@@ -45,12 +45,12 @@ namespace fs = boost::filesystem;
 namespace robot_model_renderer
 {
 
-RobotLink::RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
-  const std::shared_ptr<ShapeFilter>& shape_filter,
+RobotLink::RobotLink(const cras::LogHelperPtr& log, Robot* robot, const urdf::LinkConstSharedPtr& link,
+  const std::string& parent_joint_name, const std::shared_ptr<ShapeFilter>& shape_filter,
   const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
-  : robot_(robot), scene_manager_(robot->getSceneManager()), name_(link->name), parent_joint_name_(parent_joint_name),
-    visual_node_(nullptr), collision_node_(nullptr), robot_alpha_(1.0), only_render_depth_(false),
-    material_mode_flags_(ORIGINAL), enabled_(true)
+  : cras::HasLogger(log), robot_(robot), scene_manager_(robot->getSceneManager()), name_(link->name),
+    parent_joint_name_(parent_joint_name), visual_node_(nullptr), collision_node_(nullptr), robot_alpha_(1.0),
+    only_render_depth_(false), material_mode_flags_(ORIGINAL), enabled_(true)
 {
   visual_node_ = robot_->getVisualNode()->createChildSceneNode();
   collision_node_ = robot_->getCollisionNode()->createChildSceneNode();
@@ -82,6 +82,8 @@ RobotLink::RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const s
   {
     createCollision(link, shape_filter, shape_inflation_registry);
   }
+
+  CRAS_DEBUG_NAMED("robot_model", "Parsed link %s", link->name.c_str());
 }
 
 RobotLink::~RobotLink()
@@ -265,7 +267,8 @@ Ogre::MaterialPtr RobotLink::getMaterialForLink(
       }
       catch (resource_retriever::Exception& e)
       {
-        ROS_ERROR("%s", e.what());
+        CRAS_ERROR_NAMED("robot_model", "Error reading texture of link [%s] from file [%s]: %s",
+          this->getName().c_str(), filename.c_str(), e.what());
       }
 
       if (res.size != 0)
@@ -287,7 +290,8 @@ Ogre::MaterialPtr RobotLink::getMaterialForLink(
         }
         catch (Ogre::Exception& e)
         {
-          ROS_ERROR("Could not load texture [%s]: %s", filename.c_str(), e.what());
+          CRAS_ERROR_NAMED("robot_model", "Could not load texture of link [%s] from file [%s]: %s",
+            this->getName().c_str(), filename.c_str(), e.what());
         }
       }
     }
@@ -569,7 +573,7 @@ void RobotLink::createEntityForGeometryElement(
       {
         if (auto ogreMesh = loadMeshFromResource(model_name, should_inflate); ogreMesh.isNull())
         {
-          ROS_ERROR("Could not load mesh resource '%s'", model_name.c_str());
+          CRAS_ERROR_NAMED("robot_model", "Could not load mesh resource '%s'", model_name.c_str());
         }
         else
         {
@@ -580,16 +584,16 @@ void RobotLink::createEntityForGeometryElement(
       }
       catch (Ogre::InvalidParametersException& e)
       {
-        ROS_ERROR("Could not convert mesh resource '%s': %s", model_name.c_str(), e.what());
+        CRAS_ERROR_NAMED("robot_model", "Could not convert mesh resource '%s': %s", model_name.c_str(), e.what());
       }
       catch (Ogre::Exception& e)
       {
-        ROS_ERROR("Could not load model '%s': %s", model_name.c_str(), e.what());
+        CRAS_ERROR_NAMED("robot_model", "Could not load model '%s': %s", model_name.c_str(), e.what());
       }
       break;
     }
     default:
-      ROS_WARN("Unsupported geometry type for element: %d", geom.type);
+      CRAS_WARN_NAMED("robot_model", "Unsupported geometry type for element: %d", geom.type);
       break;
   }
 

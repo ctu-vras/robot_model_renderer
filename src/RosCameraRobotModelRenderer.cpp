@@ -13,6 +13,7 @@
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
 
+#include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <cv_bridge/cv_bridge.h>
 #include <robot_model_renderer/pinhole_camera.h>
@@ -36,10 +37,10 @@ std_msgs::ColorRGBA createColor(const float red, const float green, const float 
 }
 
 RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
-  const urdf::Model& model, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
+  const cras::LogHelperPtr& log, const urdf::Model& model, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
   const RosCameraRobotModelRendererConfig& config,
   Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera)
-  : config(config)
+  : cras::HasLogger(log), config(config)
 {
   RobotModelRendererConfig robotConfig;
   robotConfig.pixelFormat = sensorMsgsEncodingToOgrePixelFormat(config.imageEncoding);
@@ -62,8 +63,8 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   robotConfig.shapeFilter = config.shapeFilter;
   robotConfig.shapeInflationRegistry = config.shapeInflationRegistry;
 
-  this->linkUpdater = std::make_unique<TFLinkUpdater>(tf);
-  this->renderer = std::make_unique<RobotModelRenderer>(model, this->linkUpdater.get(),
+  this->linkUpdater = std::make_unique<TFLinkUpdater>(this->log, tf);
+  this->renderer = std::make_unique<RobotModelRenderer>(this->log, model, this->linkUpdater.get(),
     robotConfig, sceneManager, sceneNode, camera);
 }
 
@@ -73,20 +74,20 @@ bool RosCameraRobotModelRenderer::updateCameraInfo(const sensor_msgs::CameraInfo
 {
   if (msg.height == 0 || msg.width == 0)
   {
-    ROS_ERROR_THROTTLE_NAMED(1.0, "Camera Info",
+    CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info",
       "Could not determine width/height of image due to malformed CameraInfo (either width or height is 0)");
     return false;
   }
 
   if (!validateFloats(msg))
   {
-    ROS_ERROR_THROTTLE_NAMED(1.0, "Camera Info", "Contains invalid floating point values (nans or infs)");
+    CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Contains invalid floating point values (nans or infs)");
     return false;
   }
 
   if (msg.K[0] == 0.0 || msg.K[4] == 0 || msg.P[0] == 0 || msg.P[5] == 0)
   {
-    ROS_ERROR_THROTTLE_NAMED(1.0, "Camera Info", "Camera info contains invalid intrinsic matrix.");
+    CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Camera info contains invalid intrinsic matrix.");
     return false;
   }
 

@@ -18,6 +18,7 @@
 #include <OgreSceneNode.h>
 #include <OgreSharedPtr.h>
 
+#include <cras_cpp_common/log_utils.h>
 #include <robot_model_renderer/compositors/OgreCameraDistortion.hh>
 #include <robot_model_renderer/compositors/OgreInvertColors.hh>
 #include <robot_model_renderer/compositors/OgreOutline.hh>
@@ -88,10 +89,10 @@ struct RobotModelRendererConfig
 /**
  * \brief Renderer of robot model from URDF.
  */
-class RobotModelRenderer
+class RobotModelRenderer : public cras::HasLogger
 {
 public:
-  RobotModelRenderer(const urdf::Model& model, const LinkUpdater* linkUpdater,
+  RobotModelRenderer(const cras::LogHelperPtr& log, const urdf::Model& model, const LinkUpdater* linkUpdater,
     const RobotModelRendererConfig& config = {},
     Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr);
   virtual ~RobotModelRenderer();

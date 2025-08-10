@@ -8,7 +8,11 @@
 #include <cstdint>
 #include <mutex>
 
+#include <OgreLog.h>
 #include <OgreRoot.h>
+
+#include <cras_cpp_common/log_utils.h>
+#include <robot_model_renderer/ogre_helpers/ogre_logging.h>
 
 namespace Ogre
 {
@@ -20,7 +24,7 @@ class SceneManager;
 namespace robot_model_renderer
 {
 
-class RenderSystem
+class RenderSystem : cras::HasLogger
 {
 public:
 #if defined(Q_OS_MAC) || defined(Q_OS_WIN)
@@ -29,7 +33,7 @@ public:
   typedef unsigned long WindowIDType;  // NOLINT(runtime/int)
 #endif
 
-  explicit RenderSystem(int force_gl_version = 0, bool use_antialiasing = true);
+  explicit RenderSystem(const cras::LogHelperPtr& log,  int force_gl_version = 0, bool use_antialiasing = true);
   ~RenderSystem();
 
   Ogre::RenderWindow* makeRenderWindow(
@@ -68,6 +72,7 @@ public:
     ~RenderSystemLock();
   private:
     RenderSystem* render_system_;
+    Ogre::Log* previous_logger_;
   };
 
   /**
@@ -95,8 +100,11 @@ private:
   // ID for a dummy window of size 1x1, used to keep Ogre happy.
   static WindowIDType dummy_window_id_;
 
+  RosLogListener log_listener_;
+
   Ogre::Root* ogre_root_;
   Ogre::RenderWindow* ogre_window_;
+  Ogre::Log* ogre_log_;
 
   int gl_version_;
   int glsl_version_;

@@ -13,6 +13,7 @@
 #include <RenderSystems/GL/OgreGLContext.h>
 #include <RenderSystems/GL/OgreGLRenderSystem.h>
 
+#include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/string_utils.hpp>
 #include <robot_model_renderer/ogre_helpers/env_config.h>
 #include <robot_model_renderer/ogre_helpers/ogre_logging.h>
@@ -53,14 +54,16 @@ RenderSystem::WindowIDType RenderSystem::dummy_window_id_ = 0;
 std::mutex RenderSystem::render_system_mutex_ = {};
 bool RenderSystem::render_system_inited_ = false;
 
-RenderSystem::RenderSystem(int force_gl_version, bool use_antialiasing) :
-  ogre_root_(nullptr), ogre_window_(nullptr), gl_version_(0), glsl_version_(0), use_anti_aliasing_(use_antialiasing),
-  force_gl_version_(force_gl_version), did_init_ogre_root_(false)
+RenderSystem::RenderSystem(const cras::LogHelperPtr& log, int force_gl_version, bool use_antialiasing) :
+  cras::HasLogger(log), log_listener_(log), ogre_root_(nullptr), ogre_window_(nullptr), ogre_log_(nullptr),
+  gl_version_(0), glsl_version_(0), use_anti_aliasing_(use_antialiasing), force_gl_version_(force_gl_version),
+  did_init_ogre_root_(false)
 {
-  OgreLogging::useRosLog();
-  OgreLogging::configureLogging();
+  ogre_log_ = OgreLogging::configureLogging("Ogre.log", &this->log_listener_);
 
   std::lock_guard<std::mutex> l(render_system_mutex_);
+
+  const auto previous_logger = Ogre::LogManager::getSingleton().setDefaultLog(ogre_log_);
 
   if (Ogre::Root::getSingletonPtr() == nullptr)
   {
@@ -76,20 +79,23 @@ RenderSystem::RenderSystem(int force_gl_version, bool use_antialiasing) :
     did_init_ogre_root_ = true;
     render_system_inited_ = true;
     endContextCurrent();
+    CRAS_INFO_NAMED("renderer", "Initialized OGRE GL context.");
   }
   else
   {
     if (!render_system_inited_)
     {
-      ROS_FATAL("Ogre::Root singleton has been instantiated by some other code running in this process. "
-                "This will probably lead to errors or segfaults. robot_model_renderer is the only nodelet that "
-                "can run OpenGL/OGRE code in one nodelet manager. Sharing the same nodelet manager with other "
-                "OpenGL/OGRE programs will most probably fail.");
+      CRAS_FATAL("Ogre::Root singleton has been instantiated by some other code running in this process. "
+                 "This will probably lead to errors or segfaults. robot_model_renderer is the only nodelet that "
+                 "can run OpenGL/OGRE code in one nodelet manager. Sharing the same nodelet manager with other "
+                 "OpenGL/OGRE programs will most probably fail.");
     }
     ogre_root_ = Ogre::Root::getSingletonPtr();
     ogre_root_->getRenderSystem()->registerThread();
     detectGlVersion();
   }
+
+  Ogre::LogManager::getSingleton().setDefaultLog(previous_logger);
 }
 
 RenderSystem::~RenderSystem()
@@ -98,16 +104,20 @@ RenderSystem::~RenderSystem()
 
   if (!did_init_ogre_root_)
     ogre_root_->getRenderSystem()->unregisterThread();
+
+  Ogre::LogManager::getSingleton().destroyLog(ogre_log_);
 }
 
 RenderSystem::RenderSystemLock::RenderSystemLock(RenderSystem* render_system) :
   std::lock_guard<std::mutex>(RenderSystem::render_system_mutex_), render_system_(render_system)
 {
   render_system_->setContextCurrent();
+  previous_logger_ = Ogre::LogManager::getSingleton().setDefaultLog(render_system_->ogre_log_);
 }
 
 RenderSystem::RenderSystemLock::~RenderSystemLock()
 {
+  Ogre::LogManager::getSingleton().setDefaultLog(previous_logger_);
   render_system_->endContextCurrent();
 }
 
@@ -138,7 +148,7 @@ void RenderSystem::detectGlVersion()
   {
     Ogre::RenderSystem* renderSys = ogre_root_->getRenderSystem();
     const Ogre::RenderSystemCapabilities* caps = renderSys->createRenderSystemCapabilities();
-    ROS_INFO("OpenGL device: %s", caps->getDeviceName().c_str());
+    CRAS_INFO_NAMED("renderer", "OpenGL device: %s", caps->getDeviceName().c_str());
     int major = caps->getDriverVersion().major;
     int minor = caps->getDriverVersion().minor;
     gl_version_ = major * 100 + minor * 10;
@@ -172,7 +182,7 @@ void RenderSystem::detectGlVersion()
     }
     break;
   }
-  ROS_INFO("OpenGl version: %.1f (GLSL %.1f).", (float)gl_version_ / 100.0, (float)glsl_version_ / 100.0);
+  CRAS_INFO_NAMED("renderer", "OpenGl version: %.1f (GLSL %.1f).", gl_version_ / 100.0, glsl_version_ / 100.0);
 }
 
 void RenderSystem::setContextCurrent()
@@ -249,14 +259,14 @@ void RenderSystem::setupResources()
       while (pos2 != std::string::npos)
       {
         path = iter->substr(pos1, pos2 - pos1);
-        ROS_DEBUG("adding resource location: '%s'\n", path.c_str());
+        CRAS_DEBUG_NAMED("renderer", "adding resource location: '%s'\n", path.c_str());
         Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
             path, "FileSystem", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
         pos1 = pos2 + 1;
         pos2 = iter->find(delim, pos2 + 1);
       }
       path = iter->substr(pos1, iter->size() - pos1);
-      ROS_DEBUG("adding resource location: '%s'\n", path.c_str());
+      CRAS_DEBUG_NAMED("renderer", "adding resource location: '%s'\n", path.c_str());
       Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
           path, "FileSystem", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
     }
@@ -301,7 +311,7 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(
 
   if (window == nullptr)
   {
-    ROS_ERROR("Unable to create the rendering window after 100 tries.");
+    CRAS_ERROR_NAMED("renderer", "Unable to create the rendering window after 100 tries.");
     assert(false);
   }
 
@@ -341,14 +351,14 @@ Ogre::RenderWindow* RenderSystem::tryMakeRenderWindow(
     }
     catch (const std::exception& ex)
     {
-      std::cerr << "rviz::RenderSystem: error creating render window: " << ex.what() << std::endl;
+      CRAS_ERROR_NAMED("renderer", "rviz::RenderSystem: error creating render window: %s", ex.what());
       window = nullptr;
     }
   }
 
   if (window && attempts > 1)
   {
-    ROS_INFO("Created render window after %d attempts.", attempts);
+    CRAS_INFO_NAMED("renderer", "Created render window after %d attempts.", attempts);
   }
 
   return window;

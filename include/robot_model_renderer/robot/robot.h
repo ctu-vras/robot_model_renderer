@@ -14,6 +14,7 @@
 
 #include <urdf/model.h>
 
+#include <cras_cpp_common/log_utils.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <robot_model_renderer/robot/link_updater.h>
 #include <robot_model_renderer/robot/shape_filter.h>
@@ -32,10 +33,11 @@ class RobotJoint;
  *
  * Can display either the visual models of the robot or the collision models.
  */
-class Robot
+class Robot : public cras::HasLogger
 {
 public:
-  Robot(Ogre::SceneNode* root_node, Ogre::SceneManager* scene_manager, const std::string& name);
+  Robot(const cras::LogHelperPtr& log, Ogre::SceneNode* root_node, Ogre::SceneManager* scene_manager,
+    const std::string& name);
 
   virtual ~Robot();
 

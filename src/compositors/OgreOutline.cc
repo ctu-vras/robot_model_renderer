@@ -18,6 +18,8 @@
 #include <OgreMaterial.h>
 #include <OgreTechnique.h>
 
+#include <cras_cpp_common/log_utils.h>
+
 namespace robot_model_renderer
 {
 
@@ -37,9 +39,9 @@ struct OgreOutline::Implementation
   bool outlineFromClosestColor {false};
 };
 
-OgreOutline::OgreOutline(
+OgreOutline::OgreOutline(const cras::LogHelperPtr& log,
   const double outlineWidth, const Ogre::ColourValue& outlineColor, const bool outlineFromClosestColor)
-  : dataPtr(std::make_unique<Implementation>())
+  : cras::HasLogger(log), dataPtr(std::make_unique<Implementation>())
 {
   this->dataPtr->outlineWidth = outlineWidth;
   this->dataPtr->outlineColor = outlineColor;
@@ -60,13 +62,13 @@ void OgreOutline::CreateRenderPass()
 {
   if (!this->ogreCamera)
   {
-    Ogre::LogManager::getSingleton().logMessage("No camera set for applying Outline Pass", Ogre::LML_CRITICAL);
+    CRAS_ERROR_NAMED("compositors.outline", "No camera set for applying Outline Pass");
     return;
   }
 
   if (this->dataPtr->distortionInstance)
   {
-    Ogre::LogManager::getSingleton().logMessage("Outline pass already created. ", Ogre::LML_CRITICAL);
+    CRAS_ERROR_NAMED("compositors.outline", "Outline pass already created. ");
     return;
   }
 

@@ -11,6 +11,7 @@
 
 #include <memory>
 
+#include <cras_cpp_common/log_utils.h>
 #include <robot_model_renderer/pinhole_camera.h>
 
 namespace Ogre
@@ -26,7 +27,7 @@ namespace robot_model_renderer
 /**
  * \brief Ogre implementation of camera distortion pass.
  */
-class OgreCameraDistortion
+class OgreCameraDistortion : public cras::HasLogger
 {
 public:
   /**
@@ -36,7 +37,7 @@ public:
    *                             The results should be the same if the inverse rectification shader is written
    *                             correctly. The distortion map should be the map returned from PinholeCameraModel.
    */
-  explicit OgreCameraDistortion(bool useDistortionMap = false);
+  explicit OgreCameraDistortion(const cras::LogHelperPtr& log, bool useDistortionMap = false);
 
   virtual ~OgreCameraDistortion();
 

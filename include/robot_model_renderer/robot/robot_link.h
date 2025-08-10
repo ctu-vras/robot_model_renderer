@@ -19,6 +19,7 @@
 #include <urdf/model.h>
 #include <urdf_model/pose.h>
 
+#include <cras_cpp_common/log_utils.h>
 #include <robot_model_renderer/ogre_helpers/object.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <robot_model_renderer/robot/shape_filter.h>
@@ -41,7 +42,7 @@ class RobotJoint;
 /**
  * \brief Contains any data we need from a link in the robot.
  */
-class RobotLink
+class RobotLink : public cras::HasLogger
 {
   enum MaterialMode
   {
@@ -52,8 +53,8 @@ class RobotLink
   };
 
 public:
-  RobotLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
-    const std::shared_ptr<ShapeFilter>& shape_filter,
+  RobotLink(const cras::LogHelperPtr& log, Robot* robot, const urdf::LinkConstSharedPtr& link,
+    const std::string& parent_joint_name, const std::shared_ptr<ShapeFilter>& shape_filter,
     const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
   virtual ~RobotLink();

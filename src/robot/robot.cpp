@@ -25,10 +25,10 @@
 namespace robot_model_renderer
 {
 
-Robot::Robot(Ogre::SceneNode* root_node, Ogre::SceneManager* scene_manager, const std::string& name)
-  : scene_manager_(scene_manager), root_link_(nullptr),
-    visible_(true), visual_visible_(true), collision_visible_(false),
-    robot_loaded_(false), name_(name), alpha_(1.0f)
+Robot::Robot(
+  const cras::LogHelperPtr& log, Ogre::SceneNode* root_node, Ogre::SceneManager* scene_manager, const std::string& name)
+  : cras::HasLogger(log), scene_manager_(scene_manager), root_link_(nullptr),
+    visible_(true), visual_visible_(true), collision_visible_(false), robot_loaded_(false), name_(name), alpha_(1.0f)
 {
   root_visual_node_ = root_node->createChildSceneNode();
   root_collision_node_ = root_node->createChildSceneNode();
@@ -130,12 +130,12 @@ RobotLink* Robot::createLink(Robot* robot, const urdf::LinkConstSharedPtr& link,
   const std::shared_ptr<ShapeFilter>& shape_filter,
   const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
 {
-  return new RobotLink(robot, link, parent_joint_name, shape_filter, shape_inflation_registry);
+  return new RobotLink(this->log, robot, link, parent_joint_name, shape_filter, shape_inflation_registry);
 }
 
 RobotJoint* Robot::createJoint(Robot* robot, const urdf::JointConstSharedPtr& joint)
 {
-  return new RobotJoint(robot, joint);
+  return new RobotJoint(this->log, robot, joint);
 }
 
 void Robot::load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter,

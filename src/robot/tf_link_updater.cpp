@@ -9,9 +9,9 @@
 
 #include <OgreQuaternion.h>
 
+#include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
-#include <rosconsole/macros_generated.h>
 #include <tf2_ros/buffer.h>
 
 namespace robot_model_renderer
@@ -28,9 +28,9 @@ std::string concat(const std::string& prefix, const std::string& frame)
   return composite;
 }
 
-TFLinkUpdater::TFLinkUpdater(const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
+TFLinkUpdater::TFLinkUpdater(const cras::LogHelperPtr& log, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
   const std::string& fixed_frame, const std::string& tf_prefix)
-  : tf_(tf), fixed_frame_(fixed_frame), tf_prefix_(tf_prefix)
+  : cras::HasLogger(log), tf_(tf), fixed_frame_(fixed_frame), tf_prefix_(tf_prefix)
 {
 }
 
@@ -45,7 +45,7 @@ bool TFLinkUpdater::getLinkTransforms(const ros::Time& time, const std::string& 
 {
   if (fixed_frame_.empty())
   {
-    ROS_ERROR("Fixed frame has not been set.");
+    CRAS_ERROR_NAMED("link_updater", "Fixed frame has not been set.");
     return false;
   }
 
@@ -53,7 +53,8 @@ bool TFLinkUpdater::getLinkTransforms(const ros::Time& time, const std::string& 
 
   if (!tf_->canTransform(fixed_frame_, link_name_prefixed, time, ros::Duration(0.01)))
   {
-    ROS_WARN_STREAM("No transform from [" << link_name_prefixed << "] to [" << fixed_frame_ << "]");
+    CRAS_WARN_STREAM_NAMED("link_updater",
+      "No transform from [" << link_name_prefixed << "] to [" << fixed_frame_ << "]");
     return false;
   }
 

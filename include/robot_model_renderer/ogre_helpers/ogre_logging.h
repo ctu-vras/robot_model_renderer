@@ -7,57 +7,41 @@
 
 #include <string>
 
+#include <OgreLog.h>
+
+#include <cras_cpp_common/log_utils.h>
+
 namespace robot_model_renderer
 {
 
+ros::console::levels::Level ogreLogLevelToRosconsole(Ogre::LogMessageLevel lml);
+
+class RosLogListener : public Ogre::LogListener, public cras::HasLogger
+{
+public:
+  explicit RosLogListener(const cras::LogHelperPtr& log);
+  ~RosLogListener() override;
+
+  void messageLogged(const Ogre::String& message, Ogre::LogMessageLevel lml, bool maskDebug,
+                     const Ogre::String& logName, bool& skipThisMessage) override;
+};
+
 /**
  * \brief Convenience interface to Ogre logging.
- *
- * This all-static class wraps Ogre::LogManager into 3 easy options:
- * no logging, standard out, or file logging.  The option-selection
- * calls (useStandardOut(), useLogFile(), and noLog() must be called
- * before configureLogging().  configureLogging(), in turn, must be
- * called before any Ogre::Root object is instantiated.
- * configureLogging() is called at the right time by the RenderSystem
- * constructor, so you generally won't need to call it explicitly. */
+ */
 class OgreLogging
 {
 public:
   /**
-   * \brief Configure Ogre to write output to the ROS logger.
-   */
-  static void useRosLog();
-
-  /**
-   * \brief Configure Ogre to write output to the given log file name.
+   * \brief Configure the default logger for Ogre::LogManager.
    *
-   * \param[in] filename The log filename (default is Ogre.log). If file name is a relative path, it will be relative to
-   *                     the directory which is current when the program is run.
-   */
-  static void useLogFile(const std::string& filename = "Ogre.log");
-
-  /**
-   * \brief Disable Ogre logging entirely.  This is the default.
-   */
-  static void noLog();
-
-  /**
-   * \brief Configure the Ogre::LogManager to give the currently selected behavior.
+   * \param[in] filename File to log to. If empty, no logging is done.
+   * \param[in] listener Log listener for additional logs.
+   * \return If listener is not null, an instance of a logger that only forwards logging calls to the listener.
    *
    * \note This must be called before Ogre::Root is instantiated!
    */
-  static void configureLogging();
-
-private:
-  typedef enum
-  {
-    StandardOut,
-    FileLogging,
-    NoLogging
-  } Preference;
-
-  static Preference preference_;  //!< The logging preference.
-  static std::string filename_;  //!< The log filename.
+  static Ogre::Log* configureLogging(const std::string& filename = "Ogre.log", Ogre::LogListener* listener = nullptr);
 };
 
 }

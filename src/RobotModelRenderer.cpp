@@ -29,6 +29,7 @@
 #include <OgreCamera.h>
 #include <OgreHardwarePixelBuffer.h>
 
+#include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/set_utils.hpp>
 #include <image_geometry/pinhole_camera_model.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
@@ -44,13 +45,13 @@
 namespace robot_model_renderer
 {
 
-RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdater* linkUpdater,
-  const RobotModelRendererConfig& config, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
-  Ogre::Camera* camera) :
-    linkUpdater(linkUpdater), config(config), isDistorted(false),
-    scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(false),
-    invertColorsPass_(config.invertAlpha),
-    outlinePass_(config.outlineWidth, config.outlineColor, config.outlineFromClosestColor),
+RobotModelRenderer::RobotModelRenderer(const cras::LogHelperPtr& log, const urdf::Model& model,
+  const LinkUpdater* linkUpdater, const RobotModelRendererConfig& config, Ogre::SceneManager* sceneManager,
+  Ogre::SceneNode* sceneNode, Ogre::Camera* camera) :
+    cras::HasLogger(log), linkUpdater(linkUpdater), config(config), isDistorted(false), render_system_(log),
+    scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(log, false),
+    invertColorsPass_(log, config.invertAlpha),
+    outlinePass_(log, config.outlineWidth, config.outlineColor, config.outlineFromClosestColor),
     cvImageType(ogrePixelFormatToCvMatType(config.pixelFormat))
 {
   if (sceneManager == nullptr && sceneNode != nullptr)
@@ -68,6 +69,7 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
 #else
     scene_manager_ = render_system_.root()->createSceneManager();
 #endif
+    CRAS_DEBUG_NAMED("renderer", "Created scene manager");
   }
 
   if (this->config.setupDefaultLighting)
@@ -90,6 +92,7 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
       this->camera_->setFarClipDistance(this->config.farClipDistance);
     // convert vision (Z-forward) frame to ogre frame (Z-out)
     this->camera_->setOrientation(Ogre::Quaternion(Ogre::Degree(180), Ogre::Vector3::UNIT_X));
+    CRAS_DEBUG_NAMED("renderer", "Created scene camera");
   }
 
   distortionPass_.SetCamera(camera_);
@@ -97,13 +100,14 @@ RobotModelRenderer::RobotModelRenderer(const urdf::Model& model, const LinkUpdat
   invertColorsPass_.SetCamera(camera_);
 
   this->setModel(model);
+  CRAS_INFO_NAMED("renderer", "Robot model renderer initialized");
 }
 
 RobotModelRenderer::~RobotModelRenderer() = default;
 
 void RobotModelRenderer::setModel(const urdf::Model& model)
 {
-  this->robot_ = std::make_unique<Robot>(this->scene_node_, this->scene_manager_, "robot");
+  this->robot_ = std::make_unique<Robot>(this->log, this->scene_node_, this->scene_manager_, "robot");
   this->robot_->load(model, this->config.shapeFilter, this->config.shapeInflationRegistry);
 
   this->setVisualVisible(this->config.shapeFilter->isVisualAllowed());
@@ -114,6 +118,9 @@ void RobotModelRenderer::setModel(const urdf::Model& model)
   else if (this->config.renderingMode == RenderingMode::COLOR)
     this->robot_->setColorMode(
       this->config.colorModeColor.r, this->config.colorModeColor.g, this->config.colorModeColor.b);
+
+  CRAS_INFO_NAMED("renderer", "Loaded robot model %s with %zu links and %zu joint",
+    model.getName().c_str(), this->robot_->getLinks().size(), this->robot_->getJoints().size());
 }
 
 void RobotModelRenderer::setNearClipDistance(const double nearClip)
@@ -185,27 +192,27 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
 {
   if (model.reducedResolution().height == 0 || model.reducedResolution().width == 0)
   {
-    ROS_ERROR_THROTTLE_NAMED(1.0, "Camera Info",
+    CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info",
       "Could not determine width/height of image due to malformed CameraInfo (either width or height is 0)");
     return false;
   }
 
   if (model.intrinsicMatrix()(0, 0) == 0.0 || model.intrinsicMatrix()(1, 1) == 0)
   {
-    ROS_ERROR_THROTTLE_NAMED(1.0, "Camera Info", "Camera info contains invalid intrinsic matrix.");
+    CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Camera info contains invalid intrinsic matrix.");
     return false;
   }
 
   if (model.projectionMatrix()(0, 0) == 0.0 || model.projectionMatrix()(1, 1) == 0)
   {
-    ROS_ERROR_THROTTLE_NAMED(1.0, "Camera Info", "Camera info contains invalid projection matrix.");
+    CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Camera info contains invalid projection matrix.");
     return false;
   }
 
   const auto numD = model.distortionCoeffs().size().area();
   if (numD != 0 && numD != 4 && numD != 5 && numD != 8 && numD != 12 && numD != 14)
   {
-    ROS_ERROR_THROTTLE_NAMED(1.0, "Camera Info", "Unsupported number of distortion coeffs.");
+    CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Unsupported number of distortion coeffs.");
     return false;
   }
 
@@ -219,7 +226,7 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
     rectifiedRes = model.getRectifiedResolution();
     if (rectifiedRes.empty())
     {
-      ROS_ERROR_THROTTLE_NAMED(1.0, "Camera Info", "Could not determine rectified image dimensions.");
+      CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Could not determine rectified image dimensions.");
       return false;
     }
     // Do not allow the rectified image to be smaller (for pincushion distortion).
@@ -229,6 +236,8 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
 
   if (areCameraInfosAlmostEqual(model.cameraInfo(), this->origCameraModel.cameraInfo(), 0))
     return true;
+
+  CRAS_DEBUG_NAMED("camera_info", "Updating new camera info");
 
   const auto prevOrigCamMsg = this->origCameraModel.cameraInfo();
   this->origCameraModel = model;

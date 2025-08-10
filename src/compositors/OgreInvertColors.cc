@@ -18,6 +18,8 @@
 #include <OgreMaterial.h>
 #include <OgreTechnique.h>
 
+#include <cras_cpp_common/log_utils.h>
+
 namespace robot_model_renderer
 {
 
@@ -33,7 +35,8 @@ struct OgreInvertColors::Implementation
   bool invertAlpha {false};
 };
 
-OgreInvertColors::OgreInvertColors(const bool invertAlpha) : dataPtr(std::make_unique<Implementation>())
+OgreInvertColors::OgreInvertColors(const cras::LogHelperPtr& log, const bool invertAlpha)
+  : cras::HasLogger(log), dataPtr(std::make_unique<Implementation>())
 {
   this->dataPtr->invertAlpha = invertAlpha;
 }
@@ -52,13 +55,13 @@ void OgreInvertColors::CreateRenderPass()
 {
   if (!this->ogreCamera)
   {
-    Ogre::LogManager::getSingleton().logMessage("No camera set for applying InvertColors Pass", Ogre::LML_CRITICAL);
+    CRAS_ERROR_NAMED("compositors.invert_colors", "No camera set for applying InvertColors Pass");
     return;
   }
 
   if (this->dataPtr->compositorInstance)
   {
-    Ogre::LogManager::getSingleton().logMessage("InvertColors pass already created. ", Ogre::LML_CRITICAL);
+    CRAS_ERROR_NAMED("compositors.invert_colors", "InvertColors pass already created. ");
     return;
   }
 

@@ -3,77 +3,76 @@
 
 // This file is taken from rviz and minimally edited (just code style and different namespace).
 
+#include <OgreException.h>
 #include <robot_model_renderer/ogre_helpers/ogre_logging.h>
 
 #include <OgreLog.h>
 #include <OgreLogManager.h>
 
+#include <cras_cpp_common/log_utils.h>
+#include <ros/assert.h>
 #include <ros/console.h>
 
 namespace robot_model_renderer
 {
 
-class RosLogListener : public Ogre::LogListener
+ros::console::levels::Level ogreLogLevelToRosconsole(const Ogre::LogMessageLevel lml)
 {
-public:
-  RosLogListener() : min_lml(Ogre::LML_CRITICAL)
+  switch (lml)
   {
+    case Ogre::LML_TRIVIAL:
+    case Ogre::LML_NORMAL:
+      return ros::console::levels::Debug;
+    case Ogre::LML_CRITICAL:
+      return ros::console::levels::Error;
+    default:
+      ROS_ASSERT_MSG(false, "Unhandled enum case %i", lml);
+      return ros::console::levels::Debug;
   }
-
-  ~RosLogListener() override = default;
-
-  void messageLogged(const Ogre::String& message, Ogre::LogMessageLevel lml, bool /*maskDebug*/,
-    const Ogre::String& /*logName*/, bool& skipThisMessage) override
-  {
-    if (!skipThisMessage)
-    {
-      if (lml >= min_lml)
-      {
-        auto ros_level = static_cast<ros::console::levels::Level>(lml - 1);
-        if (ros_level == ros::console::levels::Info)
-          ros_level = ros::console::levels::Debug;
-        ROS_LOG(ros_level, ROSCONSOLE_DEFAULT_NAME, "%s", message.c_str());
-      }
-    }
-  }
-  Ogre::LogMessageLevel min_lml;
-};
-
-OgreLogging::Preference OgreLogging::preference_ = OgreLogging::NoLogging;
-std::string OgreLogging::filename_;  // NOLINT(runtime/string)
-
-void OgreLogging::useRosLog()
-{
-  preference_ = StandardOut;
 }
 
-void OgreLogging::useLogFile(const std::string& filename)
+RosLogListener::RosLogListener(const cras::LogHelperPtr& log) : cras::HasLogger(log)
 {
-  preference_ = FileLogging;
-  filename_ = filename;
 }
 
-void OgreLogging::noLog()
+RosLogListener::~RosLogListener() = default;
+
+void RosLogListener::messageLogged(const Ogre::String& message, const Ogre::LogMessageLevel lml, bool /*maskDebug*/,
+                                   const Ogre::String& /*logName*/, bool& skipThisMessage)
 {
-  preference_ = NoLogging;
+  if (skipThisMessage)
+    return;
+
+  const auto ros_level = ogreLogLevelToRosconsole(lml);
+  CRAS_LOG(getCrasLogger(), ros_level, std::string(ROSCONSOLE_DEFAULT_NAME) + ".renderer", "%s", message.c_str());
 }
 
-void OgreLogging::configureLogging()
+Ogre::Log* OgreLogging::configureLogging(const std::string& filename, Ogre::LogListener* listener)
 {
-  static RosLogListener ll;
+  // Create log manager
   Ogre::LogManager* log_manager = Ogre::LogManager::getSingletonPtr();
   if (log_manager == nullptr)
-  {
     log_manager = new Ogre::LogManager();
-  }
-  Ogre::Log* l = log_manager->createLog(filename_, false, false, preference_ == NoLogging);
-  l->addListener(&ll);
 
-  // Printing to standard out is what Ogre does if you don't do any LogManager calls.
-  if (preference_ == StandardOut)
+  // Create default file log
+  try
   {
-    ll.min_lml = Ogre::LML_NORMAL;
+    log_manager->getLog(filename);
   }
+  catch (const Ogre::InvalidParametersException&)
+  {
+    log_manager->createLog(filename, true, false, filename.empty());
+  }
+
+  // Create ROS log with listener if needed
+  if (listener == nullptr)
+    return nullptr;
+
+  static int log_number = 0; log_number += 1;
+  const auto log = Ogre::LogManager::getSingleton().createLog(
+    ROSCONSOLE_PACKAGE_NAME + std::to_string(log_number), false, false, true);
+  log->addListener(listener);
+  return log;
 }
 
 }

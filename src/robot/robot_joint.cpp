@@ -13,14 +13,15 @@
 namespace robot_model_renderer
 {
 
-RobotJoint::RobotJoint(Robot* robot, const urdf::JointConstSharedPtr& joint)
-  : robot_(robot), name_(joint->name), parent_link_name_(joint->parent_link_name),
+RobotJoint::RobotJoint(const cras::LogHelperPtr& log, Robot* robot, const urdf::JointConstSharedPtr& joint)
+  : cras::HasLogger(log), robot_(robot), name_(joint->name), parent_link_name_(joint->parent_link_name),
     child_link_name_(joint->child_link_name), enabled_(true)
 {
   const urdf::Vector3& pos = joint->parent_to_joint_origin_transform.position;
   const urdf::Rotation& rot = joint->parent_to_joint_origin_transform.rotation;
   joint_origin_pos_ = Ogre::Vector3(pos.x, pos.y, pos.z);
   joint_origin_rot_ = Ogre::Quaternion(rot.w, rot.x, rot.y, rot.z);
+  CRAS_DEBUG_NAMED("robot_model", "Parsed joint %s", joint->name.c_str());
 }
 
 RobotJoint::~RobotJoint() = default;

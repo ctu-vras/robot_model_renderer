@@ -13,6 +13,8 @@
 
 #include <OgreColourValue.h>
 
+#include <cras_cpp_common/log_utils.h>
+
 namespace Ogre
 {
 
@@ -26,11 +28,11 @@ namespace robot_model_renderer
 /**
  * \brief Ogre implementation of outline shader.
  */
-class OgreOutline
+class OgreOutline : public cras::HasLogger
 {
 public:
-  explicit OgreOutline(double outlineWidth = 5, const Ogre::ColourValue& outlineColor = Ogre::ColourValue::Black,
-    bool outlineFromClosestColor = false);
+  explicit OgreOutline(const cras::LogHelperPtr& log, double outlineWidth = 5,
+    const Ogre::ColourValue& outlineColor = Ogre::ColourValue::Black, bool outlineFromClosestColor = false);
 
   virtual ~OgreOutline();
 

@@ -11,6 +11,7 @@
 
 #include <urdf/model.h>
 
+#include <cras_cpp_common/log_utils.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 
 namespace robot_model_renderer
@@ -23,10 +24,10 @@ class RobotJoint;
 /**
  * \brief Contains any data we need from a joint in the robot.
  */
-class RobotJoint
+class RobotJoint : public cras::HasLogger
 {
 public:
-  RobotJoint(Robot* robot, const urdf::JointConstSharedPtr& joint);
+  RobotJoint(const cras::LogHelperPtr& log, Robot* robot, const urdf::JointConstSharedPtr& joint);
 
   virtual ~RobotJoint();
 

@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
 #include <robot_model_renderer/robot/tf_link_updater.h>
@@ -62,11 +63,11 @@ struct RosCameraRobotModelRendererConfig
 /**
  * \brief Renderer of robot model from URDF (ROS interface).
  */
-class RosCameraRobotModelRenderer
+class RosCameraRobotModelRenderer : public cras::HasLogger
 {
 public:
-  RosCameraRobotModelRenderer(const urdf::Model& model, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
-    const RosCameraRobotModelRendererConfig& config = {},
+  RosCameraRobotModelRenderer(const cras::LogHelperPtr& log, const urdf::Model& model,
+    const std::shared_ptr<cras::InterruptibleTFBuffer>& tf, const RosCameraRobotModelRendererConfig& config = {},
     Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr);
   virtual ~RosCameraRobotModelRenderer();
 
