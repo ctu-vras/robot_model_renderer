@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/RobotModelRenderer.h>
@@ -57,6 +58,9 @@ struct RosCameraRobotModelRendererConfig
   bool invertColors {false};
   bool invertAlpha {false};
 
+  bool allLinksRequired {false};
+  std::set<std::string> requiredLinks;
+
   std::shared_ptr<ShapeFilter> shapeFilter {nullptr};
   std::shared_ptr<ShapeInflationRegistry> shapeInflationRegistry {nullptr};
 
@@ -70,11 +74,13 @@ class RosCameraRobotModelRenderer : public cras::HasLogger
 {
 public:
   RosCameraRobotModelRenderer(const cras::LogHelperPtr& log, const urdf::Model& model,
-    const std::shared_ptr<cras::InterruptibleTFBuffer>& tf, const RosCameraRobotModelRendererConfig& config = {},
+    const std::shared_ptr<cras::InterruptibleTFBuffer>& tf, RobotErrors& errors,
+    const RosCameraRobotModelRendererConfig& config = {},
     Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr);
   virtual ~RosCameraRobotModelRenderer();
 
-  sensor_msgs::ImageConstPtr render(const sensor_msgs::CameraInfo::ConstPtr& msg);
+  cras::expected<sensor_msgs::ImageConstPtr, std::string> render(
+    const sensor_msgs::CameraInfo::ConstPtr& msg, RenderErrors& errors);
 
   virtual void setModel(const urdf::Model& model);
   virtual void setNearClipDistance(double nearClip);

@@ -19,7 +19,9 @@
 #include <urdf/model.h>
 #include <urdf_model/pose.h>
 
+#include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
+#include <cras_cpp_common/optional.hpp>
 #include <robot_model_renderer/ogre_helpers/object.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <robot_model_renderer/robot/shape_filter.h>
@@ -38,6 +40,35 @@ namespace robot_model_renderer
 class Shape;
 class Robot;
 class RobotJoint;
+
+struct MaterialError
+{
+  std::string name;
+  std::string error;
+  cras::optional<std::string> filename;
+
+  bool hasError() const;
+};
+
+struct GeometryError
+{
+  std::string name;
+  std::string error;
+  cras::optional<std::string> filename;
+  cras::optional<MaterialError> materialError;
+
+  bool hasError(bool includeMaterialErrors = true) const;
+};
+
+struct LinkError
+{
+  std::string link;
+  std::string error;
+  std::vector<GeometryError> visualErrors;
+  std::vector<GeometryError> collisionErrors;
+
+  bool hasError(bool includeMaterialErrors = true) const;
+};
 
 /**
  * \brief Contains any data we need from a link in the robot.
@@ -94,7 +125,7 @@ public:
     return robot_;
   }
 
-  std::string getGeometryErrors() const;
+  const LinkError& getErrors() const;
 
   void setToErrorMaterial();
 
@@ -143,17 +174,20 @@ private:
 
   bool getEnabled() const;
 
-  void createEntityForGeometryElement(const urdf::LinkConstSharedPtr& link, const urdf::Geometry& geom,
-    const urdf::MaterialSharedPtr& material, const urdf::Pose& origin, Ogre::SceneNode* scene_node,
-    Ogre::Entity*& entity, const ScaleAndPadding& inflation);
+  Ogre::Entity* createEntityForGeometryElement(const urdf::LinkConstSharedPtr& link,
+    const urdf::Geometry& geom, const urdf::MaterialSharedPtr& material, const urdf::Pose& origin,
+    Ogre::SceneNode* scene_node, const ScaleAndPadding& inflation, GeometryError& error);
 
-  void createVisual(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter,
+  std::vector<GeometryError> createVisuals(const urdf::LinkConstSharedPtr& link,
+    const std::shared_ptr<ShapeFilter>& shape_filter,
     const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
-  void createCollision(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter,
+  std::vector<GeometryError> createCollisions(const urdf::LinkConstSharedPtr& link,
+    const std::shared_ptr<ShapeFilter>& shape_filter,
     const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
-  Ogre::MaterialPtr getMaterialForLink(const urdf::LinkConstSharedPtr& link, urdf::MaterialConstSharedPtr material);
+  Ogre::MaterialPtr getMaterialForLink(const urdf::LinkConstSharedPtr& link, urdf::MaterialConstSharedPtr material,
+    MaterialError& error);
 
 protected:
   Robot* robot_;
@@ -184,7 +218,7 @@ protected:
   std::string joint_name_;
 
   bool enabled_;
-  std::string errors_;
+  LinkError errors_;
 
   Ogre::MaterialPtr color_material_;
   Ogre::MaterialPtr mask_material_;

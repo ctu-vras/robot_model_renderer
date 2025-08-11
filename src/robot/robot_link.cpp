@@ -29,7 +29,9 @@
 #include <urdf_model/model.h>
 #include <urdf_model/link.h>
 
+#include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
+#include <cras_cpp_common/string_utils.hpp>
 #include <resource_retriever/retriever.h>
 #include <robot_model_renderer/ogre_helpers/object.h>
 #include <robot_model_renderer/ogre_helpers/shape.h>
@@ -45,9 +47,38 @@ namespace fs = boost::filesystem;
 namespace robot_model_renderer
 {
 
+bool MaterialError::hasError() const
+{
+  return !error.empty();
+}
+
+bool GeometryError::hasError(const bool includeMaterialErrors) const
+{
+  if (!error.empty())
+    return true;
+  if (!includeMaterialErrors)
+    return false;
+  return materialError.has_value() && materialError->hasError();
+}
+
+bool LinkError::hasError(bool includeMaterialErrors) const
+{
+  if (!error.empty())
+    return true;
+
+  const auto geomHasError = [includeMaterialErrors](const GeometryError& e)
+  {
+    return e.hasError(includeMaterialErrors);
+  };
+  if (std::any_of(visualErrors.begin(), visualErrors.end(), geomHasError))
+    return true;
+
+  return std::any_of(collisionErrors.begin(), collisionErrors.end(), geomHasError);
+}
+
 RobotLink::RobotLink(const cras::LogHelperPtr& log, Robot* robot, const urdf::LinkConstSharedPtr& link,
-  const std::string& parent_joint_name, const std::shared_ptr<ShapeFilter>& shape_filter,
-  const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
+                     const std::string& parent_joint_name, const std::shared_ptr<ShapeFilter>& shape_filter,
+                     const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
   : cras::HasLogger(log), robot_(robot), scene_manager_(robot->getSceneManager()), name_(link->name),
     parent_joint_name_(parent_joint_name), visual_node_(nullptr), collision_node_(nullptr), robot_alpha_(1.0),
     only_render_depth_(false), material_mode_flags_(ORIGINAL), enabled_(true)
@@ -75,12 +106,12 @@ RobotLink::RobotLink(const cras::LogHelperPtr& log, Robot* robot, const urdf::Li
 
   if (shape_filter->isVisualAllowed())
   {
-    createVisual(link, shape_filter, shape_inflation_registry);
+    errors_.visualErrors = createVisuals(link, shape_filter, shape_inflation_registry);
   }
 
   if (shape_filter->isCollisionAllowed())
   {
-    createCollision(link, shape_filter, shape_inflation_registry);
+    errors_.collisionErrors = createCollisions(link, shape_filter, shape_inflation_registry);
   }
 
   CRAS_DEBUG_NAMED("robot_model", "Parsed link %s", link->name.c_str());
@@ -100,11 +131,6 @@ RobotLink::~RobotLink()
 
   scene_manager_->destroySceneNode(visual_node_);
   scene_manager_->destroySceneNode(collision_node_);
-}
-
-std::string RobotLink::getGeometryErrors() const
-{
-  return errors_;
 }
 
 bool RobotLink::hasGeometry() const
@@ -215,7 +241,7 @@ void RobotLink::updateVisibility()
 }
 
 Ogre::MaterialPtr RobotLink::getMaterialForLink(
-  const urdf::LinkConstSharedPtr& link, urdf::MaterialConstSharedPtr material)
+  const urdf::LinkConstSharedPtr& link, urdf::MaterialConstSharedPtr material, MaterialError& error)
 {
   // only the first visual's material actually comprises color values, all others only have the name
   // hence search for the first visual with given material name (better fix the bug in urdf parser)
@@ -267,8 +293,11 @@ Ogre::MaterialPtr RobotLink::getMaterialForLink(
       }
       catch (resource_retriever::Exception& e)
       {
-        CRAS_ERROR_NAMED("robot_model", "Error reading texture of link [%s] from file [%s]: %s",
+        error.filename = filename;
+        error.name = mat->getName();
+        error.error = cras::format("Error reading texture of link [%s] from file [%s]: %s",
           this->getName().c_str(), filename.c_str(), e.what());
+        CRAS_ERROR_NAMED("robot_model", "%s", error.error.c_str());
       }
 
       if (res.size != 0)
@@ -290,8 +319,11 @@ Ogre::MaterialPtr RobotLink::getMaterialForLink(
         }
         catch (Ogre::Exception& e)
         {
-          CRAS_ERROR_NAMED("robot_model", "Could not load texture of link [%s] from file [%s]: %s",
+          error.filename = filename;
+          error.name = mat->getName();
+          error.error = cras::format("Could not load texture of link [%s] from file [%s]: %s",
             this->getName().c_str(), filename.c_str(), e.what());
+          CRAS_ERROR_NAMED("robot_model", "%s", error.error.c_str());
         }
       }
     }
@@ -500,11 +532,10 @@ Ogre::MeshPtr inflateMesh(const std::string& newMeshName, const Ogre::MeshPtr& o
   return mesh;
 }
 
-void RobotLink::createEntityForGeometryElement(
+Ogre::Entity* RobotLink::createEntityForGeometryElement(
   const urdf::LinkConstSharedPtr& link, const urdf::Geometry& geom, const urdf::MaterialSharedPtr& material,
-  const urdf::Pose& origin, Ogre::SceneNode* scene_node, Ogre::Entity*& entity, const ScaleAndPadding& inflation)
+  const urdf::Pose& origin, Ogre::SceneNode* scene_node, const ScaleAndPadding& inflation, GeometryError& error)
 {
-  entity = nullptr;  // default in case nothing works.
   Ogre::SceneNode* offset_node = scene_node->createChildSceneNode();
 
   static unsigned count = 0;
@@ -516,6 +547,8 @@ void RobotLink::createEntityForGeometryElement(
 
   Ogre::Vector3 offset_position(origin.position.x, origin.position.y, origin.position.z);
   Ogre::Quaternion offset_orientation(origin.rotation.w, origin.rotation.x, origin.rotation.y, origin.rotation.z);
+
+  Ogre::Entity* entity = nullptr;  // default in case nothing works.
 
   switch (geom.type)
   {
@@ -562,7 +595,11 @@ void RobotLink::createEntityForGeometryElement(
       const auto& mesh = static_cast<const urdf::Mesh&>(geom);
 
       if (mesh.filename.empty())
-        return;
+      {
+        error.error = cras::format("Link [%s] has a mesh with empty filename.", link->name.c_str());
+        CRAS_ERROR_NAMED("robot_model", "%s", error.error.c_str());
+        return nullptr;
+      }
 
       const std::string& model_name = mesh.filename;
 
@@ -573,7 +610,9 @@ void RobotLink::createEntityForGeometryElement(
       {
         if (auto ogreMesh = loadMeshFromResource(model_name, should_inflate); ogreMesh.isNull())
         {
-          CRAS_ERROR_NAMED("robot_model", "Could not load mesh resource '%s'", model_name.c_str());
+          error.error = cras::format("Could not load mesh resource '%s'", model_name.c_str());
+          CRAS_ERROR_NAMED("robot_model", "%s", error.error.c_str());
+          return nullptr;
         }
         else
         {
@@ -584,138 +623,202 @@ void RobotLink::createEntityForGeometryElement(
       }
       catch (Ogre::InvalidParametersException& e)
       {
-        CRAS_ERROR_NAMED("robot_model", "Could not convert mesh resource '%s': %s", model_name.c_str(), e.what());
+        error.error = cras::format("Could not convert mesh resource '%s': %s", model_name.c_str(), e.what());
+        CRAS_ERROR_NAMED("robot_model", "%s", error.error.c_str());
+        return nullptr;
       }
       catch (Ogre::Exception& e)
       {
-        CRAS_ERROR_NAMED("robot_model", "Could not load model '%s': %s", model_name.c_str(), e.what());
+        error.error = cras::format("Could not load mesh '%s': %s", model_name.c_str(), e.what());
+        CRAS_ERROR_NAMED("robot_model", "%s", error.error.c_str());
+        return nullptr;
       }
       break;
     }
     default:
-      CRAS_WARN_NAMED("robot_model", "Unsupported geometry type for element: %d", geom.type);
-      break;
+      error.error = cras::format("Unsupported geometry type: %d", geom.type);
+      CRAS_WARN_NAMED("robot_model", "%s", error.error.c_str());
+      return nullptr;
   }
 
-  if (entity)
+  offset_node->attachObject(entity);
+  offset_node->setScale(scale);
+  offset_node->setPosition(offset_position);
+  offset_node->setOrientation(offset_orientation);
+
+  if (default_material_.isNull() || material)
   {
-    offset_node->attachObject(entity);
-    offset_node->setScale(scale);
-    offset_node->setPosition(offset_position);
-    offset_node->setOrientation(offset_orientation);
-
-    if (default_material_.isNull() || material)
-    {
-      // latest used material becomes the default for this link
-      default_material_ = getMaterialForLink(link, material);
-    }
-
-    for (uint32_t i = 0; i < entity->getNumSubEntities(); ++i)
-    {
-      // Assign materials only if the submesh does not have one already
-      Ogre::SubEntity* sub = entity->getSubEntity(i);
-      const std::string& material_name = sub->getMaterialName();
-
-      Ogre::MaterialPtr active, original;
-      if (material_name == "BaseWhite" || material_name == "BaseWhiteNoLighting")
-        original = default_material_;
-      else
-        original = sub->getMaterial();
-
-      // create a new material copy for each instance of a RobotLink to allow modification per link
-      active = Ogre::MaterialPtr(new Ogre::Material(
-          nullptr, material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
-      *active = *original;
-      sub->setMaterial(active);
-      materials_[sub] = std::make_pair(active, original);
-    }
+    // latest used material becomes the default for this link
+    MaterialError matError;
+    default_material_ = getMaterialForLink(link, material, matError);
+    if (matError.hasError())
+      error.materialError = matError;
   }
+
+  for (uint32_t i = 0; i < entity->getNumSubEntities(); ++i)
+  {
+    // Assign materials only if the submesh does not have one already
+    Ogre::SubEntity* sub = entity->getSubEntity(i);
+    const std::string& material_name = sub->getMaterialName();
+
+    Ogre::MaterialPtr active, original;
+    if (material_name == "BaseWhite" || material_name == "BaseWhiteNoLighting")
+      original = default_material_;
+    else
+      original = sub->getMaterial();
+
+    // create a new material copy for each instance of a RobotLink to allow modification per link
+    active = Ogre::MaterialPtr(new Ogre::Material(
+        nullptr, material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
+    *active = *original;
+    sub->setMaterial(active);
+    materials_[sub] = std::make_pair(active, original);
+  }
+
+  return entity;
 }
 
-void RobotLink::createCollision(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter,
+std::vector<GeometryError> RobotLink::createCollisions(
+  const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter,
   const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
 {
-  bool valid_collision_found = false;
+  std::vector<GeometryError> errors;
 
+  // If the link really has no collisions, we return right away without an error
+  if (link->collision == nullptr && link->collision_array.empty())
+    return errors;
+
+  bool valid_collision_found = false;
   for (size_t i = 0; i < link->collision_array.size(); ++i)
   {
     const auto& collision = link->collision_array[i];
+
+    GeometryError error;
+    error.name = cras::format("%s::%s", link->name.c_str(),
+      (collision && !collision->name.empty()) ? collision->name.c_str() : cras::to_string(i).c_str());
+
     if (collision && collision->geometry)
     {
       if (!shape_filter->considerShape(false, link->name, collision->name, i))
         continue;
 
       const auto inflation = shape_inflation_registry->getShapeInflation(false, link->name, collision->name, i);
-      Ogre::Entity* collision_mesh = nullptr;
-      createEntityForGeometryElement(
-        link, *collision->geometry, nullptr, collision->origin, collision_node_, collision_mesh, inflation);
+      Ogre::Entity* collision_mesh = createEntityForGeometryElement(
+        link, *collision->geometry, nullptr, collision->origin, collision_node_, inflation, error);
       if (collision_mesh)
       {
         collision_meshes_.push_back(collision_mesh);
       }
       valid_collision_found |= collision == link->collision;  // don't consider the same geometry twice
     }
+    else
+    {
+      error.error = cras::format("Collision %s has no geometry", error.name.c_str());
+      CRAS_WARN_NAMED("robot_model", "%s", error.error.c_str());
+    }
+    if (error.hasError())
+      errors.push_back(error);
   }
+
+  GeometryError error;
+  error.name = cras::format("%s::0", link->name.c_str());
 
   if (!valid_collision_found && link->collision && link->collision->geometry)
   {
     if (shape_filter->considerShape(false, link->name, link->collision->name, 0))
     {
       const auto inflation = shape_inflation_registry->getShapeInflation(false, link->name, link->collision->name, 0);
-      Ogre::Entity* collision_mesh = nullptr;
-      createEntityForGeometryElement(
-        link, *link->collision->geometry, nullptr, link->collision->origin, collision_node_, collision_mesh, inflation);
+      Ogre::Entity* collision_mesh = createEntityForGeometryElement(
+        link, *link->collision->geometry, nullptr, link->collision->origin, collision_node_, inflation, error);
       if (collision_mesh)
       {
         collision_meshes_.push_back(collision_mesh);
       }
     }
   }
+  else if (!valid_collision_found)
+  {
+    error.error = cras::format("Link %s has no valid collision", link->name.c_str());
+    CRAS_WARN_NAMED("robot_model", "%s", error.error.c_str());
+  }
+
+  if (error.hasError())
+    errors.push_back(error);
 
   collision_node_->setVisible(getEnabled());
+
+  return errors;
 }
 
-void RobotLink::createVisual(const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter,
+std::vector<GeometryError> RobotLink::createVisuals(
+  const urdf::LinkConstSharedPtr& link, const std::shared_ptr<ShapeFilter>& shape_filter,
   const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
 {
-  bool valid_visual_found = false;
+  std::vector<GeometryError> errors;
 
+  // If the link really has no visuals, we return right away without an error
+  if (link->visual == nullptr && link->visual_array.empty())
+    return errors;
+
+  bool valid_visual_found = false;
   for (size_t i = 0; i < link->visual_array.size(); ++i)
   {
     const auto& visual = link->visual_array[i];
+    GeometryError error;
+    error.name = cras::format("%s::%s", link->name.c_str(),
+      (visual && !visual->name.empty()) ? visual->name.c_str() : cras::to_string(i).c_str());
+
     if (visual && visual->geometry)
     {
       if (!shape_filter->considerShape(true, link->name, visual->name, i))
         continue;
 
       const auto inflation = shape_inflation_registry->getShapeInflation(true, link->name, visual->name, i);
-      Ogre::Entity* visual_mesh = nullptr;
-      createEntityForGeometryElement(
-        link, *visual->geometry, visual->material, visual->origin, visual_node_, visual_mesh, inflation);
+      Ogre::Entity* visual_mesh = createEntityForGeometryElement(
+        link, *visual->geometry, visual->material, visual->origin, visual_node_, inflation, error);
       if (visual_mesh)
       {
         visual_meshes_.push_back(visual_mesh);
       }
       valid_visual_found |= visual == link->visual;  // don't consider the same geometry again
     }
+    else
+    {
+      error.error = cras::format("Visual %s has no geometry", error.name.c_str());
+      CRAS_WARN_NAMED("robot_model", "%s", error.error.c_str());
+    }
+    if (error.hasError())
+      errors.push_back(error);
   }
+
+  GeometryError error;
+  error.name = cras::format("%s::0", link->name.c_str());
 
   if (!valid_visual_found && link->visual && link->visual->geometry)
   {
     if (shape_filter->considerShape(true, link->name, link->visual->name, 0))
     {
       const auto inflation = shape_inflation_registry->getShapeInflation(true, link->name, link->visual->name, 0);
-      Ogre::Entity* visual_mesh = nullptr;
-      createEntityForGeometryElement(link, *link->visual->geometry, link->visual->material, link->visual->origin,
-        visual_node_, visual_mesh, inflation);
+      Ogre::Entity* visual_mesh = createEntityForGeometryElement(
+        link, *link->visual->geometry, link->visual->material, link->visual->origin, visual_node_, inflation, error);
       if (visual_mesh)
       {
         visual_meshes_.push_back(visual_mesh);
       }
     }
   }
+  else if (!valid_visual_found)
+  {
+    error.error = cras::format("Link %s has no valid visual", link->name.c_str());
+    CRAS_WARN_NAMED("robot_model", "%s", error.error.c_str());
+  }
+
+  if (error.hasError())
+    errors.push_back(error);
 
   visual_node_->setVisible(getEnabled());
+
+  return errors;
 }
 
 void RobotLink::setTransforms(const Ogre::Vector3& visual_position, const Ogre::Quaternion& visual_orientation,
@@ -732,6 +835,11 @@ void RobotLink::setTransforms(const Ogre::Vector3& visual_position, const Ogre::
     collision_node_->setPosition(collision_position);
     collision_node_->setOrientation(collision_orientation);
   }
+}
+
+const LinkError& RobotLink::getErrors() const
+{
+  return this->errors_;
 }
 
 void RobotLink::setToErrorMaterial()

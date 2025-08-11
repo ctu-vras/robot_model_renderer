@@ -9,6 +9,7 @@
 
 #include <OgreQuaternion.h>
 
+#include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
@@ -39,26 +40,46 @@ void TFLinkUpdater::setFixedFrame(const std::string& fixedFrame)
   this->fixed_frame_ = fixedFrame;
 }
 
-bool TFLinkUpdater::getLinkTransforms(const ros::Time& time, const std::string& link_name,
+cras::expected<void, LinkUpdateError> TFLinkUpdater::getLinkTransforms(
+  const ros::Time& time, const std::string& link_name,
   Ogre::Vector3& visual_position, Ogre::Quaternion& visual_orientation,
   Ogre::Vector3& collision_position, Ogre::Quaternion& collision_orientation) const
 {
+  LinkUpdateError error;
+
   if (fixed_frame_.empty())
   {
-    CRAS_ERROR_NAMED("link_updater", "Fixed frame has not been set.");
-    return false;
+    error.error = "Fixed frame has not been set.";
+    error.maySucceedLater = false;
+    CRAS_ERROR_NAMED("link_updater", "%s", error.error.c_str());
+    return cras::make_unexpected(error);
   }
 
   const auto link_name_prefixed = concat(tf_prefix_, link_name);
 
-  if (!tf_->canTransform(fixed_frame_, link_name_prefixed, time, timeout_))
+  geometry_msgs::TransformStamped tf;
+  try
+  {
+    tf = tf_->lookupTransform(fixed_frame_, link_name_prefixed, time, timeout_);
+  }
+  catch (const tf2::ExtrapolationException& e)
   {
     CRAS_WARN_STREAM_THROTTLE_NAMED(1.0, "link_updater",
-      "No transform from [" << link_name_prefixed << "] to [" << fixed_frame_ << "]");
-    return false;
+      "No transform from [" << link_name_prefixed << "] to [" << fixed_frame_ << "]: " << e.what());
+    error.error = e.what();
+    error.name = link_name_prefixed;
+    error.maySucceedLater = true;
+    return cras::make_unexpected(error);
   }
-
-  const auto tf = tf_->lookupTransform(fixed_frame_, link_name_prefixed, time);
+  catch (const tf2::TransformException& e)
+  {
+    CRAS_WARN_STREAM_THROTTLE_NAMED(1.0, "link_updater",
+      "No transform from [" << link_name_prefixed << "] to [" << fixed_frame_ << "]: " << e.what());
+    error.error = e.what();
+    error.name = link_name_prefixed;
+    error.maySucceedLater = false;
+    return cras::make_unexpected(error);
+  }
 
   const Ogre::Vector3 position(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z);
   const Ogre::Quaternion orientation(
@@ -70,7 +91,7 @@ bool TFLinkUpdater::getLinkTransforms(const ros::Time& time, const std::string& 
   collision_position = position;
   collision_orientation = orientation;
 
-  return true;
+  return {};
 }
 
 }

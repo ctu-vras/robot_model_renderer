@@ -26,6 +26,11 @@ RobotJoint::RobotJoint(const cras::LogHelperPtr& log, Robot* robot, const urdf::
 
 RobotJoint::~RobotJoint() = default;
 
+const JointError& RobotJoint::getError() const
+{
+  return this->error_;
+}
+
 RobotJoint* RobotJoint::getParentJoint() const
 {
   const RobotLink* parent_link = robot_->getLink(parent_link_name_);

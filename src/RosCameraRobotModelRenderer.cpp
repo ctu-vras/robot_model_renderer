@@ -38,7 +38,7 @@ std_msgs::ColorRGBA createColor(const float red, const float green, const float 
 
 RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   const cras::LogHelperPtr& log, const urdf::Model& model, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
-  const RosCameraRobotModelRendererConfig& config,
+  RobotErrors& errors, const RosCameraRobotModelRendererConfig& config,
   Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::Camera* camera)
   : cras::HasLogger(log), config(config)
 {
@@ -62,10 +62,12 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   robotConfig.invertAlpha = config.invertAlpha;
   robotConfig.shapeFilter = config.shapeFilter;
   robotConfig.shapeInflationRegistry = config.shapeInflationRegistry;
+  robotConfig.allLinksRequired = config.allLinksRequired;
+  robotConfig.requiredLinks = config.requiredLinks;
 
   this->linkUpdater = std::make_unique<TFLinkUpdater>(this->log, tf, "", "", config.tfTimeout);
   this->renderer = std::make_unique<RobotModelRenderer>(this->log, model, this->linkUpdater.get(),
-    robotConfig, sceneManager, sceneNode, camera);
+    errors, robotConfig, sceneManager, sceneNode, camera);
 }
 
 RosCameraRobotModelRenderer::~RosCameraRobotModelRenderer() = default;
@@ -94,16 +96,21 @@ bool RosCameraRobotModelRenderer::updateCameraInfo(const sensor_msgs::CameraInfo
   return this->renderer->updateCameraInfo(PinholeCameraModel(msg));
 }
 
-sensor_msgs::ImageConstPtr RosCameraRobotModelRenderer::render(const sensor_msgs::CameraInfo::ConstPtr& msg)
+cras::expected<sensor_msgs::ImageConstPtr, std::string> RosCameraRobotModelRenderer::render(
+  const sensor_msgs::CameraInfo::ConstPtr& msg, RenderErrors& errors)
 {
   const auto cameraInfoValid = this->updateCameraInfo(*msg);
   if (!cameraInfoValid)
-    return nullptr;
+    return cras::make_unexpected("Update of camera parameters failed.");
 
   this->linkUpdater->setFixedFrame(msg->header.frame_id);
 
   cv_bridge::CvImage cvImg(msg->header, this->config.imageEncoding);
-  cvImg.image = this->renderer->render(msg->header.stamp);
+  const auto maybeImage = this->renderer->render(msg->header.stamp, errors);
+  if (!maybeImage.has_value())
+    return cras::make_unexpected(maybeImage.error());
+
+  cvImg.image = maybeImage.value();
 
   return cvImg.toImageMsg();  // TODO here's an unneeded memcpy, we should rather preallocate and share the buffer
 }

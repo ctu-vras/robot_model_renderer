@@ -237,6 +237,8 @@ private:
     config.invertColors = params->getParam("invert_colors", config.invertColors);
     config.invertAlpha = params->getParam("invert_alpha", config.invertAlpha);
     config.tfTimeout = params->getParam("tf_timeout", config.tfTimeout, "s");
+    config.allLinksRequired = params->getParam("all_links_required", config.allLinksRequired);
+    config.requiredLinks = params->getParam("required_links", config.requiredLinks);
 
     const auto inflationPadding = params->getParamVerbose("body_model/inflation/padding", 0.0, "m");
     const auto inflationScale = params->getParamVerbose("body_model/inflation/scale", 1.0);
@@ -275,7 +277,12 @@ private:
     config.shapeFilter->setIgnoreShapes(params->getParam("ignored_shapes", std::set<std::string>{}));
     config.shapeFilter->setOnlyShapes(params->getParam("only_shapes", std::set<std::string>{}));
 
-    this->renderer = std::make_unique<RosCameraRobotModelRenderer>(this->log, robotModel, this->getBufferPtr(), config);
+    RobotErrors errors;
+    this->renderer = std::make_unique<RosCameraRobotModelRenderer>(
+      this->log, robotModel, this->getBufferPtr(), errors, config);
+
+    if (errors.hasError())
+      CRAS_ERROR("There were errors during robot model renderer setup.");
 
     this->subscribe();
   }
@@ -299,11 +306,12 @@ private:
 
   void processCamInfoMessage(const sensor_msgs::CameraInfo::ConstPtr& msg)
   {
-    const auto img = this->renderer->render(msg);
-    if (img != nullptr)
-      maskPub.publish(img);
+    RenderErrors errors;
+    const auto maybeImg = this->renderer->render(msg, errors);
+    if (maybeImg.has_value())
+      maskPub.publish(maybeImg.value());
     else
-      CRAS_WARN_THROTTLE(1.0, "Robot model rendering failed");
+      CRAS_WARN_THROTTLE(1.0, "Robot model rendering failed: %s", errors.toString().c_str());
   }
 
   std::unique_ptr<image_transport::ImageTransport> it;

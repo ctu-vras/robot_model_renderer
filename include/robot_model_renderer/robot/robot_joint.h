@@ -21,6 +21,14 @@ class Shape;
 class Robot;
 class RobotJoint;
 
+struct JointError
+{
+  std::string name;
+  std::string error;
+
+  bool hasError() const { return !error.empty(); }
+};
+
 /**
  * \brief Contains any data we need from a joint in the robot.
  */
@@ -48,6 +56,8 @@ public:
     return child_link_name_;
   }
 
+  const JointError& getError() const;
+
   RobotJoint* getParentJoint() const;
 
   Ogre::Vector3 getPosition();
@@ -68,6 +78,7 @@ protected:
   Ogre::Vector3 position_;
   Ogre::Quaternion orientation_;
 
+  JointError error_;
   bool enabled_;
 };
 

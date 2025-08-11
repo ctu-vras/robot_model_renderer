@@ -9,6 +9,7 @@
 
 #include <OgrePrerequisites.h>
 
+#include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/robot/link_updater.h>
@@ -28,7 +29,7 @@ public:
 
   void setFixedFrame(const std::string& fixedFrame);
 
-  bool getLinkTransforms(const ros::Time& time, const std::string& link_name,
+  cras::expected<void, LinkUpdateError> getLinkTransforms(const ros::Time& time, const std::string& link_name,
     Ogre::Vector3& visual_position, Ogre::Quaternion& visual_orientation,
     Ogre::Vector3& collision_position, Ogre::Quaternion& collision_orientation) const override;
 

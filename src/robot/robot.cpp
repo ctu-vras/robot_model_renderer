@@ -25,6 +25,41 @@
 namespace robot_model_renderer
 {
 
+bool RobotErrors::hasError(bool includeMaterialErrors) const
+{
+  const auto linkHasError = [includeMaterialErrors](const LinkError& e)
+  {
+    return e.hasError(includeMaterialErrors);
+  };
+  if (std::any_of(linkErrors.begin(), linkErrors.end(), linkHasError))
+    return true;
+
+  return std::any_of(jointErrors.begin(), jointErrors.end(), [](const JointError& e) { return e.hasError(); });
+}
+
+bool UpdateErrors::hasError() const
+{
+  if (!this->error.empty())
+    return true;
+
+  return std::any_of(linkErrors.begin(), linkErrors.end(), [](const auto& e) { return e.second.hasError(); });
+}
+
+std::string UpdateErrors::toString() const
+{
+  if (!this->error.empty())
+    return this->error;
+
+  if (linkErrors.empty())
+    return "";
+
+  std::vector<std::string> errors;
+  for (const auto& [linkName, linkError] : linkErrors)
+    if (linkError.hasError())
+      errors.push_back(linkName);
+  return cras::join(errors, ",");
+}
+
 Robot::Robot(
   const cras::LogHelperPtr& log, Ogre::SceneNode* root_node, Ogre::SceneManager* scene_manager, const std::string& name)
   : cras::HasLogger(log), scene_manager_(scene_manager), root_link_(nullptr),
@@ -98,6 +133,16 @@ bool Robot::isCollisionVisible() const
   return collision_visible_;
 }
 
+const RobotErrors& Robot::getErrors() const
+{
+  return this->errors_;
+}
+
+const UpdateErrors& Robot::getUpdateErrors() const
+{
+  return this->update_errors_;
+}
+
 void Robot::setAlpha(const float a)
 {
   alpha_ = a;
@@ -126,28 +171,35 @@ void Robot::clear()
   root_collision_node_->removeAndDestroyAllChildren();
 }
 
-RobotLink* Robot::createLink(Robot* robot, const urdf::LinkConstSharedPtr& link, const std::string& parent_joint_name,
-  const std::shared_ptr<ShapeFilter>& shape_filter,
+cras::expected<RobotLink*, LinkError> Robot::createLink(Robot* robot, const urdf::LinkConstSharedPtr& link,
+  const std::string& parent_joint_name, const std::shared_ptr<ShapeFilter>& shape_filter,
   const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
 {
-  return new RobotLink(this->log, robot, link, parent_joint_name, shape_filter, shape_inflation_registry);
+  const auto result = new RobotLink(this->log, robot, link, parent_joint_name, shape_filter, shape_inflation_registry);
+  if (result->getErrors().hasError(false))
+    return cras::make_unexpected(result->getErrors());
+  return result;
 }
 
-RobotJoint* Robot::createJoint(Robot* robot, const urdf::JointConstSharedPtr& joint)
+cras::expected<RobotJoint*, JointError> Robot::createJoint(Robot* robot, const urdf::JointConstSharedPtr& joint)
 {
-  return new RobotJoint(this->log, robot, joint);
+  const auto result = new RobotJoint(this->log, robot, joint);
+  if (result->getError().hasError())
+    return cras::make_unexpected(result->getError());
+  return result;
 }
 
-void Robot::load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter,
+cras::expected<void, RobotErrors> Robot::load(
+  const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter,
   const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry)
 {
-  robot_loaded_ = false;
+  this->robot_loaded_ = false;
 
   // clear out any data (properties, shapes, etc) from a previously loaded robot.
   clear();
 
   // the root link is discovered below.  Set to NULL until found.
-  root_link_ = nullptr;
+  this->root_link_ = nullptr;
 
   // Create properties for each link.
   // Properties are not added to display until changedLinkTreeStyle() is called (below).
@@ -163,16 +215,26 @@ void Robot::load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFi
         parent_joint_name = urdf_link->parent_joint->name;
       }
 
-      RobotLink* link = this->createLink(this, urdf_link, parent_joint_name, shape_filter, shape_inflation_registry);
+      const auto maybeLink = this->createLink(
+        this, urdf_link, parent_joint_name, shape_filter, shape_inflation_registry);
 
-      if (urdf_link == urdf.getRoot())
+      if (!maybeLink.has_value())
       {
-        root_link_ = link;
+        this->errors_.linkErrors.push_back(maybeLink.error());
       }
+      else
+      {
+        const auto link = maybeLink.value();
 
-      links_[urdf_link->name] = link;
+        if (urdf_link == urdf.getRoot())
+        {
+          this->root_link_ = link;
+        }
 
-      link->setRobotAlpha(alpha_);
+        this->links_[urdf_link->name] = link;
+
+        link->setRobotAlpha(this->alpha_);
+      }
     }
   }
 
@@ -180,17 +242,28 @@ void Robot::load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFi
   {
     for (const auto& [joint_name, urdf_joint] : urdf.joints_)
     {
-      RobotJoint* joint = this->createJoint(this, urdf_joint);
+      auto maybeJoint = this->createJoint(this, urdf_joint);
 
-      joints_[urdf_joint->name] = joint;
+      if (!maybeJoint.has_value())
+      {
+        this->errors_.jointErrors.push_back(maybeJoint.error());
+      }
+      else
+      {
+        this->joints_[urdf_joint->name] = maybeJoint.value();
+      }
     }
   }
 
   // robot is now loaded
-  robot_loaded_ = true;
+  this->robot_loaded_ = true;
 
   setVisualVisible(isVisualVisible());
   setCollisionVisible(isCollisionVisible());
+
+  if (this->errors_.hasError(false))
+    return cras::make_unexpected(this->errors_);
+  return {};
 }
 
 RobotLink* Robot::getLink(const std::string& name) const
@@ -217,63 +290,82 @@ RobotJoint* Robot::getJoint(const std::string& name) const
   return it->second;
 }
 
-void Robot::update(const LinkUpdater& updater, const ros::Time& time)
+cras::expected<void, UpdateErrors> Robot::update(const LinkUpdater& updater, const ros::Time& time)
 {
+  UpdateErrors errors;
+
   for (const auto& [link_name, link] : links_)
   {
     Ogre::Vector3 visual_position, collision_position;
     Ogre::Quaternion visual_orientation, collision_orientation;
-    if (updater.getLinkTransforms(time, link->getName(), visual_position, visual_orientation,
-                                  collision_position, collision_orientation))
+    const auto transformResult = updater.getLinkTransforms(time, link->getName(), visual_position, visual_orientation,
+      collision_position, collision_orientation);
+    if (transformResult.has_value())
     {
       link->setToNormalMaterial();
 
       // Check if visual_orientation, visual_position, collision_orientation, and collision_position are
       // NaN.
+      std::string error;
       if (visual_orientation.isNaN())
       {
-        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater",
+        error = cras::format(
           "visual orientation of %s contains NaNs. Skipping render as long as the orientation is invalid.",
           link->getName().c_str());
-        continue;
+        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater", "%s", error.c_str());
       }
-      if (visual_position.isNaN())
+      else if (visual_position.isNaN())
       {
-        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater",
+        error = cras::format(
           "visual position of %s contains NaNs. Skipping render as long as the position is invalid.",
           link->getName().c_str());
-        continue;
+        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater", "%s", error.c_str());
       }
-      if (collision_orientation.isNaN())
+      else if (collision_orientation.isNaN())
       {
-        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater",
+        error = cras::format(
           "collision orientation of %s contains NaNs. Skipping render as long as the orientation is invalid.",
           link->getName().c_str());
-        continue;
+        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater", "%s", error.c_str());
       }
-      if (collision_position.isNaN())
+      else if (collision_position.isNaN())
       {
-        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater",
+        error = cras::format(
           "collision position of %s contains NaNs. Skipping render as long as the position is invalid.",
           link->getName().c_str());
-        continue;
+        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater", "%s", error.c_str());
       }
-      link->setTransforms(visual_position, visual_orientation, collision_position, collision_orientation);
 
-      for (const auto& jointName : link->getChildJointNames())
+      if (!error.empty())
       {
-        const auto joint = getJoint(jointName);
-        if (joint)
+        errors.linkErrors[link->getName()].name = link->getName();
+        errors.linkErrors[link->getName()].error = error;
+      }
+      else
+      {
+        link->setTransforms(visual_position, visual_orientation, collision_position, collision_orientation);
+
+        for (const auto& jointName : link->getChildJointNames())
         {
-          joint->setTransforms(visual_position, visual_orientation);
+          const auto joint = getJoint(jointName);
+          if (joint)
+          {
+            joint->setTransforms(visual_position, visual_orientation);
+          }
         }
       }
     }
     else
     {
       link->setToErrorMaterial();
+      errors.linkErrors[link->getName()] = transformResult.error();
     }
   }
+  this->update_errors_ = errors;
+
+  if (errors.hasError())
+    return cras::make_unexpected(errors);
+  return {};
 }
 
 void Robot::setPosition(const Ogre::Vector3& position)

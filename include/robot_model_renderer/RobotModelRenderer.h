@@ -10,6 +10,7 @@
  */
 
 #include <memory>
+#include <set>
 #include <string>
 
 #include <OgreCamera.h>
@@ -82,8 +83,19 @@ struct RobotModelRendererConfig
   bool invertColors {false};
   bool invertAlpha {false};
 
+  bool allLinksRequired {false};
+  std::set<std::string> requiredLinks;
+
   std::shared_ptr<ShapeFilter> shapeFilter {nullptr};
   std::shared_ptr<ShapeInflationRegistry> shapeInflationRegistry {nullptr};
+};
+
+struct RenderErrors
+{
+  UpdateErrors updateErrors;
+
+  bool hasError() const;
+  std::string toString() const;
 };
 
 /**
@@ -93,11 +105,11 @@ class RobotModelRenderer : public cras::HasLogger
 {
 public:
   RobotModelRenderer(const cras::LogHelperPtr& log, const urdf::Model& model, const LinkUpdater* linkUpdater,
-    const RobotModelRendererConfig& config = {},
+    RobotErrors& errors, const RobotModelRendererConfig& config = {},
     Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr);
   virtual ~RobotModelRenderer();
 
-  virtual void setModel(const urdf::Model& model);
+  virtual cras::expected<void, RobotErrors> setModel(const urdf::Model& model);
   virtual void setNearClipDistance(double nearClip);
   virtual void setFarClipDistance(double farClip);
   virtual void setVisualVisible(bool visible);
@@ -106,7 +118,7 @@ public:
 
   virtual void reset();
 
-  virtual cv::Mat render(const ros::Time& time);
+  virtual cras::expected<cv::Mat, std::string> render(const ros::Time& time, RenderErrors& errors);
   virtual bool updateCameraInfo(const robot_model_renderer::PinholeCameraModel& model);
 
 protected:

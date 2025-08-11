@@ -45,9 +45,22 @@
 namespace robot_model_renderer
 {
 
-RobotModelRenderer::RobotModelRenderer(const cras::LogHelperPtr& log, const urdf::Model& model,
-  const LinkUpdater* linkUpdater, const RobotModelRendererConfig& config, Ogre::SceneManager* sceneManager,
-  Ogre::SceneNode* sceneNode, Ogre::Camera* camera) :
+bool RenderErrors::hasError() const
+{
+  return updateErrors.hasError();
+}
+
+std::string RenderErrors::toString() const
+{
+  if (!updateErrors.hasError())
+    return "";
+  return "Links failed to update: [" + updateErrors.toString() + "]";
+}
+
+RobotModelRenderer::RobotModelRenderer(
+  const cras::LogHelperPtr& log, const urdf::Model& model, const LinkUpdater* linkUpdater, RobotErrors& errors,
+  const RobotModelRendererConfig& config, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
+  Ogre::Camera* camera) :
     cras::HasLogger(log), linkUpdater(linkUpdater), config(config), isDistorted(false), render_system_(log),
     scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(log, false),
     invertColorsPass_(log, config.invertAlpha),
@@ -99,16 +112,21 @@ RobotModelRenderer::RobotModelRenderer(const cras::LogHelperPtr& log, const urdf
   outlinePass_.SetCamera(camera_);
   invertColorsPass_.SetCamera(camera_);
 
-  this->setModel(model);
-  CRAS_INFO_NAMED("renderer", "Robot model renderer initialized");
+  const auto setModelResult = this->setModel(model);
+  if (setModelResult.has_value())
+    CRAS_INFO_NAMED("renderer", "Robot model renderer initialized");
+  else
+    errors = setModelResult.error();
 }
 
 RobotModelRenderer::~RobotModelRenderer() = default;
 
-void RobotModelRenderer::setModel(const urdf::Model& model)
+cras::expected<void, RobotErrors> RobotModelRenderer::setModel(const urdf::Model& model)
 {
   this->robot_ = std::make_unique<Robot>(this->log, this->scene_node_, this->scene_manager_, "robot");
-  this->robot_->load(model, this->config.shapeFilter, this->config.shapeInflationRegistry);
+  auto loadResult = this->robot_->load(model, this->config.shapeFilter, this->config.shapeInflationRegistry);
+  if (!loadResult.has_value())
+    return loadResult;
 
   this->setVisualVisible(this->config.shapeFilter->isVisualAllowed());
   this->setCollisionVisible(this->config.shapeFilter->isCollisionAllowed());
@@ -119,8 +137,10 @@ void RobotModelRenderer::setModel(const urdf::Model& model)
     this->robot_->setColorMode(
       this->config.colorModeColor.r, this->config.colorModeColor.g, this->config.colorModeColor.b);
 
-  CRAS_INFO_NAMED("renderer", "Loaded robot model %s with %zu links and %zu joint",
+  CRAS_INFO_NAMED("renderer", "Loaded robot model %s with %zu links and %zu joints",
     model.getName().c_str(), this->robot_->getLinks().size(), this->robot_->getJoints().size());
+
+  return {};
 }
 
 void RobotModelRenderer::setNearClipDistance(const double nearClip)
@@ -287,9 +307,22 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
   return true;
 }
 
-cv::Mat RobotModelRenderer::render(const ros::Time& time)
+cras::expected<cv::Mat, std::string> RobotModelRenderer::render(const ros::Time& time, RenderErrors& errors)
 {
-  robot_->update(*this->linkUpdater, time);
+  const auto updateResult = robot_->update(*this->linkUpdater, time);
+  if (!updateResult.has_value())
+  {
+    errors.updateErrors = updateResult.error();
+
+    if (config.allLinksRequired)
+      return cras::make_unexpected("Some links' transforms could not be updated.");
+
+    for (const auto& [linkName, error] : updateResult.error().linkErrors)
+    {
+      if (config.requiredLinks.find(linkName) != config.requiredLinks.end())
+        return cras::make_unexpected(cras::format("Update of required link [%s] failed.", linkName.c_str()));
+    }
+  }
 
   const auto rectRows = static_cast<int>(rt_->getHeight());
   const auto rectCols = static_cast<int>(rt_->getWidth());

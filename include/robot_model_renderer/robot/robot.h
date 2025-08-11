@@ -14,9 +14,12 @@
 
 #include <urdf/model.h>
 
+#include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
 #include <robot_model_renderer/ogre_helpers/ogre_vector.h>
 #include <robot_model_renderer/robot/link_updater.h>
+#include <robot_model_renderer/robot/robot_link.h>
+#include <robot_model_renderer/robot/robot_joint.h>
 #include <robot_model_renderer/robot/shape_filter.h>
 #include <robot_model_renderer/robot/shape_inflation_registry.h>
 
@@ -24,9 +27,23 @@ namespace robot_model_renderer
 {
 
 class Object;
-class Robot;
-class RobotLink;
-class RobotJoint;
+
+struct RobotErrors
+{
+  std::vector<LinkError> linkErrors;
+  std::vector<JointError> jointErrors;
+
+  bool hasError(bool includeMaterialErrors = true) const;
+};
+
+struct UpdateErrors
+{
+  std::string error;
+  std::unordered_map<std::string, LinkUpdateError> linkErrors;
+
+  bool hasError() const;
+  std::string toString() const;
+};
 
 /**
  * \brief A helper class to draw a representation of a robot, as specified by a URDF.
@@ -48,7 +65,8 @@ public:
    * \param[in] shape_filter Filter for the shapes to load
    * \param[in] shape_inflation_registry Registry of per-shape scaling and padding
    */
-  virtual void load(const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter,
+  virtual cras::expected<void, RobotErrors> load(
+    const urdf::ModelInterface& urdf, const std::shared_ptr<ShapeFilter>& shape_filter,
     const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
   /**
@@ -56,7 +74,7 @@ public:
    */
   virtual void clear();
 
-  virtual void update(const LinkUpdater& updater, const ros::Time& time);
+  virtual cras::expected<void, UpdateErrors> update(const LinkUpdater& updater, const ros::Time& time);
 
   /**
    * \brief Set the robot as a whole to be visible or not
@@ -95,6 +113,10 @@ public:
    *         must both be true.
    */
   bool isCollisionVisible() const;
+
+  const RobotErrors& getErrors() const;
+
+  const UpdateErrors& getUpdateErrors() const;
 
   void setAlpha(float a);
 
@@ -161,11 +183,11 @@ public:
 
   virtual const Ogre::Quaternion& getOrientation();
 
-  virtual RobotLink* createLink(Robot* robot, const urdf::LinkConstSharedPtr& link,
+  virtual cras::expected<RobotLink*, LinkError> createLink(Robot* robot, const urdf::LinkConstSharedPtr& link,
     const std::string& parent_joint_name, const std::shared_ptr<ShapeFilter>& shape_filter,
     const std::shared_ptr<ShapeInflationRegistry>& shape_inflation_registry);
 
-  virtual RobotJoint* createJoint(Robot* robot, const urdf::JointConstSharedPtr& joint);
+  virtual cras::expected<RobotJoint*, JointError> createJoint(Robot* robot, const urdf::JointConstSharedPtr& joint);
 
 protected:
   /**
@@ -187,6 +209,9 @@ protected:
   bool collision_visible_;  //!< Should we show the collision representation?
 
   bool robot_loaded_;  //!< true after robot model is loaded.
+
+  RobotErrors errors_;  //!< Errors from load()
+  UpdateErrors update_errors_;  //!< Errors from update()
 
   std::string name_;
   float alpha_;
