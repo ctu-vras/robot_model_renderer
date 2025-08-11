@@ -93,7 +93,7 @@ public:
 protected:
   bool updateCameraInfo(const sensor_msgs::CameraInfo& msg);
 
-  std::unique_ptr<TFLinkUpdater> linkUpdater;
+  std::unique_ptr<TFROSLinkUpdater> linkUpdater;
   std::unique_ptr<RobotModelRenderer> renderer;
 
   RosCameraRobotModelRendererConfig config;

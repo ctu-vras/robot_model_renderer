@@ -65,7 +65,7 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   robotConfig.allLinksRequired = config.allLinksRequired;
   robotConfig.requiredLinks = config.requiredLinks;
 
-  this->linkUpdater = std::make_unique<TFLinkUpdater>(this->log, tf, "", "", config.tfTimeout);
+  this->linkUpdater = std::make_unique<TFROSLinkUpdater>(this->log, tf, "", "", config.tfTimeout);
   this->renderer = std::make_unique<RobotModelRenderer>(this->log, model, this->linkUpdater.get(),
     errors, robotConfig, sceneManager, sceneNode, camera);
 }

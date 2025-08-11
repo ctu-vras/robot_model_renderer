@@ -23,9 +23,8 @@ namespace robot_model_renderer
 class TFLinkUpdater : public LinkUpdater, public cras::HasLogger
 {
 public:
-  explicit TFLinkUpdater(const cras::LogHelperPtr& log, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
-    const std::string& fixed_frame = {}, const std::string& tf_prefix = {},
-    const ros::Duration& timeout = ros::Duration(0.01));
+  explicit TFLinkUpdater(const cras::LogHelperPtr& log, tf2::BufferCore* tf,
+    const std::string& fixed_frame = {}, const std::string& tf_prefix = {});
 
   void setFixedFrame(const std::string& fixedFrame);
 
@@ -33,10 +32,25 @@ public:
     Ogre::Vector3& visual_position, Ogre::Quaternion& visual_orientation,
     Ogre::Vector3& collision_position, Ogre::Quaternion& collision_orientation) const override;
 
-private:
-  std::shared_ptr<cras::InterruptibleTFBuffer> tf_;
+protected:
+  tf2::BufferCore* tf_;
   std::string fixed_frame_;
   std::string tf_prefix_;
+};
+
+class TFROSLinkUpdater : public TFLinkUpdater
+{
+public:
+  explicit TFROSLinkUpdater(const cras::LogHelperPtr& log, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
+    const std::string& fixed_frame = {}, const std::string& tf_prefix = {},
+    const ros::Duration& timeout = ros::Duration(0.01));
+
+  cras::expected<void, LinkUpdateError> getLinkTransforms(const ros::Time& time, const std::string& link_name,
+    Ogre::Vector3& visual_position, Ogre::Quaternion& visual_orientation,
+    Ogre::Vector3& collision_position, Ogre::Quaternion& collision_orientation) const override;
+
+protected:
+  std::shared_ptr<cras::InterruptibleTFBuffer> tf_ros_;
   ros::Duration timeout_;
 };
 
