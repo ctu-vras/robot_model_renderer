@@ -290,9 +290,11 @@ RobotJoint* Robot::getJoint(const std::string& name) const
   return it->second;
 }
 
-cras::expected<void, UpdateErrors> Robot::update(const LinkUpdater& updater, const ros::Time& time)
+cras::expected<void, UpdateErrors> Robot::update(LinkUpdater& updater, const ros::Time& time)
 {
   UpdateErrors errors;
+
+  updater.prepareForTime(time);
 
   for (const auto& [link_name, link] : links_)
   {

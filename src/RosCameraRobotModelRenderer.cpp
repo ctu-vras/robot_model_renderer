@@ -104,6 +104,7 @@ cras::expected<sensor_msgs::ImageConstPtr, std::string> RosCameraRobotModelRende
     return cras::make_unexpected("Update of camera parameters failed.");
 
   this->linkUpdater->setFixedFrame(msg->header.frame_id);
+  this->linkUpdater->setTimeoutStart(ros::Time::now());
 
   cv_bridge::CvImage cvImg(msg->header, this->config.imageEncoding);
   const auto maybeImage = this->renderer->render(msg->header.stamp, errors);

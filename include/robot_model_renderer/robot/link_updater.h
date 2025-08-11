@@ -32,6 +32,15 @@ class LinkUpdater
 public:
   virtual ~LinkUpdater() = default;
 
+  /**
+   * \brief Call this method before calling a batch of getLinkTransforms() to allow more efficient prefetching.
+   *
+   * \param[in] time The time of some following requests.
+   */
+  virtual void prepareForTime(const ros::Time& time)
+  {
+  }
+
   virtual cras::expected<void, LinkUpdateError> getLinkTransforms(
     const ros::Time& time, const std::string& link_name,
     Ogre::Vector3& visual_position, Ogre::Quaternion& visual_orientation,

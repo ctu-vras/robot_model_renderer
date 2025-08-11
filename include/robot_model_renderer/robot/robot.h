@@ -74,7 +74,7 @@ public:
    */
   virtual void clear();
 
-  virtual cras::expected<void, UpdateErrors> update(const LinkUpdater& updater, const ros::Time& time);
+  virtual cras::expected<void, UpdateErrors> update(LinkUpdater& updater, const ros::Time& time);
 
   /**
    * \brief Set the robot as a whole to be visible or not

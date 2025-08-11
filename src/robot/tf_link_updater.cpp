@@ -101,6 +101,11 @@ cras::expected<void, LinkUpdateError> TFLinkUpdater::getLinkTransforms(
   return {};
 }
 
+void TFROSLinkUpdater::setTimeoutStart(const ros::Time& time)
+{
+  this->timeout_start_ = time;
+}
+
 cras::expected<void, LinkUpdateError> TFROSLinkUpdater::getLinkTransforms(
   const ros::Time& time, const std::string& link_name,
   Ogre::Vector3& visual_position, Ogre::Quaternion& visual_orientation,
@@ -116,9 +121,13 @@ cras::expected<void, LinkUpdateError> TFROSLinkUpdater::getLinkTransforms(
     return cras::make_unexpected(error);
   }
 
+  const auto timeout = this->timeout_start_.has_value() ?
+    cras::remainingTime(*this->timeout_start_, timeout_) :
+    timeout_;
+
   const auto link_name_prefixed = concat(tf_prefix_, link_name);
   // Wait for the transforms if necessary; the result of canTransform() is intentionally unsued
-  tf_ros_->canTransform(fixed_frame_, link_name_prefixed, time, timeout_);
+  tf_ros_->canTransform(fixed_frame_, link_name_prefixed, time, timeout);
 
   return TFLinkUpdater::getLinkTransforms(time, link_name,
     visual_position, visual_orientation, collision_position, collision_orientation);

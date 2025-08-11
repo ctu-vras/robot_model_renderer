@@ -104,7 +104,7 @@ struct RenderErrors
 class RobotModelRenderer : public cras::HasLogger
 {
 public:
-  RobotModelRenderer(const cras::LogHelperPtr& log, const urdf::Model& model, const LinkUpdater* linkUpdater,
+  RobotModelRenderer(const cras::LogHelperPtr& log, const urdf::Model& model, LinkUpdater* linkUpdater,
     RobotErrors& errors, const RobotModelRendererConfig& config = {},
     Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr);
   virtual ~RobotModelRenderer();
@@ -124,7 +124,7 @@ public:
 protected:
   virtual void updateOgreCamera();
 
-  const LinkUpdater* linkUpdater;
+  LinkUpdater* linkUpdater;
 
   robot_model_renderer::PinholeCameraModel origCameraModel;
   robot_model_renderer::PinholeCameraModel rectifiedCameraModel;

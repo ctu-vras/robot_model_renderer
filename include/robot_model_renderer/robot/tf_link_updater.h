@@ -11,6 +11,7 @@
 
 #include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
+#include <cras_cpp_common/optional.hpp>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <robot_model_renderer/robot/link_updater.h>
 #include <ros/duration.h>
@@ -45,6 +46,8 @@ public:
     const std::string& fixed_frame = {}, const std::string& tf_prefix = {},
     const ros::Duration& timeout = ros::Duration(0.01));
 
+  virtual void setTimeoutStart(const ros::Time& time);
+
   cras::expected<void, LinkUpdateError> getLinkTransforms(const ros::Time& time, const std::string& link_name,
     Ogre::Vector3& visual_position, Ogre::Quaternion& visual_orientation,
     Ogre::Vector3& collision_position, Ogre::Quaternion& collision_orientation) const override;
@@ -52,6 +55,7 @@ public:
 protected:
   std::shared_ptr<cras::InterruptibleTFBuffer> tf_ros_;
   ros::Duration timeout_;
+  cras::optional<ros::Time> timeout_start_;
 };
 
 }

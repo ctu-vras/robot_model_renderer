@@ -58,7 +58,7 @@ std::string RenderErrors::toString() const
 }
 
 RobotModelRenderer::RobotModelRenderer(
-  const cras::LogHelperPtr& log, const urdf::Model& model, const LinkUpdater* linkUpdater, RobotErrors& errors,
+  const cras::LogHelperPtr& log, const urdf::Model& model, LinkUpdater* linkUpdater, RobotErrors& errors,
   const RobotModelRendererConfig& config, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
   Ogre::Camera* camera) :
     cras::HasLogger(log), linkUpdater(linkUpdater), config(config), isDistorted(false), render_system_(log),
