@@ -198,7 +198,7 @@ RobotLink* Robot::getLink(const std::string& name) const
   const auto it = links_.find(name);
   if (it == links_.end())
   {
-    ROS_WARN("Link [%s] does not exist", name.c_str());
+    CRAS_WARN_NAMED("robot_model", "Link [%s] does not exist", name.c_str());
     return nullptr;
   }
 
@@ -210,7 +210,7 @@ RobotJoint* Robot::getJoint(const std::string& name) const
   const auto it = joints_.find(name);
   if (it == joints_.end())
   {
-    ROS_WARN("Joint [%s] does not exist", name.c_str());
+    CRAS_WARN_NAMED("robot_model", "Joint [%s] does not exist", name.c_str());
     return nullptr;
   }
 
@@ -232,28 +232,28 @@ void Robot::update(const LinkUpdater& updater, const ros::Time& time)
       // NaN.
       if (visual_orientation.isNaN())
       {
-        ROS_ERROR_THROTTLE(1.0,
+        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater",
           "visual orientation of %s contains NaNs. Skipping render as long as the orientation is invalid.",
           link->getName().c_str());
         continue;
       }
       if (visual_position.isNaN())
       {
-        ROS_ERROR_THROTTLE(1.0,
+        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater",
           "visual position of %s contains NaNs. Skipping render as long as the position is invalid.",
           link->getName().c_str());
         continue;
       }
       if (collision_orientation.isNaN())
       {
-        ROS_ERROR_THROTTLE(1.0,
+        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater",
           "collision orientation of %s contains NaNs. Skipping render as long as the orientation is invalid.",
           link->getName().c_str());
         continue;
       }
       if (collision_position.isNaN())
       {
-        ROS_ERROR_THROTTLE(1.0,
+        CRAS_ERROR_THROTTLE_NAMED(1.0, "link_updater",
           "collision position of %s contains NaNs. Skipping render as long as the position is invalid.",
           link->getName().c_str());
         continue;

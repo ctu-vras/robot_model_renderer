@@ -8,8 +8,11 @@
  * \author Martin Pecka
  */
 
+#include <functional>
 #include <memory>
+#include <string>
 #include <thread>
+#include <vector>
 
 #include <urdf/model.h>
 
@@ -79,6 +82,19 @@ DEFINE_CONVERTING_GET_PARAM(robot_model_renderer::RenderingMode, std::string, ""
 namespace robot_model_renderer
 {
 
+class RobotModelRendererNodelet;
+
+// There is a bug in NodeletLogHelper which does not properly propagate nodelet name in the named loggers. This
+// class is a workaround for that.
+class RobotModelRendererLogHelper : public cras::NodeletLogHelper
+{
+public:
+  explicit RobotModelRendererLogHelper(RobotModelRendererNodelet* nodelet);
+
+  void initializeLogLocationImpl(ros::console::LogLocation* loc, const std::string& name,
+    ros::console::Level level) const override;
+};
+
 /**
  * \brief Nodelet that renders the robot from robot_description using a camera described by a sensor_msgs/CameraInfo
  *        topic.
@@ -86,6 +102,11 @@ namespace robot_model_renderer
 class RobotModelRendererNodelet : public cras::Nodelet
 {
 public:
+  RobotModelRendererNodelet()
+  {
+    this->log = std::make_shared<RobotModelRendererLogHelper>(this);
+  }
+
   ~RobotModelRendererNodelet() override
   {
     this->requestStop();
@@ -112,6 +133,8 @@ public:
     this->unsubscribe();
     this->ogreThread.join();
   }
+
+  friend class RobotModelRendererLogHelper;
 
 private:
   /**
@@ -292,6 +315,30 @@ private:
 
   std::unique_ptr<RosCameraRobotModelRenderer> renderer;
 };
+
+RobotModelRendererLogHelper::RobotModelRendererLogHelper(RobotModelRendererNodelet* nodelet) :
+  cras::NodeletLogHelper(::std::bind(&RobotModelRendererNodelet::getName, nodelet))
+{
+}
+
+void RobotModelRendererLogHelper::initializeLogLocationImpl(ros::console::LogLocation* loc, const std::string& name,
+  const ros::console::Level level) const
+{
+  // We need to put getNameFn() in between the base name and the added suffix
+
+  auto newName = name;
+  const auto prefix = std::string(ROSCONSOLE_NAME_PREFIX) + ".";
+  if (cras::startsWith(name, prefix))
+  {
+    const auto nodeletPrefix = prefix + this->getNameFn() + ".";
+    if (!cras::startsWith(name, nodeletPrefix))
+      newName = nodeletPrefix + cras::removePrefix(name, prefix);
+  }
+  else if (name == ROSCONSOLE_NAME_PREFIX)
+    newName = name + "." + this->getNameFn();
+
+  ros::console::initializeLogLocation(loc, newName, level);
+}
 
 }
 
