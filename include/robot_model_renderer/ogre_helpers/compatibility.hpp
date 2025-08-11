@@ -8,7 +8,7 @@
 
 #include <string>
 
-#include <robot_model_renderer/ogre_helpers/version_check.h>
+#include <robot_model_renderer/ogre_helpers/version_check.hpp>
 
 #include <OgreSimpleRenderable.h>
 #include <OgreSceneNode.h>

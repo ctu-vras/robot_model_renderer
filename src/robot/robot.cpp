@@ -3,7 +3,7 @@
 
 // This file is compiled from rviz and gazebo and slightly edited to be usable in this package.
 
-#include <robot_model_renderer/robot/robot.h>
+#include <robot_model_renderer/robot/robot.hpp>
 
 #include <string>
 
@@ -16,10 +16,10 @@
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
 
-#include <robot_model_renderer/robot/robot_joint.h>
-#include <robot_model_renderer/robot/robot_link.h>
-#include <robot_model_renderer/robot/shape_filter.h>
-#include <robot_model_renderer/robot/shape_inflation_registry.h>
+#include <robot_model_renderer/robot/robot_joint.hpp>
+#include <robot_model_renderer/robot/robot_link.hpp>
+#include <robot_model_renderer/robot/shape_filter.hpp>
+#include <robot_model_renderer/robot/shape_inflation_registry.hpp>
 #include <ros/console.h>
 
 namespace robot_model_renderer

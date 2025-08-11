@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // SPDX-FileCopyrightText: Czech Technical University in Prague
 
-#include <robot_model_renderer/utils/sensor_msgs_ogre.h>
+#include <robot_model_renderer/utils/sensor_msgs_ogre.hpp>
 
 #include <string>
 

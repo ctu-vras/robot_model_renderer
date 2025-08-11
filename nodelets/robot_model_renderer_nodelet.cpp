@@ -21,10 +21,10 @@
 #include <image_transport/image_transport.h>
 #include <pluginlib/class_list_macros.h>
 #include <nodelet/nodelet.h>
-#include <robot_model_renderer/ogre_helpers/render_system.h>
-#include <robot_model_renderer/robot/shape_filter.h>
-#include <robot_model_renderer/robot/shape_inflation_registry.h>
-#include <robot_model_renderer/RosCameraRobotModelRenderer.h>
+#include <robot_model_renderer/ogre_helpers/render_system.hpp>
+#include <robot_model_renderer/robot/shape_filter.hpp>
+#include <robot_model_renderer/robot/shape_inflation_registry.hpp>
+#include <robot_model_renderer/RosCameraRobotModelRenderer.hpp>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/ColorRGBA.h>

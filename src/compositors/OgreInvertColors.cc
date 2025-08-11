@@ -7,7 +7,7 @@
  * \author Martin Pecka
  */
 
-#include <robot_model_renderer/compositors/OgreInvertColors.hh>
+#include <robot_model_renderer/compositors/OgreInvertColors.hpp>
 
 #include <OgreCamera.h>
 #include <OgreCompositionPass.h>

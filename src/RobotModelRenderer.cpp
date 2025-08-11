@@ -32,15 +32,15 @@
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/set_utils.hpp>
 #include <image_geometry/pinhole_camera_model.h>
-#include <robot_model_renderer/RobotModelRenderer.h>
-#include <robot_model_renderer/compositors/OgreCameraDistortion.hh>
-#include <robot_model_renderer/compositors/OgreInvertColors.hh>
-#include <robot_model_renderer/compositors/OgreOutline.hh>
-#include <robot_model_renderer/ogre_helpers/render_system.h>
-#include <robot_model_renderer/ogre_helpers/compatibility.h>
-#include <robot_model_renderer/utils/validate_floats.h>
-#include <robot_model_renderer/utils/ogre_opencv.h>
-#include <robot_model_renderer/utils/sensor_msgs.h>
+#include <robot_model_renderer/RobotModelRenderer.hpp>
+#include <robot_model_renderer/compositors/OgreCameraDistortion.hpp>
+#include <robot_model_renderer/compositors/OgreInvertColors.hpp>
+#include <robot_model_renderer/compositors/OgreOutline.hpp>
+#include <robot_model_renderer/ogre_helpers/render_system.hpp>
+#include <robot_model_renderer/ogre_helpers/compatibility.hpp>
+#include <robot_model_renderer/utils/validate_floats.hpp>
+#include <robot_model_renderer/utils/ogre_opencv.hpp>
+#include <robot_model_renderer/utils/sensor_msgs.hpp>
 
 namespace robot_model_renderer
 {

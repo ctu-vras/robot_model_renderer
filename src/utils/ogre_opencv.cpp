@@ -3,7 +3,7 @@
 
 #include <opencv2/core.hpp>
 
-#include <robot_model_renderer/utils/ogre_opencv.h>
+#include <robot_model_renderer/utils/ogre_opencv.hpp>
 
 int robot_model_renderer::ogrePixelFormatToCvMatType(const Ogre::PixelFormat& pf)
 {

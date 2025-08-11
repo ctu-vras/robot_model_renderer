@@ -3,9 +3,9 @@
 
 // This file is taken from rviz and minimally edited (just code style and different namespace).
 
-#include <OgreException.h>
-#include <robot_model_renderer/ogre_helpers/ogre_logging.h>
+#include <robot_model_renderer/ogre_helpers/ogre_logging.hpp>
 
+#include <OgreException.h>
 #include <OgreLog.h>
 #include <OgreLogManager.h>
 

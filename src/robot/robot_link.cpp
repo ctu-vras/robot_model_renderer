@@ -5,7 +5,7 @@
 // This file is compiled from rviz and slightly edited to be usable in this package.
 // Added inflateMesh() method (Martin Pecka, Czech Technical University in Prague)
 
-#include <robot_model_renderer/robot/robot_link.h>
+#include <robot_model_renderer/robot/robot_link.hpp>
 
 #include <map>
 #include <string>
@@ -33,14 +33,14 @@
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/string_utils.hpp>
 #include <resource_retriever/retriever.h>
-#include <robot_model_renderer/ogre_helpers/object.h>
-#include <robot_model_renderer/ogre_helpers/shape.h>
-#include <robot_model_renderer/robot/mesh_loader.h>
-#include <robot_model_renderer/robot/mesh_optimizer.h>
-#include <robot_model_renderer/robot/robot.h>
-#include <robot_model_renderer/robot/robot_joint.h>
-#include <robot_model_renderer/robot/shape_filter.h>
-#include <robot_model_renderer/robot/shape_inflation_registry.h>
+#include <robot_model_renderer/ogre_helpers/object.hpp>
+#include <robot_model_renderer/ogre_helpers/shape.hpp>
+#include <robot_model_renderer/robot/mesh_loader.hpp>
+#include <robot_model_renderer/robot/mesh_optimizer.hpp>
+#include <robot_model_renderer/robot/robot.hpp>
+#include <robot_model_renderer/robot/robot_joint.hpp>
+#include <robot_model_renderer/robot/shape_filter.hpp>
+#include <robot_model_renderer/robot/shape_inflation_registry.hpp>
 
 namespace fs = boost::filesystem;
 

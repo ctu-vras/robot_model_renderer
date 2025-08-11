@@ -22,10 +22,10 @@
 #include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/optional.hpp>
-#include <robot_model_renderer/ogre_helpers/object.h>
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
-#include <robot_model_renderer/robot/shape_filter.h>
-#include <robot_model_renderer/robot/shape_inflation_registry.h>
+#include <robot_model_renderer/ogre_helpers/object.hpp>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.hpp>
+#include <robot_model_renderer/robot/shape_filter.hpp>
+#include <robot_model_renderer/robot/shape_inflation_registry.hpp>
 
 namespace Ogre
 {

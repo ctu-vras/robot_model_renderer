@@ -3,12 +3,12 @@
 
 // This file is compiled from rviz and gazebo and slightly edited to be usable in this package.
 
-#include <robot_model_renderer/robot/robot_joint.h>
+#include <robot_model_renderer/robot/robot_joint.hpp>
 
 #include <OgreSceneNode.h>
 
-#include <robot_model_renderer/robot/robot.h>
-#include <robot_model_renderer/robot/robot_link.h>
+#include <robot_model_renderer/robot/robot.hpp>
+#include <robot_model_renderer/robot/robot_link.hpp>
 
 namespace robot_model_renderer
 {

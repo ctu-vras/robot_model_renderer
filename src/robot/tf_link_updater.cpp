@@ -3,7 +3,7 @@
 
 // This file is taken from rviz and slightly edited to be usable in this package.
 
-#include <robot_model_renderer/robot/tf_link_updater.h>
+#include <robot_model_renderer/robot/tf_link_updater.hpp>
 
 #include <string>
 
@@ -12,7 +12,7 @@
 #include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.hpp>
 #include <tf2_ros/buffer.h>
 
 namespace robot_model_renderer

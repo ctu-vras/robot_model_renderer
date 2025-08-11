@@ -12,7 +12,7 @@
 #include <memory>
 
 #include <cras_cpp_common/log_utils.h>
-#include <robot_model_renderer/pinhole_camera.h>
+#include <robot_model_renderer/pinhole_camera.hpp>
 
 namespace Ogre
 {

@@ -7,7 +7,7 @@
  * \author Martin Pecka
  */
 
-#include <robot_model_renderer/compositors/OgreOutline.hh>
+#include <robot_model_renderer/compositors/OgreOutline.hpp>
 
 #include <OgreCamera.h>
 #include <OgreCompositionPass.h>

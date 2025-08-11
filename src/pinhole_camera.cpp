@@ -12,7 +12,7 @@
 // Parts of this file are taken from
 // https://github.com/ros-perception/vision_opencv/blob/noetic/image_geometry/src/pinhole_camera_model.cpp
 
-#include <robot_model_renderer/pinhole_camera.h>
+#include <robot_model_renderer/pinhole_camera.hpp>
 
 #include <memory>
 

@@ -29,8 +29,8 @@
 
 #include <cras_cpp_common/log_utils.h>
 #include <image_geometry/pinhole_camera_model.h>
-#include <robot_model_renderer/compositors/OgreCameraDistortion.hh>
-#include <robot_model_renderer/pinhole_camera.h>
+#include <robot_model_renderer/compositors/OgreCameraDistortion.hpp>
+#include <robot_model_renderer/pinhole_camera.hpp>
 
 namespace robot_model_renderer
 {

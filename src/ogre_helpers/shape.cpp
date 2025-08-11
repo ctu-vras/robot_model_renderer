@@ -3,7 +3,7 @@
 
 // This file is taken from rviz and minimally edited (just code style and different namespace).
 
-#include <robot_model_renderer/ogre_helpers/shape.h>
+#include <robot_model_renderer/ogre_helpers/shape.hpp>
 
 #include <cstdint>
 
@@ -15,7 +15,7 @@
 #include <OgreTextureManager.h>
 #include <OgreTechnique.h>
 
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.hpp>
 #include <ros/assert.h>
 
 namespace robot_model_renderer

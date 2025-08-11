@@ -16,7 +16,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Vector3.h>
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.hpp>
 #include <sensor_msgs/CameraInfo.h>
 #include <std_msgs/ColorRGBA.h>
 

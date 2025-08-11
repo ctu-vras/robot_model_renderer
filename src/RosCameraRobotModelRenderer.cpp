@@ -16,11 +16,11 @@
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
 #include <cv_bridge/cv_bridge.h>
-#include <robot_model_renderer/pinhole_camera.h>
-#include <robot_model_renderer/RobotModelRenderer.h>
-#include <robot_model_renderer/RosCameraRobotModelRenderer.h>
-#include <robot_model_renderer/utils/sensor_msgs_ogre.h>
-#include <robot_model_renderer/utils/validate_floats.h>
+#include <robot_model_renderer/pinhole_camera.hpp>
+#include <robot_model_renderer/RobotModelRenderer.hpp>
+#include <robot_model_renderer/RosCameraRobotModelRenderer.hpp>
+#include <robot_model_renderer/utils/sensor_msgs_ogre.hpp>
+#include <robot_model_renderer/utils/validate_floats.hpp>
 #include <tf2_ros/buffer.h>
 
 namespace robot_model_renderer

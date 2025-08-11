@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // SPDX-FileCopyrightText: 2011 Willow Garage, Inc.
 
-#include <robot_model_renderer/ogre_helpers/env_config.h>
+#include <robot_model_renderer/ogre_helpers/env_config.hpp>
 
 namespace robot_model_renderer
 {

@@ -11,7 +11,7 @@
 #include <OgreMeshSerializer.h>
 #include <OgreSubMesh.h>
 
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.hpp>
 
 namespace robot_model_renderer
 {

@@ -3,7 +3,7 @@
 
 // This file is compiled from rviz and gazebo and slightly edited to be usable in this package.
 
-#include <robot_model_renderer/robot/mesh_loader.h>
+#include <robot_model_renderer/robot/mesh_loader.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>

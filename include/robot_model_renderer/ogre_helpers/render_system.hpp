@@ -9,10 +9,11 @@
 #include <mutex>
 
 #include <OgreLog.h>
+#include <OgreRenderWindow.h>
 #include <OgreRoot.h>
 
 #include <cras_cpp_common/log_utils.h>
-#include <robot_model_renderer/ogre_helpers/ogre_logging.h>
+#include <robot_model_renderer/ogre_helpers/ogre_logging.hpp>
 
 namespace Ogre
 {

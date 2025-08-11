@@ -3,7 +3,7 @@
 
 // This file is taken from rviz and minimally edited (just code style and different namespace).
 
-#include <robot_model_renderer/ogre_helpers/render_system.h>
+#include <robot_model_renderer/ogre_helpers/render_system.hpp>
 
 #include <mutex>
 #include <string>
@@ -15,9 +15,9 @@
 
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/string_utils.hpp>
-#include <robot_model_renderer/ogre_helpers/env_config.h>
-#include <robot_model_renderer/ogre_helpers/ogre_logging.h>
-#include <robot_model_renderer/ogre_helpers/version_check.h>
+#include <robot_model_renderer/ogre_helpers/env_config.hpp>
+#include <robot_model_renderer/ogre_helpers/ogre_logging.hpp>
+#include <robot_model_renderer/ogre_helpers/version_check.hpp>
 #include <ros/console.h>
 #include <ros/package.h>
 

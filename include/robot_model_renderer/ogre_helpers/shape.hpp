@@ -8,8 +8,8 @@
 #include <OgreMaterial.h>
 #include <OgreSharedPtr.h>
 
-#include <robot_model_renderer/ogre_helpers/object.h>
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
+#include <robot_model_renderer/ogre_helpers/object.hpp>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.hpp>
 
 namespace Ogre
 {

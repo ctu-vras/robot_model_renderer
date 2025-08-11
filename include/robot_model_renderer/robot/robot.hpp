@@ -16,12 +16,12 @@
 
 #include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
-#include <robot_model_renderer/ogre_helpers/ogre_vector.h>
-#include <robot_model_renderer/robot/link_updater.h>
-#include <robot_model_renderer/robot/robot_link.h>
-#include <robot_model_renderer/robot/robot_joint.h>
-#include <robot_model_renderer/robot/shape_filter.h>
-#include <robot_model_renderer/robot/shape_inflation_registry.h>
+#include <robot_model_renderer/ogre_helpers/ogre_vector.hpp>
+#include <robot_model_renderer/robot/link_updater.hpp>
+#include <robot_model_renderer/robot/robot_link.hpp>
+#include <robot_model_renderer/robot/robot_joint.hpp>
+#include <robot_model_renderer/robot/shape_filter.hpp>
+#include <robot_model_renderer/robot/shape_inflation_registry.hpp>
 
 namespace robot_model_renderer
 {

@@ -13,7 +13,7 @@
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/optional.hpp>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
-#include <robot_model_renderer/robot/link_updater.h>
+#include <robot_model_renderer/robot/link_updater.hpp>
 #include <ros/duration.h>
 #include <ros/time.h>
 #include <tf2_ros/buffer.h>

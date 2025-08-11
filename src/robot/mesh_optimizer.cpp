@@ -5,7 +5,7 @@
 // Added recomputeNormals() function.
 // Removed stuff only relevant for usage inside the meshmagic tool.
 
-#include <robot_model_renderer/robot/mesh_optimizer.h>
+#include <robot_model_renderer/robot/mesh_optimizer.hpp>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>

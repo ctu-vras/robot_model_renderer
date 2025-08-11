@@ -20,15 +20,15 @@
 #include <OgreSharedPtr.h>
 
 #include <cras_cpp_common/log_utils.h>
-#include <robot_model_renderer/compositors/OgreCameraDistortion.hh>
-#include <robot_model_renderer/compositors/OgreInvertColors.hh>
-#include <robot_model_renderer/compositors/OgreOutline.hh>
-#include <robot_model_renderer/pinhole_camera.h>
-#include <robot_model_renderer/ogre_helpers/render_system.h>
-#include <robot_model_renderer/robot/link_updater.h>
-#include <robot_model_renderer/robot/robot.h>
-#include <robot_model_renderer/robot/shape_filter.h>
-#include <robot_model_renderer/robot/shape_inflation_registry.h>
+#include <robot_model_renderer/compositors/OgreCameraDistortion.hpp>
+#include <robot_model_renderer/compositors/OgreInvertColors.hpp>
+#include <robot_model_renderer/compositors/OgreOutline.hpp>
+#include <robot_model_renderer/pinhole_camera.hpp>
+#include <robot_model_renderer/ogre_helpers/render_system.hpp>
+#include <robot_model_renderer/robot/link_updater.hpp>
+#include <robot_model_renderer/robot/robot.hpp>
+#include <robot_model_renderer/robot/shape_filter.hpp>
+#include <robot_model_renderer/robot/shape_inflation_registry.hpp>
 #include <urdf/model.h>
 
 namespace Ogre
