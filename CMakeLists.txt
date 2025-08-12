@@ -76,6 +76,8 @@ else()
   message(STATUS "${PROJECT_NAME}_OGRE_PLUGIN_DIR=${${PROJECT_NAME}_OGRE_PLUGIN_DIR}")
 endif()
 
+catkin_python_setup()
+
 catkin_package()
 
 # Create modern CMake targets for dependencies that do not provide them
@@ -193,6 +195,10 @@ if (CATKIN_ENABLE_TESTING)
   find_package(roslaunch REQUIRED)
 
   roslint_custom(catkin_lint "-W2" .)
+
+  # Run roslint on Python sources
+  file(GLOB_RECURSE python_files src/*.py test/*.py)
+  roslint_python("${python_files}")
 
   # Roslint C++ - checks formatting and some other rules for C++ files
   file(GLOB_RECURSE ROSLINT_FILES include/*.h include/*.hpp src/*.cpp nodes/*.cpp nodelets/*.cpp test/*.cpp)

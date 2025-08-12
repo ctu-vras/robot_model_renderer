@@ -14,6 +14,8 @@ SPDX-FileCopyrightText: Czech Technical University in Prague
 
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>pkg-config</buildtool_depend>
+  <buildtool_depend condition="$ROS_PYTHON_VERSION == 2">python-setuptools</buildtool_depend>
+  <buildtool_depend condition="$ROS_PYTHON_VERSION == 3">python3-setuptools</buildtool_depend>
 
   <build_depend>assimp</build_depend>
   <build_depend>assimp-dev</build_depend>
@@ -43,6 +45,7 @@ SPDX-FileCopyrightText: Czech Technical University in Prague
   <exec_depend>nodelet</exec_depend>
   <exec_depend>resource_retriever</exec_depend>
   <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospy</exec_depend>
   <exec_depend>rviz</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>

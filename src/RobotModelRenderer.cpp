@@ -71,44 +71,46 @@ RobotModelRenderer::RobotModelRenderer(
   if (sceneManager == nullptr && camera != nullptr)
     throw std::runtime_error("When sceneManager is not passed, camera has to be null too.");
 
-  auto renderLock {render_system_.lock()};
-
-  if (sceneManager == nullptr)
   {
+    auto renderLock {render_system_.lock()};
+
+    if (sceneManager == nullptr)
+    {
 #if (OGRE_VERSION < OGRE_VERSION_CHECK(13, 0, 0))
-    scene_manager_ = render_system_.root()->createSceneManager(Ogre::ST_GENERIC);
+      scene_manager_ = render_system_.root()->createSceneManager(Ogre::ST_GENERIC);
 #else
-    scene_manager_ = render_system_.root()->createSceneManager();
+      scene_manager_ = render_system_.root()->createSceneManager();
 #endif
-    CRAS_DEBUG_NAMED("renderer", "Created scene manager");
+      CRAS_DEBUG_NAMED("renderer", "Created scene manager");
+    }
+
+    if (this->config.setupDefaultLighting)
+    {
+      this->default_light_ = this->scene_manager_->createLight("MainLight");
+      this->default_light_->setType(Ogre::Light::LT_POINT);
+      this->default_light_->setDiffuseColour(Ogre::ColourValue(1.0f, 1.0f, 1.0f));
+      this->scene_manager_->setAmbientLight(Ogre::ColourValue(.5, .5, .5));
+    }
+
+    if (sceneNode == nullptr)
+      this->scene_node_ = this->scene_manager_->getRootSceneNode()->createChildSceneNode();
+
+    if (camera == nullptr)
+    {
+      this->camera_ = this->scene_manager_->createCamera("RobotModelCamera");
+      if (this->config.nearClipDistance > 0.0f)
+        this->camera_->setNearClipDistance(this->config.nearClipDistance);
+      if (this->config.farClipDistance > 0.0f)
+        this->camera_->setFarClipDistance(this->config.farClipDistance);
+      // convert vision (Z-forward) frame to ogre frame (Z-out)
+      this->camera_->setOrientation(Ogre::Quaternion(Ogre::Degree(180), Ogre::Vector3::UNIT_X));
+      CRAS_DEBUG_NAMED("renderer", "Created scene camera");
+    }
+
+    distortionPass_.SetCamera(camera_);
+    outlinePass_.SetCamera(camera_);
+    invertColorsPass_.SetCamera(camera_);
   }
-
-  if (this->config.setupDefaultLighting)
-  {
-    this->default_light_ = this->scene_manager_->createLight("MainLight");
-    this->default_light_->setType(Ogre::Light::LT_POINT);
-    this->default_light_->setDiffuseColour(Ogre::ColourValue(1.0f, 1.0f, 1.0f));
-    this->scene_manager_->setAmbientLight(Ogre::ColourValue(.5, .5, .5));
-  }
-
-  if (sceneNode == nullptr)
-    this->scene_node_ = this->scene_manager_->getRootSceneNode()->createChildSceneNode();
-
-  if (camera == nullptr)
-  {
-    this->camera_ = this->scene_manager_->createCamera("RobotModelCamera");
-    if (this->config.nearClipDistance > 0.0f)
-      this->camera_->setNearClipDistance(this->config.nearClipDistance);
-    if (this->config.farClipDistance > 0.0f)
-      this->camera_->setFarClipDistance(this->config.farClipDistance);
-    // convert vision (Z-forward) frame to ogre frame (Z-out)
-    this->camera_->setOrientation(Ogre::Quaternion(Ogre::Degree(180), Ogre::Vector3::UNIT_X));
-    CRAS_DEBUG_NAMED("renderer", "Created scene camera");
-  }
-
-  distortionPass_.SetCamera(camera_);
-  outlinePass_.SetCamera(camera_);
-  invertColorsPass_.SetCamera(camera_);
 
   const auto setModelResult = this->setModel(model);
   if (setModelResult.has_value())
@@ -121,6 +123,8 @@ RobotModelRenderer::~RobotModelRenderer() = default;
 
 cras::expected<void, RobotErrors> RobotModelRenderer::setModel(const urdf::Model& model)
 {
+  auto renderLock {render_system_.lock()};
+
   this->robot_ = std::make_unique<Robot>(this->log, this->scene_node_, this->scene_manager_, "robot");
   auto loadResult = this->robot_->load(model, this->config.shapeFilter, this->config.shapeInflationRegistry);
   if (!loadResult.has_value())

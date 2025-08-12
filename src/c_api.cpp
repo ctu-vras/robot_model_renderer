@@ -21,9 +21,12 @@
 #include <cras_cpp_common/log_utils/memory.h>
 #include <robot_model_renderer/robot/tf_link_updater.hpp>
 #include <robot_model_renderer/RobotModelRenderer.hpp>
+#include <robot_model_renderer/utils/sensor_msgs_ogre.hpp>
 
 inline std::set<std::string> parseCommaSeparated(const char* orig)
 {
+  if (std::string(orig).empty())
+    return {};
   const auto split = cras::split(orig, ",");
   return {split.begin(), split.end()};
 }
@@ -84,13 +87,13 @@ robot_model_renderer_RobotModelRendererConfig robot_model_renderer_createDefault
   robot_model_renderer_RobotModelRendererConfig c;
 
   c.setupDefaultLighting = cpp.setupDefaultLighting;
-  c.pixelFormat = cpp.pixelFormat;
+  c.pixelFormat = static_cast<int>(cpp.pixelFormat);
   memcpy(c.backgroundColor, &cpp.backgroundColor[0], sizeof(float) * 4);
   c.doDistort = cpp.doDistort;
   c.gpuDistortion = cpp.gpuDistortion;
   c.nearClipDistance = cpp.nearClipDistance;
   c.farClipDistance = cpp.farClipDistance;
-  c.renderingMode = static_cast<unsigned int>(cpp.renderingMode);
+  c.renderingMode = static_cast<int>(cpp.renderingMode);
   memcpy(c.colorModeColor, &cpp.colorModeColor[0], sizeof(float) * 4);
   c.drawOutline = cpp.drawOutline;
   c.outlineWidth = cpp.outlineWidth;
@@ -101,11 +104,13 @@ robot_model_renderer_RobotModelRendererConfig robot_model_renderer_createDefault
   c.allLinksRequired = cpp.allLinksRequired;
   c.requiredLinks = "";
 
+  cpp.shapeFilter = std::make_shared<robot_model_renderer::ShapeFilter>();
   c.shapeFilter.visualAllowed = cpp.shapeFilter->isVisualAllowed();
   c.shapeFilter.collisionAllowed = cpp.shapeFilter->isCollisionAllowed();
   c.shapeFilter.ignoreShapes = "";
   c.shapeFilter.onlyShapes = "";
 
+  cpp.shapeInflationRegistry = std::make_shared<robot_model_renderer::ShapeInflationRegistry>();
   c.shapeInflationRegistry.defaultInflation.scale = cpp.shapeInflationRegistry->defaultInflation().scale;
   c.shapeInflationRegistry.defaultInflation.padding = cpp.shapeInflationRegistry->defaultInflation().padding;
   const auto& defInflation = cpp.shapeInflationRegistry->defaultInflation();
@@ -128,7 +133,7 @@ struct robot_model_renderer_RobotModelRendererHandle_cpp
   cras_allocator_t logMessagesAllocator;
   std::shared_ptr<cras::MemoryLogHelper> log;
   tf2::BufferCore tf;
-  std::shared_ptr<robot_model_renderer::LinkUpdater> linkUpdater;
+  std::shared_ptr<robot_model_renderer::TFLinkUpdater> linkUpdater;
   std::unique_ptr<robot_model_renderer::RobotModelRenderer> renderer;
 };
 
@@ -279,12 +284,13 @@ bool robot_model_renderer_RobotModelRenderer_updateCameraInfo(
   camInfo.roi.do_rectify = cameraInfo.roi.do_rectify;
 
   const auto result = handle->renderer->updateCameraInfo(robot_model_renderer::PinholeCameraModel(camInfo));
+  handle->linkUpdater->setFixedFrame(camInfo.header.frame_id);
 
   return result;
 }
 
 bool robot_model_renderer_RobotModelRenderer_render(robot_model_renderer_RobotModelRendererHandle renderer,
-  ros_Time time, cras_allocator_t imageDataAllocator, cras_allocator_t linkErrorsAllocator,
+  ros_Time time, size_t* imageStep, cras_allocator_t imageDataAllocator, cras_allocator_t linkErrorsAllocator,
   cras_allocator_t errorMessagesAllocator)
 {
   const auto handle = static_cast<robot_model_renderer_RobotModelRendererHandle_cpp*>(renderer);
@@ -320,8 +326,10 @@ bool robot_model_renderer_RobotModelRenderer_render(robot_model_renderer_RobotMo
   }
 
   const auto& cvImage = renderResult.value();
-  const auto imageSize = cvImage.total() * cvImage.channels() * cvImage.elemSize();
+  const auto imageSize = cvImage.total() * cvImage.elemSize();
   const auto outputRowSize = imageSize / cvImage.rows;
+
+  *imageStep = cvImage.cols * cvImage.elemSize();
 
   auto data = cvImage.data;
   std::vector<uint8_t> dataContinuous;
@@ -358,4 +366,17 @@ bool robot_model_renderer_LinkUpdater_set_transform(robot_model_renderer_RobotMo
   tf.transform.rotation.w = transform.transform.rotation[3];
 
   return handle->tf.setTransform(tf, authority, isStatic);
+}
+
+int robot_model_renderer_sensorMsgsEncodingToOgrePixelFormat(const char* encoding, cras_allocator_t error_alloc)
+{
+  try
+  {
+    return robot_model_renderer::sensorMsgsEncodingToOgrePixelFormat(encoding);
+  }
+  catch (const std::runtime_error& e)
+  {
+    cras::outputString(error_alloc, std::string(e.what()));
+    return Ogre::PixelFormat::PF_UNKNOWN;
+  }
 }

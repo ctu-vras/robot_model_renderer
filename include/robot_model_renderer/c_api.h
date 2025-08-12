@@ -31,9 +31,9 @@ struct robot_model_renderer_ScaleAndPadding
   double padding;
 };
 
-struct robot_model_renderer_PerLinkInflation
+struct robot_model_renderer_PerShapeInflation
 {
-  const char* linkName;
+  const char* shapeName;
   robot_model_renderer_ScaleAndPadding inflation;
 };
 
@@ -42,8 +42,8 @@ struct robot_model_renderer_ShapeInflationRegistry
   robot_model_renderer_ScaleAndPadding defaultInflation;
   robot_model_renderer_ScaleAndPadding defaultVisualInflation;
   robot_model_renderer_ScaleAndPadding defaultCollisionInflation;
-  unsigned int perShapeInflationCount;
-  robot_model_renderer_PerLinkInflation* perShapeInflation;
+  size_t perShapeInflationCount;
+  robot_model_renderer_PerShapeInflation* perShapeInflation;
 };
 
 /**
@@ -53,7 +53,7 @@ struct robot_model_renderer_RobotModelRendererConfig
 {
   bool setupDefaultLighting;
 
-  unsigned int pixelFormat;
+  int pixelFormat;
   float backgroundColor[4];
 
   bool doDistort;
@@ -62,7 +62,7 @@ struct robot_model_renderer_RobotModelRendererConfig
   float nearClipDistance;
   float farClipDistance;
 
-  unsigned int renderingMode;
+  int renderingMode;
   float colorModeColor[4];
 
   bool drawOutline;
@@ -131,10 +131,12 @@ struct geometry_msgs_TransformStamped
   geometry_msgs_Transform transform;
 };
 
-robot_model_renderer_RobotModelRendererConfig robot_model_renderer_createDefaultRobotModelRendererConfig();
-
 typedef void* (*cras_allocator_t)(size_t);
 typedef void* robot_model_renderer_RobotModelRendererHandle;
+
+robot_model_renderer_RobotModelRendererConfig robot_model_renderer_createDefaultRobotModelRendererConfig();
+
+int robot_model_renderer_sensorMsgsEncodingToOgrePixelFormat(const char* encoding, cras_allocator_t error_alloc);
 
 robot_model_renderer_RobotModelRendererHandle robot_model_renderer_createRobotModelRenderer(
   cras_allocator_t logMessagesAllocator,
@@ -151,7 +153,7 @@ bool robot_model_renderer_RobotModelRenderer_updateCameraInfo(
   robot_model_renderer_RobotModelRendererHandle renderer, sensor_msgs_CameraInfo cameraInfo);
 
 bool robot_model_renderer_RobotModelRenderer_render(
-  robot_model_renderer_RobotModelRendererHandle renderer, ros_Time time,
+  robot_model_renderer_RobotModelRendererHandle renderer, ros_Time time, size_t* imageStep,
   cras_allocator_t imageDataAllocator, cras_allocator_t linkErrorsAllocator, cras_allocator_t errorMessagesAllocator);
 
 bool robot_model_renderer_LinkUpdater_set_transform(robot_model_renderer_RobotModelRendererHandle renderer,
