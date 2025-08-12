@@ -154,6 +154,13 @@ target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES} OPENCV OGRE
 )
 
+add_library(${PROJECT_NAME}_c_api
+  src/c_api.cpp
+)
+target_link_libraries(${PROJECT_NAME}_c_api
+  ${PROJECT_NAME}
+)
+
 add_library(${PROJECT_NAME}_nodelet
   nodelets/${PROJECT_NAME}_nodelet.cpp
 )
@@ -164,6 +171,7 @@ cras_node_from_nodelet(${PROJECT_NAME}_nodelet ${PROJECT_NAME}::RobotModelRender
 
 install(TARGETS
   ${PROJECT_NAME}
+  ${PROJECT_NAME}_c_api
   ${PROJECT_NAME}_distortion
   ${PROJECT_NAME}_nodelet
   ${PROJECT_NAME}_ogre_helpers
@@ -187,8 +195,8 @@ if (CATKIN_ENABLE_TESTING)
   roslint_custom(catkin_lint "-W2" .)
 
   # Roslint C++ - checks formatting and some other rules for C++ files
-  file(GLOB_RECURSE ROSLINT_FILES include/*.h src/*.cpp nodes/*.cpp nodelets/*.cpp test/*.cpp)
-  set(ROSLINT_CPP_OPTS "--extensions=h,hpp,hh,c,cpp,cc;--linelength=120;--filter=\
+  file(GLOB_RECURSE ROSLINT_FILES include/*.h include/*.hpp src/*.cpp nodes/*.cpp nodelets/*.cpp test/*.cpp)
+  set(ROSLINT_CPP_OPTS "--extensions=h,hpp,cpp;--linelength=120;--filter=\
     -build/header_guard,-build/include,-readability/namespace,-whitespace/braces,-runtime/references,\
     -build/c++11,-readability/nolint,-readability/todo,-legal/copyright")
   roslint_cpp(${ROSLINT_FILES})

@@ -10,10 +10,10 @@
  * \author Martin Pecka
  */
 
+#include <robot_model_renderer/RobotModelRenderer.hpp>
+
 #include <set>
 #include <string>
-
-#include <boost/bind/bind.hpp>
 
 #include <OgreManualObject.h>
 #include <OgreMaterialManager.h>
@@ -29,10 +29,8 @@
 #include <OgreCamera.h>
 #include <OgreHardwarePixelBuffer.h>
 
-#include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/set_utils.hpp>
 #include <image_geometry/pinhole_camera_model.h>
-#include <robot_model_renderer/RobotModelRenderer.hpp>
 #include <robot_model_renderer/compositors/OgreCameraDistortion.hpp>
 #include <robot_model_renderer/compositors/OgreInvertColors.hpp>
 #include <robot_model_renderer/compositors/OgreOutline.hpp>
