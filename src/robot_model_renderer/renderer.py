@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # SPDX-FileCopyrightText: Czech Technical University in Prague
 
+from __future__ import print_function
+
 from ctypes import c_bool, c_char_p, c_int, c_size_t
 from ctypes import byref, POINTER, RTLD_GLOBAL
 import time

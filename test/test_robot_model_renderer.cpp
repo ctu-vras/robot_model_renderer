@@ -186,7 +186,7 @@ TEST(RobotModelRendererNodelet, Default)  // NOLINT
   EXPECT_EQ(0, lastImages[0].is_bigendian);
 
   const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
-  ASSERT_EQ(2, cvImage.size.dims());
+  ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
   ASSERT_EQ(4, cvImage.channels());
@@ -303,7 +303,7 @@ TEST(RobotModelRendererNodelet, DefaultBGRA)  // NOLINT
   EXPECT_EQ(0, lastImages[0].is_bigendian);
 
   const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
-  ASSERT_EQ(2, cvImage.size.dims());
+  ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
   ASSERT_EQ(4, cvImage.channels());
@@ -420,7 +420,7 @@ TEST(RobotModelRendererNodelet, DefaultMono)  // NOLINT
   EXPECT_EQ(0, lastImages[0].is_bigendian);
 
   const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
-  ASSERT_EQ(2, cvImage.size.dims());
+  ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
   ASSERT_EQ(1, cvImage.channels());
@@ -541,7 +541,7 @@ TEST(RobotModelRendererNodelet, ColorModeWithOutline)  // NOLINT
   EXPECT_EQ(0, lastImages[0].is_bigendian);
 
   const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
-  ASSERT_EQ(2, cvImage.size.dims());
+  ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
   ASSERT_EQ(4, cvImage.channels());
@@ -662,7 +662,7 @@ TEST(RobotModelRendererNodelet, MaskModeWithOutlineMono)  // NOLINT
   EXPECT_EQ(0, lastImages[0].is_bigendian);
 
   const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
-  ASSERT_EQ(2, cvImage.size.dims());
+  ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
   ASSERT_EQ(1, cvImage.channels());
