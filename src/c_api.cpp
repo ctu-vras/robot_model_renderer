@@ -270,8 +270,8 @@ bool robot_model_renderer_RobotModelRenderer_updateCameraInfo(
   camInfo.height = cameraInfo.height;
   camInfo.width = cameraInfo.width;
   camInfo.distortion_model = cameraInfo.distortion_model;
-  for (size_t i = 0; i < 15 && cameraInfo.D[i] != 0; ++i)
-    camInfo.D.push_back(cameraInfo.D[i]);
+  camInfo.D.resize(cameraInfo.D_count);
+  std::copy_n(cameraInfo.D, cameraInfo.D_count, camInfo.D.data());
   std::copy_n(cameraInfo.K, 9, camInfo.K.c_array());
   std::copy_n(cameraInfo.R, 9, camInfo.R.c_array());
   std::copy_n(cameraInfo.P, 12, camInfo.P.c_array());

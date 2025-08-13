@@ -109,7 +109,8 @@ struct sensor_msgs_CameraInfo
   unsigned int height;
   unsigned int width;
   const char* distortion_model;
-  double D[15];
+  size_t D_count;
+  double* D;
   double K[9];
   double R[9];
   double P[12];

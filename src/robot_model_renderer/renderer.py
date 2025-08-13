@@ -8,7 +8,7 @@ import sys
 
 import rospy
 from cras.ctypes_utils import load_library, Allocator, StringAllocator, BytesAllocator, LogMessagesAllocator
-from robot_model_renderer.msg import RosTime, geometry_msgs_TransformStamped, sensor_msgs_CameraInfo
+from robot_model_renderer.msg import RosTime, geometry_msgs_TransformStamped, sensor_msgs_CameraInfo, _sensor_msgs_CameraInfo
 from robot_model_renderer.types import robot_model_renderer_RobotModelRendererHandle, \
     LinkError, RenderingMode, RobotModelRendererConfig
 from sensor_msgs.msg import CameraInfo, Image
@@ -233,6 +233,8 @@ if __name__ == '__main__':
         camInfo.header.stamp = rospy.Time(time.time())
         camInfo.height = 1616
         camInfo.width = 1212
+        camInfo.distortion_model = "plumb_bob"
+        camInfo.D = [1.0, 0, 0, 0, 0, 0.5, 0, 0]
         camInfo.K = [800.0, 0.0, 600.0, 0.0, 800.0, 800.0, 0.0, 0.0, 1.0]
         camInfo.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
         camInfo.P = [800.0, 0.0, 600.0, 0.0, 0.0, 800.0, 800.0, 0.0, 0.0, 0.0, 1.0, 0.0]

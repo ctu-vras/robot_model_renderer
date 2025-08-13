@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # SPDX-FileCopyrightText: Czech Technical University in Prague
 
-from ctypes import c_bool, c_char_p, c_double, c_uint, c_uint32
-from ctypes import Structure
+from ctypes import c_bool, c_char_p, c_double, c_size_t, c_uint, c_uint32
+from ctypes import cast, POINTER, Structure
 import sys
 
 import rospy
@@ -104,7 +104,8 @@ class _sensor_msgs_CameraInfo(Structure):
         ("height", c_uint),
         ("width", c_uint),
         ("distortion_model", c_char_p),
-        ("D", c_double * 15),
+        ("D_count", c_size_t),
+        ("D", POINTER(c_double)),
         ("K", c_double * 9),
         ("R", c_double * 9),
         ("P", c_double * 12),
@@ -114,22 +115,13 @@ class _sensor_msgs_CameraInfo(Structure):
     ]
 
 
-def non_zero_D(D):
-    new_D = []
-    for d in D:
-        if d == 0.0:
-            break
-        new_D.append(d)
-    return new_D
-
-
 class sensor_msgs_CameraInfo(CameraInfo):
     def __init__(self, camInfo=None, *args, **kwargs):
         if camInfo is not None and isinstance(camInfo, _sensor_msgs_CameraInfo):
             super(sensor_msgs_CameraInfo, self).__init__(
                 std_msgs_Header(camInfo.header), camInfo.height, camInfo.width, _decode(camInfo.distortion_model),
-                non_zero_D(camInfo.D), camInfo.K, camInfo.R, camInfo.P, camInfo.binning_x, camInfo.binning_y,
-                sensor_msgs_RegionOfInterest(camInfo.roi))
+                list(cast(camInfo.D, POINTER(c_double))), camInfo.K, camInfo.R, camInfo.P,
+                camInfo.binning_x, camInfo.binning_y, sensor_msgs_RegionOfInterest(camInfo.roi))
         elif camInfo is not None and isinstance(camInfo, CameraInfo):
             super(sensor_msgs_CameraInfo, self).__init__(
                 std_msgs_Header(camInfo.header), camInfo.height, camInfo.width, camInfo.distortion_model,
@@ -148,10 +140,8 @@ class sensor_msgs_CameraInfo(CameraInfo):
         c.height = obj.height
         c.width = obj.width
         c.distortion_model = obj.distortion_model.encode('utf-8')
-        for i in range(len(c.D)):
-            c.D[i] = 0.0
-        for i in range(len(obj.D)):
-            c.D[i] = obj.D[i]
+        c.D_count = len(obj.D)
+        c.D = cast((c_double * len(obj.D))(*obj.D), POINTER(c_double))
         c.K = (c_double * 9)(*obj.K)
         c.R = (c_double * 9)(*obj.R)
         c.P = (c_double * 12)(*obj.P)

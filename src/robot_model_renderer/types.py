@@ -150,7 +150,8 @@ class ShapeInflationRegistry(object):
         c.defaultCollisionInflation = obj.defaultCollisionInflation
         c.perShapeInflationCount = len(obj.perShapeInflation)
         c.perShapeInflation = (PerShapeInflation * c.perShapeInflationCount)()
-        c.perShapeInflation.value = obj.perShapeInflation
+        for i in range(len(obj.perShapeInflation)):
+            c.perShapeInflation[i] = obj.perShapeInflation[i]
         return c
 
 
