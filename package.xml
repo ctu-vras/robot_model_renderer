@@ -32,6 +32,7 @@ SPDX-FileCopyrightText: Czech Technical University in Prague
   <build_depend>cv_bridge</build_depend>
   <build_depend>eigen</build_depend>
   <build_depend>image_transport</build_depend>
+  <build_depend>libglew-dev</build_depend>
   <build_depend>libogre-dev</build_depend>
   <build_depend>nodelet</build_depend>
   <build_depend>opengl</build_depend>
