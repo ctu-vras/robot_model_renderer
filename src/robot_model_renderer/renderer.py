@@ -108,8 +108,8 @@ class RobotModelRenderer(object):
 
     def _flush_log_messages(self):
         self._log_alloc.print_log_messages()
-        self._log_alloc.allocated.clear()
-        self._log_alloc.allocated_sizes.clear()
+        del self._log_alloc.allocated[:]
+        del self._log_alloc.allocated_sizes[:]
 
     def setModel(self, model):
         error_alloc = StringAllocator()

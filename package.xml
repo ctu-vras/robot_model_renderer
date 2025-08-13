@@ -60,6 +60,7 @@ SPDX-FileCopyrightText: Czech Technical University in Prague
 
   <test_depend condition="$ROS_PYTHON_VERSION == 2">python-catkin-lint</test_depend>
   <test_depend condition="$ROS_PYTHON_VERSION == 3">python3-catkin-lint</test_depend>
+  <test_depend condition="$ROS_PYTHON_VERSION == 2">python-monotonic</test_depend>
   <test_depend>roslaunch</test_depend>
   <test_depend>roslint</test_depend>
   <test_depend>rostest</test_depend>
