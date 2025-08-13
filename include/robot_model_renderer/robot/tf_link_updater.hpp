@@ -16,7 +16,7 @@
 #include <robot_model_renderer/robot/link_updater.hpp>
 #include <ros/duration.h>
 #include <ros/time.h>
-#include <tf2_ros/buffer.h>
+#include <tf2/buffer_core.h>
 
 namespace robot_model_renderer
 {

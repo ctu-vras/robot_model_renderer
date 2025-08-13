@@ -18,11 +18,13 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  tf2
   tf2_geometry_msgs
   tf2_ros
   urdf
 )
 
+find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -75,10 +77,33 @@ else()
   endif()
   message(STATUS "${PROJECT_NAME}_OGRE_PLUGIN_DIR=${${PROJECT_NAME}_OGRE_PLUGIN_DIR}")
 endif()
+set(OGRE_INCLUDE_DIRS ${${PROJECT_NAME}_OGRE_INCLUDE_DIRS})
+set(OGRE_LIBRARIES ${${PROJECT_NAME}_OGRE_LIBRARIES})
 
 catkin_python_setup()
 
-catkin_package()
+catkin_package(
+  CATKIN_DEPENDS
+    cras_cpp_common
+    geometry_msgs
+    image_geometry
+    roscpp
+    sensor_msgs
+    std_msgs
+    tf2
+    urdf
+  DEPENDS
+    Boost
+    OGRE
+    OpenCV
+  INCLUDE_DIRS include
+  LIBRARIES
+    ${PROJECT_NAME}
+    ${PROJECT_NAME}_c_api
+    ${PROJECT_NAME}_distortion
+    ${PROJECT_NAME}_ogre_helpers
+    ${PROJECT_NAME}_robot
+)
 
 # Create modern CMake targets for dependencies that do not provide them
 
@@ -182,6 +207,8 @@ install(TARGETS
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+install(DIRECTORY include/${PROJECT_NAME}/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 
 install(DIRECTORY launch/ DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch)
 install(DIRECTORY ogre_media/ DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/ogre_media)

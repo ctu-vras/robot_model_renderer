@@ -24,7 +24,6 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/ColorRGBA.h>
-#include <tf2_ros/buffer.h>
 
 namespace robot_model_renderer
 {
