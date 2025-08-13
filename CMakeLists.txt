@@ -210,4 +210,17 @@ if (CATKIN_ENABLE_TESTING)
   roslint_add_test()
 
   roslaunch_add_file_check(launch/${PROJECT_NAME}.launch IGNORE_UNSET_ARGS)
+
+  add_rostest_gmock(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.test test/test_${PROJECT_NAME}.cpp)
+  target_link_libraries(test_${PROJECT_NAME} ${catkin_LIBRARIES} ${PROJECT_NAME}_nodelet)
+  target_compile_definitions(test_${PROJECT_NAME} PRIVATE TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test")
+  roslaunch_add_file_check(test/test_${PROJECT_NAME}.test USE_TEST_DEPENDENCIES)
+  if(CMAKE_VERSION VERSION_LESS "3.13.0")
+    set_property(TARGET test_${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--no-as-needed")
+  else()
+    #catkin_lint: ignore_once cmake_old
+    target_link_options(test_${PROJECT_NAME} PUBLIC "LINKER:--no-as-needed")
+  endif()
+
+  catkin_add_nosetests(test/test_${PROJECT_NAME}.py DEPENDENCIES ${PROJECT_NAME}_c_api ${catkin_EXPORTED_TARGETS})
 endif()

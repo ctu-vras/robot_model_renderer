@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- SPDX-FileCopyrightText: Czech Technical University in Prague -->
+<launch>
+    <test test-name="test_robot_model_renderer" pkg="robot_model_renderer" type="test_robot_model_renderer"
+          launch-prefix="xvfb-run -a" />
+</launch>

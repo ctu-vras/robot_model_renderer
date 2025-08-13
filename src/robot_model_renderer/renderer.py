@@ -8,7 +8,7 @@ import sys
 
 import rospy
 from cras.ctypes_utils import load_library, Allocator, StringAllocator, BytesAllocator, LogMessagesAllocator
-from robot_model_renderer.msg import RosTime, geometry_msgs_TransformStamped, sensor_msgs_CameraInfo, _sensor_msgs_CameraInfo
+from robot_model_renderer.msg import RosTime, geometry_msgs_TransformStamped, sensor_msgs_CameraInfo
 from robot_model_renderer.types import robot_model_renderer_RobotModelRendererHandle, \
     LinkError, RenderingMode, RobotModelRendererConfig
 from sensor_msgs.msg import CameraInfo, Image

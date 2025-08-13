@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!--
+SPDX-License-Identifier: BSD-3-Clause
+SPDX-FileCopyrightText: Czech Technical University in Prague
+-->
+<robot name="test">
+  <link name="link1">
+    <visual>
+      <geometry><box size="0.1 0.2 0.3" /></geometry>
+      <material name="blue"><color rgba="0.0 0.0 1.0 1.0"/></material>
+    </visual>
+    <collision>
+      <geometry><box size="0.1 0.2 0.3" /></geometry>
+    </collision>
+  </link>
+  <link name="link2">
+    <visual>
+      <geometry><sphere radius="0.5" /></geometry>
+      <material name="red"><color rgba="1.0 0.0 0.0 1.0"/></material>
+    </visual>
+    <collision>
+      <geometry><sphere radius="0.5" /></geometry>
+    </collision>
+  </link>
+  <joint name="joint" type="fixed">
+    <origin xyz="0.3 0 1.0" />
+    <parent link="link1" />
+    <child link="link2" />
+  </joint>
+</robot>

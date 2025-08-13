@@ -131,7 +131,8 @@ public:
   {
     cras::Nodelet::requestStop();
     this->unsubscribe();
-    this->ogreThread.join();
+    if (this->ogreThread.joinable())
+      this->ogreThread.join();
   }
 
   friend class RobotModelRendererLogHelper;
