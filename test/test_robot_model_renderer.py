@@ -5,6 +5,7 @@
 
 """Unit test for robot_model_renderer."""
 
+import cv2  # has to be here because of cv_bridge bug on arm64
 import os
 import unittest
 

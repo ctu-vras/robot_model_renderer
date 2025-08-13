@@ -190,6 +190,7 @@ __all__ = [
 
 if __name__ == '__main__':
     def main():
+        import cv2  # has to be here because of cv_bridge bug on arm64
         from cv_bridge import CvBridge
         from geometry_msgs.msg import TransformStamped
         import matplotlib.pyplot as plt
