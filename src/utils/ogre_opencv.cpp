@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Czech Technical University in Prague
 
 #include <opencv2/core.hpp>
+#include <opencv2/core/version.hpp>
 
 #include <robot_model_renderer/utils/ogre_opencv.hpp>
 
@@ -18,9 +19,11 @@ int robot_model_renderer::ogrePixelFormatToCvMatType(const Ogre::PixelFormat& pf
     case Ogre::PCT_SHORT:
       cvType = CV_16U;
       break;
+#if CV_VERSION_MAJOR >= 4
     case Ogre::PCT_FLOAT16:
       cvType = CV_16F;
       break;
+#endif
     case Ogre::PCT_FLOAT32:
       cvType = CV_32F;
       break;
