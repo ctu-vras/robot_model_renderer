@@ -18,6 +18,7 @@
 
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
+#include <opencv2/core/version.hpp>
 #include <opencv2/imgproc.hpp>
 
 #include <image_geometry/pinhole_camera_model.h>
@@ -105,7 +106,7 @@ void initInverseRectificationMap(cv::InputArray _cameraMatrix, cv::InputArray _d
 
   // Init camera intrinsics
   cv::Mat_<double> A = cv::Mat_<double>(cameraMatrix), Ar;
-  if (!newCameraMatrix.empty())
+  if (newCameraMatrix.total() > 0)
     Ar = cv::Mat_<double>(newCameraMatrix);
   else
     Ar = cv::getDefaultNewCameraMatrix(A, size, true);
@@ -114,7 +115,7 @@ void initInverseRectificationMap(cv::InputArray _cameraMatrix, cv::InputArray _d
 
   // Init rotation matrix
   cv::Mat_<double> R = cv::Mat_<double>::eye(3, 3);
-  if (!matR.empty())
+  if (matR.total() > 0)
   {
     R = cv::Mat_<double>(matR);
     // Note, do not inverse
@@ -122,7 +123,7 @@ void initInverseRectificationMap(cv::InputArray _cameraMatrix, cv::InputArray _d
   CV_Assert(cv::Size(3, 3) == R.size());
 
   // Init distortion vector
-  if (!distCoeffs.empty())
+  if (distCoeffs.total() > 0)
   {
     distCoeffs = cv::Mat_<double>(distCoeffs);
 
@@ -132,7 +133,7 @@ void initInverseRectificationMap(cv::InputArray _cameraMatrix, cv::InputArray _d
   }
 
   // Validate distortion vector size
-  CV_Assert(distCoeffs.empty() ||  // Empty allows cv::undistortPoints to skip distortion
+  CV_Assert(distCoeffs.total() == 0 ||  // Empty allows cv::undistortPoints to skip distortion
     distCoeffs.size() == cv::Size(1, 4) || distCoeffs.size() == cv::Size(4, 1) ||
     distCoeffs.size() == cv::Size(1, 5) || distCoeffs.size() == cv::Size(5, 1) ||
     distCoeffs.size() == cv::Size(1, 8) || distCoeffs.size() == cv::Size(8, 1) ||
@@ -473,7 +474,7 @@ void PinholeCameraModel::unrectifyImage(const cv::Mat& rectified, cv::Mat& raw, 
 cv::Size PinholeCameraModel::getRectifiedResolution() const
 {
   cv::Rect outer = this->rectifyRoi(cv::Rect(0, 0, this->reducedResolution().width, this->reducedResolution().height));
-  if (!outer.empty())
+  if (outer.width > 0 && outer.height > 0)
   {
     outer.x /= this->binningX();
     outer.y /= this->binningY();
@@ -494,7 +495,11 @@ PinholeCameraModel PinholeCameraModel::getModelForResolution(const cv::Size& res
   // Adjust the projection matrix by the newly computed K matrix
   // TODO this will probably not work with stereo cams that have P different from K|t.
   auto P = cv::Mat(this->projectionMatrix());
+#if CV_VERSION_MAJOR >= 4
   cv::copyTo(K, P(cv::Range(0, 3), cv::Range(0, 3)), cv::Mat());
+#else
+  cv::Mat(K).copyTo(P(cv::Range(0, 3), cv::Range(0, 3)));
+#endif
 
   auto newCamInfo = this->cameraInfo();
 

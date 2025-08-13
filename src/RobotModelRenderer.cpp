@@ -246,7 +246,7 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
   if (this->isDistorted)
   {
     rectifiedRes = model.getRectifiedResolution();
-    if (rectifiedRes.empty())
+    if (rectifiedRes.width == 0 || rectifiedRes.height == 0)
     {
       CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Could not determine rectified image dimensions.");
       return false;
