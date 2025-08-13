@@ -31,6 +31,7 @@ SPDX-FileCopyrightText: Czech Technical University in Prague
   <build_depend>boost</build_depend>
   <build_depend>cv_bridge</build_depend>
   <build_depend>eigen</build_depend>
+  <build_depend>glut</build_depend>
   <build_depend>image_transport</build_depend>
   <build_depend>libglew-dev</build_depend>
   <build_depend>libogre-dev</build_depend>
@@ -47,6 +48,7 @@ SPDX-FileCopyrightText: Czech Technical University in Prague
 
   <exec_depend>assimp</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>glut</exec_depend>
   <exec_depend>image_transport</exec_depend>
   <exec_depend>libogre</exec_depend>
   <exec_depend>nodelet</exec_depend>
