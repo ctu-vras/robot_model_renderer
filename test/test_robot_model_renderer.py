@@ -9,6 +9,7 @@ import os
 import unittest
 
 import rospy
+import rostest
 from cv_bridge import CvBridge
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import CameraInfo
@@ -230,4 +231,4 @@ class RobotModelRendererTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    rostest.rosrun('robot_model_renderer', 'test_robot_model_renderer_py', RobotModelRendererTest)
