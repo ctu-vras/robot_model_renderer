@@ -29,6 +29,15 @@ find_package(Eigen3 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(OpenCV REQUIRED)
 
+# Prefer newer vendor-specific OpenGL library
+if (POLICY CMP0072)
+  cmake_policy(SET CMP0072 NEW)
+endif()
+find_package(OpenGL REQUIRED)
+
+find_package(GLEW REQUIRED)
+find_package(GLUT REQUIRED)
+
 set(CMAKE_POLICY_DEFAULT_CMP0012 NEW)  # required due to a bug in assimp 5.0
 find_package(assimp REQUIRED)
 if(NOT DEFINED ASSIMP_LIBRARIES AND TARGET assimp::assimp)
@@ -122,6 +131,11 @@ add_library(OGRE INTERFACE)
 target_include_directories(OGRE SYSTEM INTERFACE ${${PROJECT_NAME}_OGRE_INCLUDE_DIRS})
 target_link_libraries(OGRE INTERFACE ${${PROJECT_NAME}_OGRE_LIBRARIES})
 
+add_library(GL INTERFACE)
+#catkin_lint: ignore_once external_interface_path
+target_include_directories(GL SYSTEM INTERFACE ${OPENGL_INCLUDE_DIR} ${GLEW_INCLUDE_DIR} ${GLUT_INCLUDE_DIR})
+target_link_libraries(GL INTERFACE ${OPENGL_LIBRARIES})
+
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
@@ -147,8 +161,9 @@ add_library(${PROJECT_NAME}_ogre_helpers
   src/ogre_helpers/render_system.cpp
   src/ogre_helpers/shape.cpp
 )
-target_link_libraries(${PROJECT_NAME}_ogre_helpers PUBLIC
-  ${catkin_LIBRARIES} OGRE
+target_link_libraries(${PROJECT_NAME}_ogre_helpers
+  PUBLIC ${catkin_LIBRARIES} OGRE
+  PRIVATE GL
 )
 
 add_library(${PROJECT_NAME}_robot
