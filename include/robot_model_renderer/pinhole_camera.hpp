@@ -37,7 +37,7 @@ public:
 
   virtual ~PinholeCameraModel();
   virtual void initUnrectificationMaps() const;
-  virtual cv::Rect rectifyRoi(const cv::Rect& roi_raw) const;
+  virtual cv::Rect rectifyRoi(const cv::Rect& roi_raw, const cv::Mat& P = cv::Mat()) const;
   virtual cv::Rect unrectifyRoi(const cv::Rect& roi_rect) const;
   virtual void unrectifyImage(const cv::Mat& rectified, cv::Mat& raw, int interpolation = cv::INTER_LINEAR) const;
   virtual cv::Size getRectifiedResolution() const;

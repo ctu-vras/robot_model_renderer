@@ -385,7 +385,7 @@ void PinholeCameraModel::initUnrectificationMaps() const
   }
 }
 
-cv::Rect PinholeCameraModel::rectifyRoi(const cv::Rect& roi_raw) const
+cv::Rect PinholeCameraModel::rectifyRoi(const cv::Rect& roi_raw, const cv::Mat& P) const
 {
   assert(initialized());
 
@@ -394,15 +394,22 @@ cv::Rect PinholeCameraModel::rectifyRoi(const cv::Rect& roi_raw) const
   double oY0 = std::numeric_limits<double>::infinity();
   double oY1 = -std::numeric_limits<double>::infinity();
 
-  const int N = 5;
+  cv::Matx34d Pmat = this->projectionMatrix();
+  if (P.total() > 0)
+    Pmat.get_minor<3, 3>(0, 0) = P;
+
+  const int N = 9;
   for (size_t dy = 0; dy < N; dy++)
   {
     for (size_t dx = 0; dx < N; dx++)
     {
+      // Only consider circumference points
+      if (dx != 0 && dx != N -1 && dy != 0 && dy != N -1)
+        continue;
       cv::Point2d raw_pt {
         roi_raw.x + static_cast<double>(dx) / (N-1) * roi_raw.width,
         roi_raw.y + static_cast<double>(dy) / (N-1) * roi_raw.height};
-      cv::Point2d rect_pt = rectifyPoint(raw_pt);
+      cv::Point2d rect_pt = rectifyPoint(raw_pt, this->intrinsicMatrix(), Pmat);
       if (!std::isfinite(rect_pt.x) || !std::isfinite(rect_pt.y))
         continue;
       oX0 = std::min(oX0, rect_pt.x);
@@ -473,14 +480,12 @@ void PinholeCameraModel::unrectifyImage(const cv::Mat& rectified, cv::Mat& raw, 
 
 cv::Size PinholeCameraModel::getRectifiedResolution() const
 {
-  cv::Rect outer = this->rectifyRoi(cv::Rect(0, 0, this->reducedResolution().width, this->reducedResolution().height));
-  if (outer.width > 0 && outer.height > 0)
-  {
-    outer.x /= this->binningX();
-    outer.y /= this->binningY();
-    outer.width /= this->binningX();
-    outer.height /= this->binningY();
-  }
+  // Find a circumscribed rectangle that holds all undistorted points. We pass K matrix as P to the rectification
+  // so that rectification really only becomes undistortion and nothing else. This should help keep correct image
+  // resolution.
+  cv::Rect outer = this->rectifyRoi(
+    cv::Rect(cv::Point2i(0, 0), this->reducedResolution()), cv::Mat(this->intrinsicMatrix()));
+
   return outer.size();
 }
 
@@ -489,11 +494,13 @@ PinholeCameraModel PinholeCameraModel::getModelForResolution(const cv::Size& res
   if (this->reducedResolution() == res)
     return *this;
 
+  // Get the K matrix that corresponds to projecting all pixels (including invalid ones) onto an image of size `res`
   const cv::Matx33d K = cv::getOptimalNewCameraMatrix(
       this->intrinsicMatrix(), this->distortionCoeffs(), this->reducedResolution(), 1.0, res);
 
   // Adjust the projection matrix by the newly computed K matrix
-  // TODO this will probably not work with stereo cams that have P different from K|t.
+  // In this library, we are free to specify the projection matrix however we need because the rectified images are not
+  // used outside this library. So we intentionally decide to put P = (K|0) so that rectification only undistorts.
   auto P = cv::Mat(this->projectionMatrix());
 #if CV_VERSION_MAJOR >= 4
   cv::copyTo(K, P(cv::Range(0, 3), cv::Range(0, 3)), cv::Mat());

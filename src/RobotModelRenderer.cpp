@@ -29,6 +29,8 @@
 #include <OgreCamera.h>
 #include <OgreHardwarePixelBuffer.h>
 
+#include <opencv2/calib3d/calib3d.hpp>
+
 #include <cras_cpp_common/set_utils.hpp>
 #include <image_geometry/pinhole_camera_model.h>
 #include <robot_model_renderer/compositors/OgreCameraDistortion.hpp>
@@ -202,8 +204,16 @@ void RobotModelRenderer::updateOgreCamera()
   proj_matrix[0][2] = 2.0f * (0.5f - cx / img_width);
   proj_matrix[1][2] = 2.0f * (cy / img_height - 0.5f);
 
-  proj_matrix[2][2] = -(far_plane + near_plane) / (far_plane - near_plane);
-  proj_matrix[2][3] = -2.0f * far_plane * near_plane / (far_plane - near_plane);
+  if (far_plane == 0)  // Infinite far plane
+  {
+    proj_matrix[2][2] = Ogre::Frustum::INFINITE_FAR_PLANE_ADJUST - 1;
+    proj_matrix[2][3] = near_plane * (Ogre::Frustum::INFINITE_FAR_PLANE_ADJUST - 2);
+  }
+  else
+  {
+    proj_matrix[2][2] = -(far_plane + near_plane) / (far_plane - near_plane);
+    proj_matrix[2][3] = -2.0f * far_plane * near_plane / (far_plane - near_plane);
+  }
 
   proj_matrix[3][2] = -1.0f;
 
@@ -285,6 +295,9 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
   {
     auto renderLock {render_system_.lock()};
 
+    CRAS_INFO_THROTTLE_NAMED(1.0, "renderer",
+      "Creating offscreen render texture with resolution %ix%i.", res.width, res.height);
+
     tex_ = render_system_.root()->getTextureManager()->createManual(
       "MainRenderTarget", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
       res.width, res.height, 32, 0, this->config.pixelFormat, Ogre::TU_RENDERTARGET);
@@ -360,12 +373,14 @@ cras::expected<cv::Mat, std::string> RobotModelRenderer::render(const ros::Time&
   const auto origRows = this->origCameraModel.reducedResolution().height;
   const auto origCols = this->origCameraModel.reducedResolution().width;
 
-  // Compute the offset of the top left corner of the desired output image in the possibly larger rendered image.
-  const auto topLeft = this->rectifiedCameraModel.unrectifyPoint({0, 0});
-  const auto colOffset = std::max(0, static_cast<int>(topLeft.x));
-  const auto rowOffset = std::max(0, static_cast<int>(topLeft.y));
+  // Compute the offset of the centers of the larger rectified image and the original raw image. This will be the offset
+  // to apply when cropping back to the original size.
+  const auto cropX = std::max<int>(0, this->rectifiedCameraModel.cx() - this->origCameraModel.cx());
+  const auto cropY = std::max<int>(0, this->rectifiedCameraModel.cy() - this->origCameraModel.cy());
+  const auto cropCols = std::min(rawImg.cols - cropX, origCols);
+  const auto cropRows = std::min(rawImg.rows - cropY, origRows);
 
-  return rawImg(cv::Rect(colOffset, rowOffset, origCols, origRows));
+  return rawImg(cv::Rect(cropX, cropY, cropCols, cropRows));
 }
 
 void RobotModelRenderer::reset()
