@@ -37,14 +37,19 @@ public:
 
   virtual ~PinholeCameraModel();
   virtual void initUnrectificationMaps() const;
-  virtual cv::Rect rectifyRoi(const cv::Rect& roi_raw, const cv::Mat& P = cv::Mat()) const;
+  virtual cv::Rect rectifyRoi(const cv::Rect& roi_raw, const cv::Mat& P) const;
+  cv::Rect rectifyRoi(const cv::Rect& roi_raw) const;
   virtual cv::Rect unrectifyRoi(const cv::Rect& roi_rect) const;
-  virtual void unrectifyImage(const cv::Mat& rectified, cv::Mat& raw, int interpolation = cv::INTER_LINEAR) const;
+  virtual void unrectifyImage(const cv::Mat& rectified, cv::Mat& raw, int interpolation) const;
+  void unrectifyImage(const cv::Mat& rectified, cv::Mat& raw) const;
   virtual cv::Size getRectifiedResolution() const;
   virtual PinholeCameraModel getModelForResolution(const cv::Size& res) const;
 
   virtual const cv::Mat& getReducedUnrectifyFloatMap() const;
   virtual cv::Mat getUnrectifyFloatMap(const cv::InputArray& newCameraMatrix, const cv::Size& size) const;
+
+  // Shim for missing 3-arg rectifyPoint on Melodic. For Noetic, this is just fast-forward.
+  virtual cv::Point2d _rectifyPoint(const cv::Point2d& uv_raw, const cv::Matx33d& K, const cv::Matx34d& P) const;
 };
 
 }

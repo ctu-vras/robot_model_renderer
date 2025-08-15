@@ -195,6 +195,9 @@ target_link_libraries(${PROJECT_NAME}
   ${PROJECT_NAME}_distortion
   ${catkin_LIBRARIES} OPENCV OGRE
 )
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+  IMAGE_GEOMETRY_VERSION_MAJOR=${image_geometry_VERSION_MAJOR}
+  IMAGE_GEOMETRY_VERSION_MINOR=${image_geometry_VERSION_MINOR})
 
 add_library(${PROJECT_NAME}_c_api
   src/c_api.cpp

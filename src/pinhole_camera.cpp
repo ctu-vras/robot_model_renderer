@@ -279,6 +279,23 @@ cv::Mat PinholeCameraModel::getUnrectifyFloatMap(const cv::InputArray& newCamera
   return map;
 }
 
+cv::Point2d PinholeCameraModel::_rectifyPoint(const cv::Point2d& uv_raw, const cv::Matx33d& K,
+  const cv::Matx34d& P) const
+{
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
+  return this->rectifyPoint(uv_raw, K, P);
+#else
+  const auto origK = this->K_;
+  const auto origP = this->P_;
+  this->K_ = K;
+  this->P_ = P;
+  const auto result = this->rectifyPoint(uv_raw);
+  this->K_ = origK;
+  this->P_ = origP;
+  return result;
+#endif
+}
+
 void PinholeCameraModel::initUnrectificationMaps() const
 {
   if (extraCache->unrectify_full_float_maps_dirty)
@@ -395,8 +412,17 @@ cv::Rect PinholeCameraModel::rectifyRoi(const cv::Rect& roi_raw, const cv::Mat& 
   double oY1 = -std::numeric_limits<double>::infinity();
 
   cv::Matx34d Pmat = this->projectionMatrix();
-  if (P.total() > 0)
-    Pmat.get_minor<3, 3>(0, 0) = P;
+  if (P.cols == 4)
+  {
+    Pmat = P;
+  }
+  else if (P.cols == 3)
+  {
+    cv::Matx33d PP(P);
+    for (int i = 0; i < 3; ++i)
+      for (int j = 0; j < 3; ++j)
+        Pmat(i, j) = PP(i, j);
+  }
 
   const int N = 9;
   for (size_t dy = 0; dy < N; dy++)
@@ -409,7 +435,7 @@ cv::Rect PinholeCameraModel::rectifyRoi(const cv::Rect& roi_raw, const cv::Mat& 
       cv::Point2d raw_pt {
         roi_raw.x + static_cast<double>(dx) / (N-1) * roi_raw.width,
         roi_raw.y + static_cast<double>(dy) / (N-1) * roi_raw.height};
-      cv::Point2d rect_pt = rectifyPoint(raw_pt, this->intrinsicMatrix(), Pmat);
+      cv::Point2d rect_pt = this->_rectifyPoint(raw_pt, this->intrinsicMatrix(), Pmat);
       if (!std::isfinite(rect_pt.x) || !std::isfinite(rect_pt.y))
         continue;
       oX0 = std::min(oX0, rect_pt.x);
@@ -422,6 +448,11 @@ cv::Rect PinholeCameraModel::rectifyRoi(const cv::Rect& roi_raw, const cv::Mat& 
   if (!std::isfinite(oX0) || !std::isfinite(oY0) || !std::isfinite(oX1) || !std::isfinite(oY1))
     return cv::Rect();
   return cv::Rect(std::ceil(oX0), std::ceil(oY0), std::floor(oX1 - oX0), std::floor(oY1 - oY0));
+}
+
+cv::Rect PinholeCameraModel::rectifyRoi(const cv::Rect& roi_raw) const
+{
+  return this->rectifyRoi(roi_raw, cv::Mat());
 }
 
 cv::Rect PinholeCameraModel::unrectifyRoi(const cv::Rect& roi_rect) const
@@ -476,6 +507,11 @@ void PinholeCameraModel::unrectifyImage(const cv::Mat& rectified, cv::Mat& raw, 
       assert(cache_->distortion_state == image_geometry::UNKNOWN);
     throw image_geometry::Exception("Cannot call rectifyImage when distortion is unknown.");
   }
+}
+
+void PinholeCameraModel::unrectifyImage(const cv::Mat& rectified, cv::Mat& raw) const
+{
+  this->unrectifyImage(rectified, raw, cv::INTER_LINEAR);
 }
 
 cv::Size PinholeCameraModel::getRectifiedResolution() const
