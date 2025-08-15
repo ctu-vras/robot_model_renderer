@@ -14,6 +14,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <opencv2/imgproc.hpp>
+
 #include <cras_cpp_common/expected.hpp>
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/tf2_utils/interruptible_buffer.h>
@@ -64,6 +66,8 @@ struct RosCameraRobotModelRendererConfig
   std::shared_ptr<ShapeInflationRegistry> shapeInflationRegistry {nullptr};
 
   ros::Duration tfTimeout {0.01};
+
+  cv::InterpolationFlags upscalingInterpolation {cv::INTER_LINEAR};
 };
 
 /**

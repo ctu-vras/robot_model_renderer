@@ -261,9 +261,21 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
       CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Could not determine rectified image dimensions.");
       return false;
     }
+    this->idealRectifiedCameraResolution = rectifiedRes;
     // Do not allow the rectified image to be smaller (for pincushion distortion).
     if (rectifiedRes.area() < model.reducedResolution().area())
       rectifiedRes = model.reducedResolution();
+
+    const auto maxSize = this->render_system_.getGlMaxTextureSize();
+    if (this->config.gpuDistortion && (rectifiedRes.width > maxSize || rectifiedRes.height > maxSize))
+    {
+      CRAS_WARN_ONCE_NAMED("renderer", "Distortion texture size %i x %i is larger than the maximum supported size "
+        "%i x %i . Scaling down the texture.", rectifiedRes.width, rectifiedRes.height, maxSize, maxSize);
+
+      const double ratio = std::max(
+        rectifiedRes.width / static_cast<double>(maxSize), rectifiedRes.height / static_cast<double>(maxSize));
+      rectifiedRes = cv::Size(std::floor(rectifiedRes.width / ratio), std::floor(rectifiedRes.height / ratio));
+    }
   }
 
   if (areCameraInfosAlmostEqual(model.cameraInfo(), this->origCameraModel.cameraInfo(), 0))
@@ -369,18 +381,36 @@ cras::expected<cv::Mat, std::string> RobotModelRenderer::render(const ros::Time&
     rawImg = unrectImg;
   }
 
-  // The raw image can be larger than the original resolution, so we need to crop it appropriately
-  const auto origRows = this->origCameraModel.reducedResolution().height;
-  const auto origCols = this->origCameraModel.reducedResolution().width;
+  // Rectified resolution is either same or smaller than the ideal. It cannot be larger. So scale is up to 1.0.
+  const auto& idealRes = this->idealRectifiedCameraResolution;
+  auto scale = std::max(
+    rectCols / static_cast<double>(idealRes.width), rectRows / static_cast<double>(idealRes.height));
+
+  // Don't care about small scalings
+  if (std::abs(scale - 1.0) < 1e-3)
+    scale = 1.0;
+
+  // The raw image can be larger than the original resolution, so we need to crop it appropriately; also, account for
+  // rectified image scaling.
+  const auto origRows = static_cast<int>(this->origCameraModel.reducedResolution().height * scale);
+  const auto origCols = static_cast<int>(this->origCameraModel.reducedResolution().width * scale);
 
   // Compute the offset of the centers of the larger rectified image and the original raw image. This will be the offset
   // to apply when cropping back to the original size.
-  const auto cropX = std::max<int>(0, this->rectifiedCameraModel.cx() - this->origCameraModel.cx());
-  const auto cropY = std::max<int>(0, this->rectifiedCameraModel.cy() - this->origCameraModel.cy());
+  const auto cropX = std::max<int>(0, this->rectifiedCameraModel.cx() - this->origCameraModel.cx() * scale);
+  const auto cropY = std::max<int>(0, this->rectifiedCameraModel.cy() - this->origCameraModel.cy() * scale);
   const auto cropCols = std::min(rawImg.cols - cropX, origCols);
   const auto cropRows = std::min(rawImg.rows - cropY, origRows);
 
-  return rawImg(cv::Rect(cropX, cropY, cropCols, cropRows));
+  const auto croppedImg = rawImg(cv::Rect(cropX, cropY, cropCols, cropRows));
+  if (scale == 1.0)
+    return croppedImg;
+
+  // TODO if the original image fits into texture memory, the cropping and scaling could be done in a shader
+  cv::Mat scaledCroppedImg;
+  cv::resize(croppedImg, scaledCroppedImg, this->origCameraModel.reducedResolution(), 0, 0,
+    this->config.upscalingInterpolation);
+  return scaledCroppedImg;
 }
 
 void RobotModelRenderer::reset()

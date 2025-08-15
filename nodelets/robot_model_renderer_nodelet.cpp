@@ -49,7 +49,7 @@ DEFINE_CONVERTING_GET_PARAM(std_msgs::ColorRGBA, std::vector<float>, "[0-1]", []
   return m; \
 })
 
-inline ::std::string to_string(const robot_model_renderer::RenderingMode& value)
+inline std::string to_string(const robot_model_renderer::RenderingMode& value)
 {
   switch (value)
   {
@@ -76,6 +76,53 @@ DEFINE_CONVERTING_GET_PARAM(robot_model_renderer::RenderingMode, std::string, ""
     throw std::runtime_error( \
       cras::format("Invalid value %s for rendering mode. Allowed are: normal, color, mask", mode.c_str())); \
 })
+
+inline std::string to_string(const cv::InterpolationFlags& value)
+{
+  switch (value)
+  {
+    case cv::INTER_NEAREST:
+      return "INTER_NEAREST";
+    case cv::INTER_LINEAR:
+      return "INTER_LINEAR";
+    case cv::INTER_CUBIC:
+      return "INTER_CUBIC";
+    case cv::INTER_AREA:
+      return "INTER_AREA";
+    case cv::INTER_LANCZOS4:
+      return "INTER_LANCZOS4";
+#if CV_VERSION_MAJOR >= 4
+    case cv::INTER_LINEAR_EXACT:
+      return "INTER_LINEAR_EXACT";
+#endif
+    default:
+      return cras::format("Unknown interpolation: %i", value);
+  }
+}
+
+cv::InterpolationFlags convertInterpolationFlags(const std::string& v)
+{
+  const auto interp = cras::toUpper(v);
+  if (interp.empty() || interp == "INTER_LINEAR")
+    return cv::INTER_LINEAR;
+  else if (interp == "INTER_NEAREST")
+    return cv::INTER_NEAREST;
+  else if (interp == "INTER_CUBIC")
+    return cv::INTER_CUBIC;
+  else if (interp == "INTER_AREA")
+    return cv::INTER_AREA;
+  else if (interp == "INTER_LANCZOS4")
+    return cv::INTER_LANCZOS4;
+#if CV_VERSION_MAJOR >= 4
+  else if (interp == "INTER_LINEAR_EXACT")
+    return cv::INTER_LINEAR_EXACT;
+#endif
+  else
+    throw std::runtime_error(
+      cras::format("Invalid value %s for interpolation flags. Allowed are: INTER_LINEAR and similar.", v.c_str()));
+}
+
+DEFINE_CONVERTING_GET_PARAM(cv::InterpolationFlags, std::string, "", convertInterpolationFlags)
 
 }
 
@@ -240,6 +287,7 @@ private:
     config.tfTimeout = params->getParam("tf_timeout", config.tfTimeout, "s");
     config.allLinksRequired = params->getParam("all_links_required", config.allLinksRequired);
     config.requiredLinks = params->getParam("required_links", config.requiredLinks);
+    config.upscalingInterpolation = params->getParam("upscaling_interpolation", config.upscalingInterpolation);
 
     const auto inflationPadding = params->getParamVerbose("body_model/inflation/padding", 0.0, "m");
     const auto inflationScale = params->getParamVerbose("body_model/inflation/scale", 1.0);

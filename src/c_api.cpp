@@ -16,6 +16,8 @@
 #include <set>
 #include <string>
 
+#include <opencv2/imgproc.hpp>
+
 #include <cras_cpp_common/c_api.h>
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/log_utils/memory.h>
@@ -78,6 +80,8 @@ inline robot_model_renderer::RobotModelRendererConfig convertConfig(
     cpp.shapeInflationRegistry->addPerShapeInflation(linkName, convertInflation(inflation));
   }
 
+  cpp.upscalingInterpolation = static_cast<cv::InterpolationFlags>(c.upscalingInterpolation);
+
   return cpp;
 }
 
@@ -124,6 +128,8 @@ robot_model_renderer_RobotModelRendererConfig robot_model_renderer_createDefault
     cpp.shapeInflationRegistry->defaultCollisionInflation().value_or(defInflation).padding;
   c.shapeInflationRegistry.perShapeInflationCount = 0u;
   c.shapeInflationRegistry.perShapeInflation = nullptr;
+
+  c.upscalingInterpolation = cpp.upscalingInterpolation;
 
   return c;
 }

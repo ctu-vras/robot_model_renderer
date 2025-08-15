@@ -176,6 +176,7 @@ class _RobotModelRendererConfig(Structure):
         ("requiredLinks", c_char_p),
         ("shapeFilter", _ShapeFilterConfig),
         ("shapeInflationRegistry", _ShapeInflationRegistry),
+        ("upscalingInterpolation", c_int),
     ]
 
     def __init__(self, *args, **kwargs):
@@ -217,6 +218,7 @@ class RobotModelRendererConfig(object):
         self.requiredLinks = _decode(conf.requiredLinks).split(",") if len(conf.requiredLinks) > 0 else []
         self.shapeFilter = ShapeFilterConfig()
         self.shapeInflationRegistry = ShapeInflationRegistry()
+        self.upscalingInterpolation = conf.upscalingInterpolation
 
     @classmethod
     def from_param(cls, obj):

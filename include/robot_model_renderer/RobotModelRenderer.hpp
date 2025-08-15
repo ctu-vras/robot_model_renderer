@@ -13,6 +13,9 @@
 #include <set>
 #include <string>
 
+#include <opencv2/core/types.hpp>
+#include <opencv2/imgproc.hpp>
+
 #include <OgreCamera.h>
 #include <OgrePixelFormat.h>
 #include <OgreSceneManager.h>
@@ -88,6 +91,8 @@ struct RobotModelRendererConfig
 
   std::shared_ptr<ShapeFilter> shapeFilter {nullptr};
   std::shared_ptr<ShapeInflationRegistry> shapeInflationRegistry {nullptr};
+
+  cv::InterpolationFlags upscalingInterpolation {cv::INTER_LINEAR};
 };
 
 struct RenderErrors
@@ -128,6 +133,7 @@ protected:
 
   robot_model_renderer::PinholeCameraModel origCameraModel;
   robot_model_renderer::PinholeCameraModel rectifiedCameraModel;
+  cv::Size idealRectifiedCameraResolution;
 
   RobotModelRendererConfig config;
 

@@ -62,6 +62,11 @@ public:
     return ogre_window_;
   }
 
+  int getGlMaxTextureSize() const
+  {
+    return this->gl_max_texture_size_;
+  }
+
   /**
    * \brief A LockGuard for rendering using the given render system. You have to hold it any time your code interacts
    *        with the GLX backend of the OGRE render system.
@@ -112,6 +117,7 @@ private:
   bool use_anti_aliasing_;
   int force_gl_version_;
   bool did_init_ogre_root_;
+  int gl_max_texture_size_;
 
   static std::mutex render_system_mutex_;
   static bool render_system_inited_;

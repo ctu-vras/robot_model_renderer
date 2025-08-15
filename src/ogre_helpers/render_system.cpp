@@ -57,7 +57,7 @@ bool RenderSystem::render_system_inited_ = false;
 RenderSystem::RenderSystem(const cras::LogHelperPtr& log, int force_gl_version, bool use_antialiasing) :
   cras::HasLogger(log), log_listener_(log), ogre_root_(nullptr), ogre_window_(nullptr), ogre_log_(nullptr),
   gl_version_(0), glsl_version_(0), use_anti_aliasing_(use_antialiasing), force_gl_version_(force_gl_version),
-  did_init_ogre_root_(false)
+  did_init_ogre_root_(false), gl_max_texture_size_(0)
 {
   ogre_log_ = OgreLogging::configureLogging("Ogre.log", &this->log_listener_);
 
@@ -76,10 +76,12 @@ RenderSystem::RenderSystem(const cras::LogHelperPtr& log, int force_gl_version, 
     setupResources();
     Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
     createColorMaterials();
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &gl_max_texture_size_);
     did_init_ogre_root_ = true;
     render_system_inited_ = true;
     endContextCurrent();
-    CRAS_INFO_NAMED("renderer", "Initialized OGRE GL context.");
+    CRAS_INFO_NAMED("renderer", "Initialized OGRE GL context (max texture size is %i x %i).",
+      gl_max_texture_size_, gl_max_texture_size_);
   }
   else
   {
@@ -93,6 +95,7 @@ RenderSystem::RenderSystem(const cras::LogHelperPtr& log, int force_gl_version, 
     ogre_root_ = Ogre::Root::getSingletonPtr();
     ogre_root_->getRenderSystem()->registerThread();
     detectGlVersion();
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &gl_max_texture_size_);
   }
 
   Ogre::LogManager::getSingleton().setDefaultLog(previous_logger);

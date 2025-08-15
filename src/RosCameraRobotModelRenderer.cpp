@@ -64,6 +64,7 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   robotConfig.shapeInflationRegistry = config.shapeInflationRegistry;
   robotConfig.allLinksRequired = config.allLinksRequired;
   robotConfig.requiredLinks = config.requiredLinks;
+  robotConfig.upscalingInterpolation = config.upscalingInterpolation;
 
   this->linkUpdater = std::make_unique<TFROSLinkUpdater>(this->log, tf, "", "", config.tfTimeout);
   this->renderer = std::make_unique<RobotModelRenderer>(this->log, model, this->linkUpdater.get(),

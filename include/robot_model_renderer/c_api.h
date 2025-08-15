@@ -79,6 +79,8 @@ struct robot_model_renderer_RobotModelRendererConfig
   robot_model_renderer_ShapeFilterConfig shapeFilter;
 
   robot_model_renderer_ShapeInflationRegistry shapeInflationRegistry;
+
+  int upscalingInterpolation;
 };
 
 struct ros_Time
