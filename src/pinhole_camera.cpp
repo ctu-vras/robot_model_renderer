@@ -577,6 +577,38 @@ PinholeCameraModel PinholeCameraModel::getModelForResolution(const cv::Size& res
   return PinholeCameraModel(newCamInfo);
 }
 
+PinholeCameraModel PinholeCameraModel::getScaled(const double scale) const
+{
+  if (scale == 1.0)
+    return PinholeCameraModel(this->cameraInfo());
+
+  auto newCamInfo = this->cameraInfo();
+
+  const auto& K = this->cameraInfo().K;
+  newCamInfo.K = {
+    K[0] * scale, K[1] * scale, K[2] * scale,
+    K[3] * scale, K[4] * scale, K[5] * scale,
+    0.0, 0.0, 1.0
+  };
+
+  const auto& P = this->cameraInfo().P;
+  newCamInfo.P = {
+    P[0] * scale, P[1] * scale, P[2] * scale, P[3] * scale,
+    P[4] * scale, P[5] * scale, P[6] * scale, P[7] * scale,
+    0.0, 0.0, 1.0, 0.0
+  };
+
+  newCamInfo.width = static_cast<int>(newCamInfo.width * scale);
+  newCamInfo.height = static_cast<int>(newCamInfo.height * scale);
+
+  newCamInfo.roi.width = static_cast<int>(newCamInfo.roi.width * scale);
+  newCamInfo.roi.height = static_cast<int>(newCamInfo.roi.height * scale);
+  newCamInfo.roi.x_offset = static_cast<int>(newCamInfo.roi.x_offset * scale);
+  newCamInfo.roi.y_offset = static_cast<int>(newCamInfo.roi.y_offset * scale);
+
+  return PinholeCameraModel(newCamInfo);
+}
+
 const cv::Mat& PinholeCameraModel::getReducedUnrectifyFloatMap() const
 {
   this->initUnrectificationMaps();

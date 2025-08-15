@@ -81,6 +81,8 @@ struct robot_model_renderer_RobotModelRendererConfig
   robot_model_renderer_ShapeInflationRegistry shapeInflationRegistry;
 
   int upscalingInterpolation;
+  double renderImageScale;
+  size_t maxRenderImageSize;
 };
 
 struct ros_Time

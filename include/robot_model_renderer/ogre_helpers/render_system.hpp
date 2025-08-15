@@ -64,6 +64,8 @@ public:
 
   int getGlMaxTextureSize() const
   {
+    if (this->gl_max_texture_size_ == 0)
+      return 4096;  // This should hopefully be supported by all relevant GPUs
     return this->gl_max_texture_size_;
   }
 

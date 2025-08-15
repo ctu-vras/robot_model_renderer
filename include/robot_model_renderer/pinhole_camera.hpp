@@ -44,6 +44,7 @@ public:
   void unrectifyImage(const cv::Mat& rectified, cv::Mat& raw) const;
   virtual cv::Size getRectifiedResolution() const;
   virtual PinholeCameraModel getModelForResolution(const cv::Size& res) const;
+  virtual PinholeCameraModel getScaled(double scale) const;
 
   virtual const cv::Mat& getReducedUnrectifyFloatMap() const;
   virtual cv::Mat getUnrectifyFloatMap(const cv::InputArray& newCameraMatrix, const cv::Size& size) const;

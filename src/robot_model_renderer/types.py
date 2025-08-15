@@ -177,6 +177,8 @@ class _RobotModelRendererConfig(Structure):
         ("shapeFilter", _ShapeFilterConfig),
         ("shapeInflationRegistry", _ShapeInflationRegistry),
         ("upscalingInterpolation", c_int),
+        ("renderImageScale", c_double),
+        ("maxRenderImageSize", c_size_t),
     ]
 
     def __init__(self, *args, **kwargs):
@@ -219,6 +221,8 @@ class RobotModelRendererConfig(object):
         self.shapeFilter = ShapeFilterConfig()
         self.shapeInflationRegistry = ShapeInflationRegistry()
         self.upscalingInterpolation = conf.upscalingInterpolation
+        self.renderImageScale = conf.renderImageScale
+        self.maxRenderImageSize = conf.maxRenderImageSize
 
     @classmethod
     def from_param(cls, obj):

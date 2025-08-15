@@ -179,7 +179,7 @@ void RobotModelRenderer::setPixelFormat(const Ogre::PixelFormat& pf)
 
 void RobotModelRenderer::updateOgreCamera()
 {
-  const auto& cam = this->isDistorted ? this->rectifiedCameraModel : this->origCameraModel;
+  const auto& cam = this->isDistorted ? this->rectifiedCameraModel : this->renderingCameraModel;
   const auto& resolution = cam.reducedResolution();
   const auto& P = cam.projectionMatrix();
 
@@ -252,32 +252,6 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
     std::any_of(model.distortionCoeffs().begin(), model.distortionCoeffs().end(),
       [](const double x) { return fabs(x) > 1e-6; });
 
-  cv::Size rectifiedRes;
-  if (this->isDistorted)
-  {
-    rectifiedRes = model.getRectifiedResolution();
-    if (rectifiedRes.width == 0 || rectifiedRes.height == 0)
-    {
-      CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Could not determine rectified image dimensions.");
-      return false;
-    }
-    this->idealRectifiedCameraResolution = rectifiedRes;
-    // Do not allow the rectified image to be smaller (for pincushion distortion).
-    if (rectifiedRes.area() < model.reducedResolution().area())
-      rectifiedRes = model.reducedResolution();
-
-    const auto maxSize = this->render_system_.getGlMaxTextureSize();
-    if (this->config.gpuDistortion && (rectifiedRes.width > maxSize || rectifiedRes.height > maxSize))
-    {
-      CRAS_WARN_ONCE_NAMED("renderer", "Distortion texture size %i x %i is larger than the maximum supported size "
-        "%i x %i . Scaling down the texture.", rectifiedRes.width, rectifiedRes.height, maxSize, maxSize);
-
-      const double ratio = std::max(
-        rectifiedRes.width / static_cast<double>(maxSize), rectifiedRes.height / static_cast<double>(maxSize));
-      rectifiedRes = cv::Size(std::floor(rectifiedRes.width / ratio), std::floor(rectifiedRes.height / ratio));
-    }
-  }
-
   if (areCameraInfosAlmostEqual(model.cameraInfo(), this->origCameraModel.cameraInfo(), 0))
     return true;
 
@@ -286,14 +260,70 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
   const auto prevOrigCamMsg = this->origCameraModel.cameraInfo();
   this->origCameraModel = model;
 
+  // Determine the scale of the rendered image
+  double scale = this->config.renderImageScale;
+
+  // Ignore scalings very close to 1.0
+  if (std::abs(scale - 1.0) < 1e-3)
+    scale = 1.0;
+
+  // Do not allow upscaling
+  if (scale > 1.0)
+  {
+    CRAS_WARN_THROTTLE_NAMED(1.0, "renderer", "Setting the model rendering scale to a value larger than 1.0 is not "
+      "supported (and it does not make much sense). Setting to 1.0 instead.");
+    scale = 1.0;
+  }
+
+  const auto maxTexSize = this->config.maxRenderImageSize == 0u ? this->render_system_.getGlMaxTextureSize() :
+    std::min(static_cast<int>(this->config.maxRenderImageSize), this->render_system_.getGlMaxTextureSize());
+
+  if (scale * model.reducedResolution().width > maxTexSize || scale * model.reducedResolution().height > maxTexSize)
+  {
+    CRAS_WARN_ONCE_NAMED("renderer", "Image size %i x %i is larger than the maximum supported size %i x %i . Scaling "
+      "down the image.", static_cast<int>(scale * model.reducedResolution().width),
+      static_cast<int>(scale * model.reducedResolution().height), maxTexSize, maxTexSize);
+
+    scale = static_cast<double>(maxTexSize) /
+      std::max(model.reducedResolution().width, model.reducedResolution().height);
+  }
+
+  const auto prevRenderCamMsg = this->renderingCameraModel.cameraInfo();
+  this->renderingCameraModel = model.getScaled(scale);
+
+  cv::Size rectifiedRes;
   if (this->isDistorted)
   {
+    rectifiedRes = this->renderingCameraModel.getRectifiedResolution();
+    if (rectifiedRes.width == 0 || rectifiedRes.height == 0)
+    {
+      CRAS_ERROR_THROTTLE_NAMED(1.0, "camera_info", "Could not determine rectified image dimensions.");
+      this->origCameraModel.fromCameraInfo(prevOrigCamMsg);
+      this->renderingCameraModel.fromCameraInfo(prevRenderCamMsg);
+      return false;
+    }
+    this->idealRectifiedCameraResolution = rectifiedRes;
+    // Do not allow the rectified image to be smaller (for pincushion distortion).
+    if (rectifiedRes.area() < this->renderingCameraModel.reducedResolution().area())
+      rectifiedRes = this->renderingCameraModel.reducedResolution();
+
+    if (this->config.gpuDistortion && (rectifiedRes.width > maxTexSize || rectifiedRes.height > maxTexSize))
+    {
+      CRAS_WARN_ONCE_NAMED("renderer", "Distorted image size %i x %i is larger than the maximum supported size "
+        "%i x %i . Scaling down the image.", rectifiedRes.width, rectifiedRes.height, maxTexSize, maxTexSize);
+
+      const double ratio = std::max(
+        rectifiedRes.width / static_cast<double>(maxTexSize), rectifiedRes.height / static_cast<double>(maxTexSize));
+      rectifiedRes = cv::Size(std::floor(rectifiedRes.width / ratio), std::floor(rectifiedRes.height / ratio));
+    }
+
     const auto prevRectCamMsg = this->rectifiedCameraModel.cameraInfo();
-    this->rectifiedCameraModel = this->origCameraModel.getModelForResolution(rectifiedRes);
+    this->rectifiedCameraModel = this->renderingCameraModel.getModelForResolution(rectifiedRes);
 
     if (this->config.gpuDistortion && !distortionPass_.SetCameraModel(this->rectifiedCameraModel))
     {
       this->origCameraModel.fromCameraInfo(prevOrigCamMsg);
+      this->renderingCameraModel.fromCameraInfo(prevRenderCamMsg);
       this->rectifiedCameraModel.fromCameraInfo(prevRectCamMsg);
       return false;
     }
@@ -301,7 +331,7 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
 
   this->reset();
 
-  const auto& cam = this->isDistorted ? this->rectifiedCameraModel : this->origCameraModel;
+  const auto& cam = this->isDistorted ? this->rectifiedCameraModel : this->renderingCameraModel;
   const auto res = cam.reducedResolution();
 
   {
@@ -323,7 +353,13 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
       distortionPass_.CreateRenderPass();
 
     if (this->config.drawOutline)
+    {
+      // If we render a downscaled image, scale the outline so that it appears the same size regardless of downscaling
+      const auto outlineWidth = this->config.outlineWidth *
+        (static_cast<double>(res.width) / this->origCameraModel.reducedResolution().width);
+      outlinePass_.SetOutlineWidth(static_cast<float>(outlineWidth));
       outlinePass_.CreateRenderPass();
+    }
 
     if (this->config.invertColors)
       invertColorsPass_.CreateRenderPass();
@@ -364,9 +400,18 @@ cras::expected<cv::Mat, std::string> RobotModelRenderer::render(const ros::Time&
     rt_->copyContentsToMemory(pb);
   }
 
-  // If distortion is not applied, this is all, we have a rectified image of correct size
+  // If distortion is not applied, this is all, we already have a rectified image
   if (!this->isDistorted)
-    return rectImg;
+  {
+    // If the rendered image has the correct size, directly return it; otherwise it needs to be upscaled
+    if (this->origCameraModel.reducedResolution() == this->renderingCameraModel.reducedResolution())
+      return rectImg;
+
+    cv::Mat scaledImg;
+    cv::resize(rectImg, scaledImg, this->origCameraModel.reducedResolution(), 0, 0,
+      this->config.upscalingInterpolation);
+    return scaledImg;
+  }
 
   // If distortion is done on GPU, this will already be raw image
   auto rawImg = rectImg;
@@ -392,22 +437,26 @@ cras::expected<cv::Mat, std::string> RobotModelRenderer::render(const ros::Time&
 
   // The raw image can be larger than the original resolution, so we need to crop it appropriately; also, account for
   // rectified image scaling.
-  const auto origRows = static_cast<int>(this->origCameraModel.reducedResolution().height * scale);
-  const auto origCols = static_cast<int>(this->origCameraModel.reducedResolution().width * scale);
+  const auto origRows = static_cast<int>(this->renderingCameraModel.reducedResolution().height * scale);
+  const auto origCols = static_cast<int>(this->renderingCameraModel.reducedResolution().width * scale);
 
   // Compute the offset of the centers of the larger rectified image and the original raw image. This will be the offset
   // to apply when cropping back to the original size.
-  const auto cropX = std::max<int>(0, this->rectifiedCameraModel.cx() - this->origCameraModel.cx() * scale);
-  const auto cropY = std::max<int>(0, this->rectifiedCameraModel.cy() - this->origCameraModel.cy() * scale);
+  const auto cropX = std::max<int>(0, this->rectifiedCameraModel.cx() - this->renderingCameraModel.cx() * scale);
+  const auto cropY = std::max<int>(0, this->rectifiedCameraModel.cy() - this->renderingCameraModel.cy() * scale);
   const auto cropCols = std::min(rawImg.cols - cropX, origCols);
   const auto cropRows = std::min(rawImg.rows - cropY, origRows);
 
-  const auto croppedImg = rawImg(cv::Rect(cropX, cropY, cropCols, cropRows));
-  if (scale == 1.0)
+  auto croppedImg = rawImg(cv::Rect(cropX, cropY, cropCols, cropRows));
+
+  if (croppedImg.cols == this->origCameraModel.reducedResolution().width)
     return croppedImg;
 
   // TODO if the original image fits into texture memory, the cropping and scaling could be done in a shader
   cv::Mat scaledCroppedImg;
+  // There might be double scaling applied here - one from distortion texture (if it was smaller than it should)
+  // and one from renderingCameraModel (if the rendering resolution is smaller than original image). However, it is
+  // perfectly okay to "merge" them both here, so we directly scale from the distorted image to the original size.
   cv::resize(croppedImg, scaledCroppedImg, this->origCameraModel.reducedResolution(), 0, 0,
     this->config.upscalingInterpolation);
   return scaledCroppedImg;

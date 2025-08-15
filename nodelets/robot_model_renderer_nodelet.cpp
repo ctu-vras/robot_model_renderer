@@ -288,6 +288,8 @@ private:
     config.allLinksRequired = params->getParam("all_links_required", config.allLinksRequired);
     config.requiredLinks = params->getParam("required_links", config.requiredLinks);
     config.upscalingInterpolation = params->getParam("upscaling_interpolation", config.upscalingInterpolation);
+    config.renderImageScale = params->getParam("render_image_scale", config.renderImageScale);
+    config.maxRenderImageSize = params->getParam("max_render_image_size", config.maxRenderImageSize, "px (0 = none)");
 
     const auto inflationPadding = params->getParamVerbose("body_model/inflation/padding", 0.0, "m");
     const auto inflationScale = params->getParamVerbose("body_model/inflation/scale", 1.0);

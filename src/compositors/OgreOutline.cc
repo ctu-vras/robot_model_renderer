@@ -58,6 +58,11 @@ void OgreOutline::SetCamera(Ogre::Camera* camera)
   this->ogreCamera = camera;
 }
 
+void OgreOutline::SetOutlineWidth(const float width)
+{
+  this->dataPtr->outlineWidth = width;
+}
+
 void OgreOutline::CreateRenderPass()
 {
   if (!this->ogreCamera)

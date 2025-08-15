@@ -93,6 +93,8 @@ struct RobotModelRendererConfig
   std::shared_ptr<ShapeInflationRegistry> shapeInflationRegistry {nullptr};
 
   cv::InterpolationFlags upscalingInterpolation {cv::INTER_LINEAR};
+  double renderImageScale {1.0};
+  size_t maxRenderImageSize {0u};
 };
 
 struct RenderErrors
@@ -132,6 +134,7 @@ protected:
   LinkUpdater* linkUpdater;
 
   robot_model_renderer::PinholeCameraModel origCameraModel;
+  robot_model_renderer::PinholeCameraModel renderingCameraModel;
   robot_model_renderer::PinholeCameraModel rectifiedCameraModel;
   cv::Size idealRectifiedCameraResolution;
 

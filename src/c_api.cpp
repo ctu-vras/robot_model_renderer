@@ -81,6 +81,8 @@ inline robot_model_renderer::RobotModelRendererConfig convertConfig(
   }
 
   cpp.upscalingInterpolation = static_cast<cv::InterpolationFlags>(c.upscalingInterpolation);
+  cpp.renderImageScale = c.renderImageScale;
+  cpp.maxRenderImageSize = c.maxRenderImageSize;
 
   return cpp;
 }
@@ -130,6 +132,8 @@ robot_model_renderer_RobotModelRendererConfig robot_model_renderer_createDefault
   c.shapeInflationRegistry.perShapeInflation = nullptr;
 
   c.upscalingInterpolation = cpp.upscalingInterpolation;
+  c.renderImageScale = cpp.renderImageScale;
+  c.maxRenderImageSize = cpp.maxRenderImageSize;
 
   return c;
 }

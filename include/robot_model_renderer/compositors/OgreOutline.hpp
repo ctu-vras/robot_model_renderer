@@ -53,6 +53,8 @@ public:
    */
   virtual void SetCamera(Ogre::Camera* camera);
 
+  virtual void SetOutlineWidth(float width);
+
 protected:
   Ogre::Camera* ogreCamera = nullptr;  //!< Pointer to the ogre camera
 

@@ -68,6 +68,8 @@ struct RosCameraRobotModelRendererConfig
   ros::Duration tfTimeout {0.01};
 
   cv::InterpolationFlags upscalingInterpolation {cv::INTER_LINEAR};
+  double renderImageScale {1.0};
+  size_t maxRenderImageSize {0u};
 };
 
 /**
