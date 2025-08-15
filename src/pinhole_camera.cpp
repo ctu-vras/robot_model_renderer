@@ -287,11 +287,11 @@ cv::Point2d PinholeCameraModel::_rectifyPoint(const cv::Point2d& uv_raw, const c
 #else
   const auto origK = this->K_;
   const auto origP = this->P_;
-  this->K_ = K;
-  this->P_ = P;
+  const_cast<PinholeCameraModel*>(this)->K_ = K;
+  const_cast<PinholeCameraModel*>(this)->P_ = P;
   const auto result = this->rectifyPoint(uv_raw);
-  this->K_ = origK;
-  this->P_ = origP;
+  const_cast<PinholeCameraModel*>(this)->K_ = origK;
+  const_cast<PinholeCameraModel*>(this)->P_ = origP;
   return result;
 #endif
 }
