@@ -104,12 +104,12 @@ RobotLink::RobotLink(const cras::LogHelperPtr& log, Robot* robot, const urdf::Li
 
   // create the ogre objects to display
 
-  if (shape_filter->isVisualAllowed())
+  if (shape_filter == nullptr || shape_filter->isVisualAllowed())
   {
     errors_.visualErrors = createVisuals(link, shape_filter, shape_inflation_registry);
   }
 
-  if (shape_filter->isCollisionAllowed())
+  if (shape_filter == nullptr || shape_filter->isCollisionAllowed())
   {
     errors_.collisionErrors = createCollisions(link, shape_filter, shape_inflation_registry);
   }
@@ -699,10 +699,12 @@ std::vector<GeometryError> RobotLink::createCollisions(
 
     if (collision && collision->geometry)
     {
-      if (!shape_filter->considerShape(false, link->name, collision->name, i))
+      if (shape_filter != nullptr && !shape_filter->considerShape(false, link->name, collision->name, i))
         continue;
 
-      const auto inflation = shape_inflation_registry->getShapeInflation(false, link->name, collision->name, i);
+      ScaleAndPadding inflation(1.0, 0.0);
+      if (shape_inflation_registry != nullptr)
+        inflation = shape_inflation_registry->getShapeInflation(false, link->name, collision->name, i);
       Ogre::Entity* collision_mesh = createEntityForGeometryElement(
         link, *collision->geometry, nullptr, collision->origin, collision_node_, inflation, error);
       if (collision_mesh)
@@ -725,9 +727,11 @@ std::vector<GeometryError> RobotLink::createCollisions(
 
   if (!valid_collision_found && link->collision && link->collision->geometry)
   {
-    if (shape_filter->considerShape(false, link->name, link->collision->name, 0))
+    if (shape_filter == nullptr || shape_filter->considerShape(false, link->name, link->collision->name, 0))
     {
-      const auto inflation = shape_inflation_registry->getShapeInflation(false, link->name, link->collision->name, 0);
+      ScaleAndPadding inflation(1.0, 0.0);
+      if (shape_inflation_registry != nullptr)
+        inflation = shape_inflation_registry->getShapeInflation(false, link->name, link->collision->name, 0);
       Ogre::Entity* collision_mesh = createEntityForGeometryElement(
         link, *link->collision->geometry, nullptr, link->collision->origin, collision_node_, inflation, error);
       if (collision_mesh)
@@ -770,10 +774,12 @@ std::vector<GeometryError> RobotLink::createVisuals(
 
     if (visual && visual->geometry)
     {
-      if (!shape_filter->considerShape(true, link->name, visual->name, i))
+      if (shape_filter != nullptr && !shape_filter->considerShape(true, link->name, visual->name, i))
         continue;
 
-      const auto inflation = shape_inflation_registry->getShapeInflation(true, link->name, visual->name, i);
+      ScaleAndPadding inflation(1.0, 0.0);
+      if (shape_inflation_registry != nullptr)
+        inflation = shape_inflation_registry->getShapeInflation(true, link->name, visual->name, i);
       Ogre::Entity* visual_mesh = createEntityForGeometryElement(
         link, *visual->geometry, visual->material, visual->origin, visual_node_, inflation, error);
       if (visual_mesh)
@@ -796,9 +802,11 @@ std::vector<GeometryError> RobotLink::createVisuals(
 
   if (!valid_visual_found && link->visual && link->visual->geometry)
   {
-    if (shape_filter->considerShape(true, link->name, link->visual->name, 0))
+    if (shape_filter == nullptr || shape_filter->considerShape(true, link->name, link->visual->name, 0))
     {
-      const auto inflation = shape_inflation_registry->getShapeInflation(true, link->name, link->visual->name, 0);
+      ScaleAndPadding inflation(1.0, 0.0);
+      if (shape_inflation_registry != nullptr)
+        inflation = shape_inflation_registry->getShapeInflation(true, link->name, link->visual->name, 0);
       Ogre::Entity* visual_mesh = createEntityForGeometryElement(
         link, *link->visual->geometry, link->visual->material, link->visual->origin, visual_node_, inflation, error);
       if (visual_mesh)

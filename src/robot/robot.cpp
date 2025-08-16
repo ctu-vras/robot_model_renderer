@@ -206,7 +206,7 @@ cras::expected<void, RobotErrors> Robot::load(
   {
     for (const auto& [link_name, urdf_link] : urdf.links_)
     {
-      if (!shape_filter->considerLink(link_name))
+      if (shape_filter != nullptr && !shape_filter->considerLink(link_name))
         continue;
 
       std::string parent_joint_name;

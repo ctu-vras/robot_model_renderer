@@ -132,8 +132,8 @@ cras::expected<void, RobotErrors> RobotModelRenderer::setModel(const urdf::Model
   if (!loadResult.has_value())
     return loadResult;
 
-  this->setVisualVisible(this->config.shapeFilter->isVisualAllowed());
-  this->setCollisionVisible(this->config.shapeFilter->isCollisionAllowed());
+  this->setVisualVisible(this->config.shapeFilter ? this->config.shapeFilter->isVisualAllowed() : true);
+  this->setCollisionVisible(this->config.shapeFilter ? this->config.shapeFilter->isCollisionAllowed() : false);
 
   if (this->config.renderingMode == RenderingMode::MASK)
     this->robot_->setMaskMode();

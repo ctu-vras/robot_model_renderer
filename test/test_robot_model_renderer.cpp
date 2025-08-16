@@ -17,23 +17,14 @@
 #include <string>
 #include <utility>
 
-#include <class_loader/class_loader_core.hpp>
 #include <cras_cpp_common/log_utils/memory.h>
 #include <cras_cpp_common/log_utils/node.h>
-#include <cras_cpp_common/nodelet_utils.hpp>
-#include <cras_cpp_common/param_utils/param_helper.hpp>
-#include <cras_cpp_common/string_utils/ros.hpp>
-#include <cv_bridge/cv_bridge.h>
 #include <geometry_msgs/TransformStamped.h>
-#include <nodelet/nodelet.h>
-#include <ros/callback_queue.h>
-#include <ros/ros.h>
+#include <robot_model_renderer/RobotModelRenderer.hpp>
+#include <robot_model_renderer/robot/tf_link_updater.hpp>
 #include <sensor_msgs/CameraInfo.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/image_encodings.h>
-#include <tf2_msgs/TFMessage.h>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
+#include <tf2/buffer_core.h>
+#include <urdf/model.h>
 
 ros::V_string my_argv;
 
@@ -53,85 +44,29 @@ auto alignedStep(const uint32_t width, const uint32_t channels, const uint32_t p
     testing::Eq(planes * align(step, 64)));
 }
 
-template<typename NodeletType = cras::Nodelet>
-std::unique_ptr<NodeletType> createNodelet(const cras::LogHelperPtr& log,
-  const ros::M_string& remaps = {},
-  const std::shared_ptr<tf2_ros::Buffer>& tf = nullptr)
-{
-  // Declaration order of these variables is important to make sure they can be properly stopped and destroyed.
-  auto nodelet = class_loader::impl::createInstance<nodelet::Nodelet>(
-    "robot_model_renderer::RobotModelRendererNodelet", nullptr);
-  if (nodelet == nullptr)
-    return nullptr;
-
-  {
-    const auto paramHelper = dynamic_cast<cras::ParamHelper*>(nodelet);
-    if (paramHelper != nullptr)
-      paramHelper->setLogger(log);
-  }
-
-  const auto targetNodelet = dynamic_cast<NodeletType*>(nodelet);
-  if (targetNodelet == nullptr)
-  {
-    delete nodelet;
-    return nullptr;
-  }
-
-  if (tf != nullptr)
-    targetNodelet->setBuffer(tf);
-
-  nodelet->init(ros::this_node::getName(), remaps, my_argv, nullptr, nullptr);
-
-  return std::unique_ptr<NodeletType>(targetNodelet);
-}
-
 TEST(RobotModelRendererNodelet, Default)  // NOLINT
 {
-  std::ifstream t(std::string(TEST_DATA_DIR) + "/robot.urdf");
-  std::stringstream buffer;
-  buffer << t.rdbuf();
-  const auto robotDescription = buffer.str();
-
-  ros::NodeHandle nh, pnh("~");
-
-  pnh.deleteParam("");
-  pnh.setParam("robot_description", robotDescription);
-
-  std::vector<sensor_msgs::Image> lastImages;
-  auto imageCb = [&lastImages](const sensor_msgs::Image::ConstPtr& msg)
-  {
-    lastImages.push_back(*msg);
-  };
-
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
 
-  ros::M_string remaps = {
-    {"robot_description", ros::names::append(ros::this_node::getName(), "robot_description")},
-  };
-  auto nodelet = createNodelet(log, remaps);
-  ASSERT_NE(nullptr, nodelet);
+  urdf::Model model;
+  model.initString("<robot name=\"test\"><link name=\"link1\"/></robot>");
 
-  auto imageSub = nh.subscribe<sensor_msgs::Image>("mask", 1, imageCb);
-  for (size_t i = 0; i < 1000 && imageSub.getNumPublishers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for subscriber connection.");
-  }
-  ASSERT_GT(imageSub.getNumPublishers(), 0);
+  tf2::BufferCore tfBuffer;
+  robot_model_renderer::TFLinkUpdater linkUpdater(log, &tfBuffer);
+  linkUpdater.setFixedFrame("link1");
 
-  auto tfPub = nh.advertise<tf2_msgs::TFMessage>("/tf_static", 1, true);
-  for (size_t i = 0; i < 1000 && tfPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for TF publisher connection.");
-  }
-  ASSERT_GT(tfPub.getNumSubscribers(), 0);
+  robot_model_renderer::RobotModelRendererConfig config;
+  config.pixelFormat = Ogre::PF_BYTE_RGBA;
+
+  robot_model_renderer::RobotErrors errors;
+  robot_model_renderer::RobotModelRenderer renderer(log, model, &linkUpdater, errors, config);
+  ASSERT_FALSE(errors.hasError());
+
+  model.clear();
+  model.initFile(std::string(TEST_DATA_DIR) + "/robot.urdf");
+  const auto setModelResult = renderer.setModel(model);
+  ASSERT_TRUE(setModelResult.has_value());
 
   geometry_msgs::TransformStamped tf;
   tf.header.frame_id = "link1";
@@ -140,21 +75,7 @@ TEST(RobotModelRendererNodelet, Default)  // NOLINT
   tf.transform.translation.x = 0.3;
   tf.transform.translation.z = 1.0;
   tf.transform.rotation.w = 1.0;
-
-  tf2_msgs::TFMessage tfMsg;
-  tfMsg.transforms.push_back(tf);
-
-  tfPub.publish(tfMsg);
-  ros::WallDuration(0.3).sleep();
-
-  auto camInfoPub = nh.advertise<sensor_msgs::CameraInfo>("camera_info", 1, false);
-  for (size_t i = 0; i < 1000 && camInfoPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for camera info publisher connection.");
-  }
-  ASSERT_GT(camInfoPub.getNumSubscribers(), 0);
+  tfBuffer.setTransform(tf, "test", true);
 
   sensor_msgs::CameraInfo camInfo;
   camInfo.header.frame_id = "link1";
@@ -166,26 +87,13 @@ TEST(RobotModelRendererNodelet, Default)  // NOLINT
   camInfo.K = {800.0, 0.0, 600.0, 0.0, 800.0, 800.0, 0.0, 0.0, 1.0};
   camInfo.R = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
   camInfo.P = {800.0, 0.0, 600.0, 0.0, 0.0, 800.0, 800.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+  ASSERT_TRUE(renderer.updateCameraInfo(robot_model_renderer::PinholeCameraModel(camInfo)));
 
-  camInfoPub.publish(camInfo);
+  robot_model_renderer::RenderErrors renderErrors;
+  const auto renderResult = renderer.render(camInfo.header.stamp, renderErrors);
+  ASSERT_TRUE(renderResult.has_value());
 
-  for (size_t i = 0; i < 50 && lastImages.empty() && ros::ok() && nodelet->ok(); ++i)
-  {
-    ros::spinOnce();
-    ros::WallDuration(0.1).sleep();
-  }
-
-  ASSERT_FALSE(lastImages.empty());
-
-  EXPECT_EQ("link1", lastImages[0].header.frame_id);
-  EXPECT_EQ(ros::Time(1732502880, 585000000), lastImages[0].header.stamp);
-  EXPECT_EQ(1212, lastImages[0].width);
-  EXPECT_EQ(1616, lastImages[0].height);
-  EXPECT_EQ(sensor_msgs::image_encodings::RGBA8, lastImages[0].encoding);
-  EXPECT_THAT(lastImages[0].step, alignedStep(1212, 4));
-  EXPECT_EQ(0, lastImages[0].is_bigendian);
-
-  const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
+  const auto& cvImage = renderResult.value();
   ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
@@ -197,58 +105,32 @@ TEST(RobotModelRendererNodelet, Default)  // NOLINT
   EXPECT_EQ(cv::Vec4b(250, 0, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1212 / 2));
   EXPECT_EQ(cv::Vec4b(250, 0, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1211));
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
-
-  nodelet->requestStop();
 }
 
 TEST(RobotModelRendererNodelet, DefaultCpuDistortion)  // NOLINT
 {
-  std::ifstream t(std::string(TEST_DATA_DIR) + "/robot.urdf");
-  std::stringstream buffer;
-  buffer << t.rdbuf();
-  const auto robotDescription = buffer.str();
-
-  ros::NodeHandle nh, pnh("~");
-
-  pnh.deleteParam("");
-  pnh.setParam("robot_description", robotDescription);
-  pnh.setParam("gpu_distortion", false);
-
-  std::vector<sensor_msgs::Image> lastImages;
-  auto imageCb = [&lastImages](const sensor_msgs::Image::ConstPtr& msg)
-  {
-    lastImages.push_back(*msg);
-  };
-
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
 
-  ros::M_string remaps = {
-    {"robot_description", ros::names::append(ros::this_node::getName(), "robot_description")},
-  };
-  auto nodelet = createNodelet(log, remaps);
-  ASSERT_NE(nullptr, nodelet);
+  urdf::Model model;
+  model.initString("<robot name=\"test\"><link name=\"link1\"/></robot>");
 
-  auto imageSub = nh.subscribe<sensor_msgs::Image>("mask", 1, imageCb);
-  for (size_t i = 0; i < 1000 && imageSub.getNumPublishers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for subscriber connection.");
-  }
-  ASSERT_GT(imageSub.getNumPublishers(), 0);
+  tf2::BufferCore tfBuffer;
+  robot_model_renderer::TFLinkUpdater linkUpdater(log, &tfBuffer);
+  linkUpdater.setFixedFrame("link1");
 
-  auto tfPub = nh.advertise<tf2_msgs::TFMessage>("/tf_static", 1, true);
-  for (size_t i = 0; i < 1000 && tfPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for TF publisher connection.");
-  }
-  ASSERT_GT(tfPub.getNumSubscribers(), 0);
+  robot_model_renderer::RobotModelRendererConfig config;
+  config.pixelFormat = Ogre::PF_BYTE_RGBA;
+  config.gpuDistortion = false;
+
+  robot_model_renderer::RobotErrors errors;
+  robot_model_renderer::RobotModelRenderer renderer(log, model, &linkUpdater, errors, config);
+  ASSERT_FALSE(errors.hasError());
+
+  model.clear();
+  model.initFile(std::string(TEST_DATA_DIR) + "/robot.urdf");
+  const auto setModelResult = renderer.setModel(model);
+  ASSERT_TRUE(setModelResult.has_value());
 
   geometry_msgs::TransformStamped tf;
   tf.header.frame_id = "link1";
@@ -258,20 +140,7 @@ TEST(RobotModelRendererNodelet, DefaultCpuDistortion)  // NOLINT
   tf.transform.translation.z = 1.0;
   tf.transform.rotation.w = 1.0;
 
-  tf2_msgs::TFMessage tfMsg;
-  tfMsg.transforms.push_back(tf);
-
-  tfPub.publish(tfMsg);
-  ros::WallDuration(0.3).sleep();
-
-  auto camInfoPub = nh.advertise<sensor_msgs::CameraInfo>("camera_info", 1, false);
-  for (size_t i = 0; i < 1000 && camInfoPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for camera info publisher connection.");
-  }
-  ASSERT_GT(camInfoPub.getNumSubscribers(), 0);
+  tfBuffer.setTransform(tf, "test", true);
 
   sensor_msgs::CameraInfo camInfo;
   camInfo.header.frame_id = "link1";
@@ -283,26 +152,13 @@ TEST(RobotModelRendererNodelet, DefaultCpuDistortion)  // NOLINT
   camInfo.K = {800.0, 0.0, 600.0, 0.0, 800.0, 800.0, 0.0, 0.0, 1.0};
   camInfo.R = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
   camInfo.P = {800.0, 0.0, 600.0, 0.0, 0.0, 800.0, 800.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+  ASSERT_TRUE(renderer.updateCameraInfo(robot_model_renderer::PinholeCameraModel(camInfo)));
 
-  camInfoPub.publish(camInfo);
+  robot_model_renderer::RenderErrors renderErrors;
+  const auto renderResult = renderer.render(camInfo.header.stamp, renderErrors);
+  ASSERT_TRUE(renderResult.has_value());
 
-  for (size_t i = 0; i < 50 && lastImages.empty() && ros::ok() && nodelet->ok(); ++i)
-  {
-    ros::spinOnce();
-    ros::WallDuration(0.1).sleep();
-  }
-
-  ASSERT_FALSE(lastImages.empty());
-
-  EXPECT_EQ("link1", lastImages[0].header.frame_id);
-  EXPECT_EQ(ros::Time(1732502880, 585000000), lastImages[0].header.stamp);
-  EXPECT_EQ(1212, lastImages[0].width);
-  EXPECT_EQ(1616, lastImages[0].height);
-  EXPECT_EQ(sensor_msgs::image_encodings::RGBA8, lastImages[0].encoding);
-  EXPECT_THAT(lastImages[0].step, alignedStep(1212, 4));
-  EXPECT_EQ(0, lastImages[0].is_bigendian);
-
-  const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
+  const auto& cvImage = renderResult.value();
   ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
@@ -314,58 +170,31 @@ TEST(RobotModelRendererNodelet, DefaultCpuDistortion)  // NOLINT
   EXPECT_EQ(cv::Vec4b(250, 0, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1212 / 2));
   EXPECT_EQ(cv::Vec4b(250, 0, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1211));
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
-
-  nodelet->requestStop();
 }
 
 TEST(RobotModelRendererNodelet, DefaultBGRA)  // NOLINT
 {
-  std::ifstream t(std::string(TEST_DATA_DIR) + "/robot.urdf");
-  std::stringstream buffer;
-  buffer << t.rdbuf();
-  const auto robotDescription = buffer.str();
-
-  ros::NodeHandle nh, pnh("~");
-
-  pnh.deleteParam("");
-  pnh.setParam("robot_description", robotDescription);
-  pnh.setParam("image_encoding", "bgra8");
-
-  std::vector<sensor_msgs::Image> lastImages;
-  auto imageCb = [&lastImages](const sensor_msgs::Image::ConstPtr& msg)
-  {
-    lastImages.push_back(*msg);
-  };
-
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
 
-  ros::M_string remaps = {
-    {"robot_description", ros::names::append(ros::this_node::getName(), "robot_description")},
-  };
-  auto nodelet = createNodelet(log, remaps);
-  ASSERT_NE(nullptr, nodelet);
+  urdf::Model model;
+  model.initString("<robot name=\"test\"><link name=\"link1\"/></robot>");
 
-  auto imageSub = nh.subscribe<sensor_msgs::Image>("mask", 1, imageCb);
-  for (size_t i = 0; i < 1000 && imageSub.getNumPublishers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for subscriber connection.");
-  }
-  ASSERT_GT(imageSub.getNumPublishers(), 0);
+  tf2::BufferCore tfBuffer;
+  robot_model_renderer::TFLinkUpdater linkUpdater(log, &tfBuffer);
+  linkUpdater.setFixedFrame("link1");
 
-  auto tfPub = nh.advertise<tf2_msgs::TFMessage>("/tf_static", 1, true);
-  for (size_t i = 0; i < 1000 && tfPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for TF publisher connection.");
-  }
-  ASSERT_GT(tfPub.getNumSubscribers(), 0);
+  robot_model_renderer::RobotModelRendererConfig config;
+  config.pixelFormat = Ogre::PF_BYTE_BGRA;
+
+  robot_model_renderer::RobotErrors errors;
+  robot_model_renderer::RobotModelRenderer renderer(log, model, &linkUpdater, errors, config);
+  ASSERT_FALSE(errors.hasError());
+
+  model.clear();
+  model.initFile(std::string(TEST_DATA_DIR) + "/robot.urdf");
+  const auto setModelResult = renderer.setModel(model);
+  ASSERT_TRUE(setModelResult.has_value());
 
   geometry_msgs::TransformStamped tf;
   tf.header.frame_id = "link1";
@@ -375,20 +204,7 @@ TEST(RobotModelRendererNodelet, DefaultBGRA)  // NOLINT
   tf.transform.translation.z = 1.0;
   tf.transform.rotation.w = 1.0;
 
-  tf2_msgs::TFMessage tfMsg;
-  tfMsg.transforms.push_back(tf);
-
-  tfPub.publish(tfMsg);
-  ros::WallDuration(0.3).sleep();
-
-  auto camInfoPub = nh.advertise<sensor_msgs::CameraInfo>("camera_info", 1, false);
-  for (size_t i = 0; i < 1000 && camInfoPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for camera info publisher connection.");
-  }
-  ASSERT_GT(camInfoPub.getNumSubscribers(), 0);
+  tfBuffer.setTransform(tf, "test", true);
 
   sensor_msgs::CameraInfo camInfo;
   camInfo.header.frame_id = "link1";
@@ -400,26 +216,13 @@ TEST(RobotModelRendererNodelet, DefaultBGRA)  // NOLINT
   camInfo.K = {800.0, 0.0, 600.0, 0.0, 800.0, 800.0, 0.0, 0.0, 1.0};
   camInfo.R = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
   camInfo.P = {800.0, 0.0, 600.0, 0.0, 0.0, 800.0, 800.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+  ASSERT_TRUE(renderer.updateCameraInfo(robot_model_renderer::PinholeCameraModel(camInfo)));
 
-  camInfoPub.publish(camInfo);
+  robot_model_renderer::RenderErrors renderErrors;
+  const auto renderResult = renderer.render(camInfo.header.stamp, renderErrors);
+  ASSERT_TRUE(renderResult.has_value());
 
-  for (size_t i = 0; i < 50 && lastImages.empty() && ros::ok() && nodelet->ok(); ++i)
-  {
-    ros::spinOnce();
-    ros::WallDuration(0.1).sleep();
-  }
-
-  ASSERT_FALSE(lastImages.empty());
-
-  EXPECT_EQ("link1", lastImages[0].header.frame_id);
-  EXPECT_EQ(ros::Time(1732502880, 585000000), lastImages[0].header.stamp);
-  EXPECT_EQ(1212, lastImages[0].width);
-  EXPECT_EQ(1616, lastImages[0].height);
-  EXPECT_EQ(sensor_msgs::image_encodings::BGRA8, lastImages[0].encoding);
-  EXPECT_THAT(lastImages[0].step, alignedStep(1212, 4));
-  EXPECT_EQ(0, lastImages[0].is_bigendian);
-
-  const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
+  const auto& cvImage = renderResult.value();
   ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
@@ -431,58 +234,31 @@ TEST(RobotModelRendererNodelet, DefaultBGRA)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 0, 250, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1212 / 2));
   EXPECT_EQ(cv::Vec4b(0, 0, 250, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1211));
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
-
-  nodelet->requestStop();
 }
 
 TEST(RobotModelRendererNodelet, DefaultMono)  // NOLINT
 {
-  std::ifstream t(std::string(TEST_DATA_DIR) + "/robot.urdf");
-  std::stringstream buffer;
-  buffer << t.rdbuf();
-  const auto robotDescription = buffer.str();
-
-  ros::NodeHandle nh, pnh("~");
-
-  pnh.deleteParam("");
-  pnh.setParam("robot_description", robotDescription);
-  pnh.setParam("image_encoding", "mono8");
-
-  std::vector<sensor_msgs::Image> lastImages;
-  auto imageCb = [&lastImages](const sensor_msgs::Image::ConstPtr& msg)
-  {
-    lastImages.push_back(*msg);
-  };
-
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
 
-  ros::M_string remaps = {
-    {"robot_description", ros::names::append(ros::this_node::getName(), "robot_description")},
-  };
-  auto nodelet = createNodelet(log, remaps);
-  ASSERT_NE(nullptr, nodelet);
+  urdf::Model model;
+  model.initString("<robot name=\"test\"><link name=\"link1\"/></robot>");
 
-  auto imageSub = nh.subscribe<sensor_msgs::Image>("mask", 1, imageCb);
-  for (size_t i = 0; i < 1000 && imageSub.getNumPublishers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for subscriber connection.");
-  }
-  ASSERT_GT(imageSub.getNumPublishers(), 0);
+  tf2::BufferCore tfBuffer;
+  robot_model_renderer::TFLinkUpdater linkUpdater(log, &tfBuffer);
+  linkUpdater.setFixedFrame("link1");
 
-  auto tfPub = nh.advertise<tf2_msgs::TFMessage>("/tf_static", 1, true);
-  for (size_t i = 0; i < 1000 && tfPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for TF publisher connection.");
-  }
-  ASSERT_GT(tfPub.getNumSubscribers(), 0);
+  robot_model_renderer::RobotModelRendererConfig config;
+  config.pixelFormat = Ogre::PF_BYTE_L;
+
+  robot_model_renderer::RobotErrors errors;
+  robot_model_renderer::RobotModelRenderer renderer(log, model, &linkUpdater, errors, config);
+  ASSERT_FALSE(errors.hasError());
+
+  model.clear();
+  model.initFile(std::string(TEST_DATA_DIR) + "/robot.urdf");
+  const auto setModelResult = renderer.setModel(model);
+  ASSERT_TRUE(setModelResult.has_value());
 
   geometry_msgs::TransformStamped tf;
   tf.header.frame_id = "link1";
@@ -492,20 +268,7 @@ TEST(RobotModelRendererNodelet, DefaultMono)  // NOLINT
   tf.transform.translation.z = 1.0;
   tf.transform.rotation.w = 1.0;
 
-  tf2_msgs::TFMessage tfMsg;
-  tfMsg.transforms.push_back(tf);
-
-  tfPub.publish(tfMsg);
-  ros::WallDuration(0.3).sleep();
-
-  auto camInfoPub = nh.advertise<sensor_msgs::CameraInfo>("camera_info", 1, false);
-  for (size_t i = 0; i < 1000 && camInfoPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for camera info publisher connection.");
-  }
-  ASSERT_GT(camInfoPub.getNumSubscribers(), 0);
+  tfBuffer.setTransform(tf, "test", true);
 
   sensor_msgs::CameraInfo camInfo;
   camInfo.header.frame_id = "link1";
@@ -517,26 +280,13 @@ TEST(RobotModelRendererNodelet, DefaultMono)  // NOLINT
   camInfo.K = {800.0, 0.0, 600.0, 0.0, 800.0, 800.0, 0.0, 0.0, 1.0};
   camInfo.R = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
   camInfo.P = {800.0, 0.0, 600.0, 0.0, 0.0, 800.0, 800.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+  ASSERT_TRUE(renderer.updateCameraInfo(robot_model_renderer::PinholeCameraModel(camInfo)));
 
-  camInfoPub.publish(camInfo);
+  robot_model_renderer::RenderErrors renderErrors;
+  const auto renderResult = renderer.render(camInfo.header.stamp, renderErrors);
+  ASSERT_TRUE(renderResult.has_value());
 
-  for (size_t i = 0; i < 50 && lastImages.empty() && ros::ok() && nodelet->ok(); ++i)
-  {
-    ros::spinOnce();
-    ros::WallDuration(0.1).sleep();
-  }
-
-  ASSERT_FALSE(lastImages.empty());
-
-  EXPECT_EQ("link1", lastImages[0].header.frame_id);
-  EXPECT_EQ(ros::Time(1732502880, 585000000), lastImages[0].header.stamp);
-  EXPECT_EQ(1212, lastImages[0].width);
-  EXPECT_EQ(1616, lastImages[0].height);
-  EXPECT_EQ(sensor_msgs::image_encodings::MONO8, lastImages[0].encoding);
-  EXPECT_THAT(lastImages[0].step, alignedStep(1212, 1));
-  EXPECT_EQ(0, lastImages[0].is_bigendian);
-
-  const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
+  const auto& cvImage = renderResult.value();
   ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
@@ -548,62 +298,36 @@ TEST(RobotModelRendererNodelet, DefaultMono)  // NOLINT
   EXPECT_EQ(250, cvImage.at<uint8_t>(1616 / 2, 1212 / 2));
   EXPECT_EQ(250, cvImage.at<uint8_t>(1616 / 2, 1211));
   EXPECT_EQ(0, cvImage.at<uint8_t>(1616 / 2, 390));
-
-  nodelet->requestStop();
 }
 
 TEST(RobotModelRendererNodelet, ColorModeWithOutline)  // NOLINT
 {
-  std::ifstream t(std::string(TEST_DATA_DIR) + "/robot.urdf");
-  std::stringstream buffer;
-  buffer << t.rdbuf();
-  const auto robotDescription = buffer.str();
-
-  ros::NodeHandle nh, pnh("~");
-
-  pnh.deleteParam("");
-  pnh.setParam("robot_description", robotDescription);
-  pnh.setParam("rendering_mode", "color");
-  pnh.setParam("color_mode_color", std::vector<float>{0.0, 1.0, 0.0, 1.0});
-  pnh.setParam("draw_outline", true);
-  pnh.setParam("outline_width", 20.0);
-  pnh.setParam("outline_color", std::vector<float>{0.0, 0.0, 1.0, 1.0});
-
-  std::vector<sensor_msgs::Image> lastImages;
-  auto imageCb = [&lastImages](const sensor_msgs::Image::ConstPtr& msg)
-  {
-    lastImages.push_back(*msg);
-  };
-
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
 
-  ros::M_string remaps = {
-    {"robot_description", ros::names::append(ros::this_node::getName(), "robot_description")},
-  };
-  auto nodelet = createNodelet(log, remaps);
-  ASSERT_NE(nullptr, nodelet);
+  urdf::Model model;
+  model.initString("<robot name=\"test\"><link name=\"link1\"/></robot>");
 
-  auto imageSub = nh.subscribe<sensor_msgs::Image>("mask", 1, imageCb);
-  for (size_t i = 0; i < 1000 && imageSub.getNumPublishers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for subscriber connection.");
-  }
-  ASSERT_GT(imageSub.getNumPublishers(), 0);
+  tf2::BufferCore tfBuffer;
+  robot_model_renderer::TFLinkUpdater linkUpdater(log, &tfBuffer);
+  linkUpdater.setFixedFrame("link1");
 
-  auto tfPub = nh.advertise<tf2_msgs::TFMessage>("/tf_static", 1, true);
-  for (size_t i = 0; i < 1000 && tfPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for TF publisher connection.");
-  }
-  ASSERT_GT(tfPub.getNumSubscribers(), 0);
+  robot_model_renderer::RobotModelRendererConfig config;
+  config.pixelFormat = Ogre::PF_BYTE_RGBA;
+  config.renderingMode = robot_model_renderer::RenderingMode::COLOR;
+  config.colorModeColor = Ogre::ColourValue(0.0f, 1.0f, 0.0f, 1.0f);
+  config.drawOutline = true;
+  config.outlineWidth = 20.0;
+  config.outlineColor = Ogre::ColourValue(0.0f, 0.0f, 1.0f, 1.0f);
+
+  robot_model_renderer::RobotErrors errors;
+  robot_model_renderer::RobotModelRenderer renderer(log, model, &linkUpdater, errors, config);
+  ASSERT_FALSE(errors.hasError());
+
+  model.clear();
+  model.initFile(std::string(TEST_DATA_DIR) + "/robot.urdf");
+  const auto setModelResult = renderer.setModel(model);
+  ASSERT_TRUE(setModelResult.has_value());
 
   geometry_msgs::TransformStamped tf;
   tf.header.frame_id = "link1";
@@ -613,20 +337,7 @@ TEST(RobotModelRendererNodelet, ColorModeWithOutline)  // NOLINT
   tf.transform.translation.z = 1.0;
   tf.transform.rotation.w = 1.0;
 
-  tf2_msgs::TFMessage tfMsg;
-  tfMsg.transforms.push_back(tf);
-
-  tfPub.publish(tfMsg);
-  ros::WallDuration(0.3).sleep();
-
-  auto camInfoPub = nh.advertise<sensor_msgs::CameraInfo>("camera_info", 1, false);
-  for (size_t i = 0; i < 1000 && camInfoPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for camera info publisher connection.");
-  }
-  ASSERT_GT(camInfoPub.getNumSubscribers(), 0);
+  tfBuffer.setTransform(tf, "test", true);
 
   sensor_msgs::CameraInfo camInfo;
   camInfo.header.frame_id = "link1";
@@ -638,26 +349,13 @@ TEST(RobotModelRendererNodelet, ColorModeWithOutline)  // NOLINT
   camInfo.K = {800.0, 0.0, 600.0, 0.0, 800.0, 800.0, 0.0, 0.0, 1.0};
   camInfo.R = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
   camInfo.P = {800.0, 0.0, 600.0, 0.0, 0.0, 800.0, 800.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+  ASSERT_TRUE(renderer.updateCameraInfo(robot_model_renderer::PinholeCameraModel(camInfo)));
 
-  camInfoPub.publish(camInfo);
+  robot_model_renderer::RenderErrors renderErrors;
+  const auto renderResult = renderer.render(camInfo.header.stamp, renderErrors);
+  ASSERT_TRUE(renderResult.has_value());
 
-  for (size_t i = 0; i < 50 && lastImages.empty() && ros::ok() && nodelet->ok(); ++i)
-  {
-    ros::spinOnce();
-    ros::WallDuration(0.1).sleep();
-  }
-
-  ASSERT_FALSE(lastImages.empty());
-
-  EXPECT_EQ("link1", lastImages[0].header.frame_id);
-  EXPECT_EQ(ros::Time(1732502880, 585000000), lastImages[0].header.stamp);
-  EXPECT_EQ(1212, lastImages[0].width);
-  EXPECT_EQ(1616, lastImages[0].height);
-  EXPECT_EQ(sensor_msgs::image_encodings::RGBA8, lastImages[0].encoding);
-  EXPECT_THAT(lastImages[0].step, alignedStep(1212, 4));
-  EXPECT_EQ(0, lastImages[0].is_bigendian);
-
-  const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
+  const auto& cvImage = renderResult.value();
   ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
@@ -669,62 +367,35 @@ TEST(RobotModelRendererNodelet, ColorModeWithOutline)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 250, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1212 / 2));
   EXPECT_EQ(cv::Vec4b(0, 250, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1211));
   EXPECT_EQ(cv::Vec4b(0, 0, 255, 255), cvImage.at<cv::Vec4b>(1616 / 2, 390));
-
-  nodelet->requestStop();
 }
 
 TEST(RobotModelRendererNodelet, MaskModeWithOutlineMono)  // NOLINT
 {
-  std::ifstream t(std::string(TEST_DATA_DIR) + "/robot.urdf");
-  std::stringstream buffer;
-  buffer << t.rdbuf();
-  const auto robotDescription = buffer.str();
-
-  ros::NodeHandle nh, pnh("~");
-
-  pnh.deleteParam("");
-  pnh.setParam("robot_description", robotDescription);
-  pnh.setParam("image_encoding", "mono8");
-  pnh.setParam("rendering_mode", "mask");
-  pnh.setParam("draw_outline", true);
-  pnh.setParam("outline_width", 20.0);
-  pnh.setParam("outline_color", std::vector<float>{1.0, 1.0, 1.0, 1.0});
-
-  std::vector<sensor_msgs::Image> lastImages;
-  auto imageCb = [&lastImages](const sensor_msgs::Image::ConstPtr& msg)
-  {
-    lastImages.push_back(*msg);
-  };
-
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
 
-  ros::M_string remaps = {
-    {"robot_description", ros::names::append(ros::this_node::getName(), "robot_description")},
-  };
-  auto nodelet = createNodelet(log, remaps);
-  ASSERT_NE(nullptr, nodelet);
+  urdf::Model model;
+  model.initString("<robot name=\"test\"><link name=\"link1\"/></robot>");
 
-  auto imageSub = nh.subscribe<sensor_msgs::Image>("mask", 1, imageCb);
-  for (size_t i = 0; i < 1000 && imageSub.getNumPublishers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for subscriber connection.");
-  }
-  ASSERT_GT(imageSub.getNumPublishers(), 0);
+  tf2::BufferCore tfBuffer;
+  robot_model_renderer::TFLinkUpdater linkUpdater(log, &tfBuffer);
+  linkUpdater.setFixedFrame("link1");
 
-  auto tfPub = nh.advertise<tf2_msgs::TFMessage>("/tf_static", 1, true);
-  for (size_t i = 0; i < 1000 && tfPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for TF publisher connection.");
-  }
-  ASSERT_GT(tfPub.getNumSubscribers(), 0);
+  robot_model_renderer::RobotModelRendererConfig config;
+  config.pixelFormat = Ogre::PF_BYTE_L;
+  config.renderingMode = robot_model_renderer::RenderingMode::MASK;
+  config.drawOutline = true;
+  config.outlineWidth = 20.0;
+  config.outlineColor = Ogre::ColourValue(1.0f, 1.0f, 1.0f, 1.0f);
+
+  robot_model_renderer::RobotErrors errors;
+  robot_model_renderer::RobotModelRenderer renderer(log, model, &linkUpdater, errors, config);
+  ASSERT_FALSE(errors.hasError());
+
+  model.clear();
+  model.initFile(std::string(TEST_DATA_DIR) + "/robot.urdf");
+  const auto setModelResult = renderer.setModel(model);
+  ASSERT_TRUE(setModelResult.has_value());
 
   geometry_msgs::TransformStamped tf;
   tf.header.frame_id = "link1";
@@ -734,20 +405,7 @@ TEST(RobotModelRendererNodelet, MaskModeWithOutlineMono)  // NOLINT
   tf.transform.translation.z = 1.0;
   tf.transform.rotation.w = 1.0;
 
-  tf2_msgs::TFMessage tfMsg;
-  tfMsg.transforms.push_back(tf);
-
-  tfPub.publish(tfMsg);
-  ros::WallDuration(0.3).sleep();
-
-  auto camInfoPub = nh.advertise<sensor_msgs::CameraInfo>("camera_info", 1, false);
-  for (size_t i = 0; i < 1000 && camInfoPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for camera info publisher connection.");
-  }
-  ASSERT_GT(camInfoPub.getNumSubscribers(), 0);
+  tfBuffer.setTransform(tf, "test", true);
 
   sensor_msgs::CameraInfo camInfo;
   camInfo.header.frame_id = "link1";
@@ -759,26 +417,13 @@ TEST(RobotModelRendererNodelet, MaskModeWithOutlineMono)  // NOLINT
   camInfo.K = {800.0, 0.0, 600.0, 0.0, 800.0, 800.0, 0.0, 0.0, 1.0};
   camInfo.R = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
   camInfo.P = {800.0, 0.0, 600.0, 0.0, 0.0, 800.0, 800.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+  ASSERT_TRUE(renderer.updateCameraInfo(robot_model_renderer::PinholeCameraModel(camInfo)));
 
-  camInfoPub.publish(camInfo);
+  robot_model_renderer::RenderErrors renderErrors;
+  const auto renderResult = renderer.render(camInfo.header.stamp, renderErrors);
+  ASSERT_TRUE(renderResult.has_value());
 
-  for (size_t i = 0; i < 50 && lastImages.empty() && ros::ok() && nodelet->ok(); ++i)
-  {
-    ros::spinOnce();
-    ros::WallDuration(0.1).sleep();
-  }
-
-  ASSERT_FALSE(lastImages.empty());
-
-  EXPECT_EQ("link1", lastImages[0].header.frame_id);
-  EXPECT_EQ(ros::Time(1732502880, 585000000), lastImages[0].header.stamp);
-  EXPECT_EQ(1212, lastImages[0].width);
-  EXPECT_EQ(1616, lastImages[0].height);
-  EXPECT_EQ(sensor_msgs::image_encodings::MONO8, lastImages[0].encoding);
-  EXPECT_THAT(lastImages[0].step, alignedStep(1212, 1));
-  EXPECT_EQ(0, lastImages[0].is_bigendian);
-
-  const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
+  const auto& cvImage = renderResult.value();
   ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
@@ -790,58 +435,32 @@ TEST(RobotModelRendererNodelet, MaskModeWithOutlineMono)  // NOLINT
   EXPECT_EQ(255, cvImage.at<uint8_t>(1616 / 2, 1212 / 2));
   EXPECT_EQ(255, cvImage.at<uint8_t>(1616 / 2, 1211));
   EXPECT_EQ(255, cvImage.at<uint8_t>(1616 / 2, 390));
-
-  nodelet->requestStop();
 }
 
 TEST(RobotModelRendererNodelet, LowRes)  // NOLINT
 {
-  std::ifstream t(std::string(TEST_DATA_DIR) + "/robot.urdf");
-  std::stringstream buffer;
-  buffer << t.rdbuf();
-  const auto robotDescription = buffer.str();
-
-  ros::NodeHandle nh, pnh("~");
-
-  pnh.deleteParam("");
-  pnh.setParam("robot_description", robotDescription);
-  pnh.setParam("max_render_image_size", 256);
-
-  std::vector<sensor_msgs::Image> lastImages;
-  auto imageCb = [&lastImages](const sensor_msgs::Image::ConstPtr& msg)
-  {
-    lastImages.push_back(*msg);
-  };
-
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
 
-  ros::M_string remaps = {
-    {"robot_description", ros::names::append(ros::this_node::getName(), "robot_description")},
-  };
-  auto nodelet = createNodelet(log, remaps);
-  ASSERT_NE(nullptr, nodelet);
+  urdf::Model model;
+  model.initString("<robot name=\"test\"><link name=\"link1\"/></robot>");
 
-  auto imageSub = nh.subscribe<sensor_msgs::Image>("mask", 1, imageCb);
-  for (size_t i = 0; i < 1000 && imageSub.getNumPublishers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for subscriber connection.");
-  }
-  ASSERT_GT(imageSub.getNumPublishers(), 0);
+  tf2::BufferCore tfBuffer;
+  robot_model_renderer::TFLinkUpdater linkUpdater(log, &tfBuffer);
+  linkUpdater.setFixedFrame("link1");
 
-  auto tfPub = nh.advertise<tf2_msgs::TFMessage>("/tf_static", 1, true);
-  for (size_t i = 0; i < 1000 && tfPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for TF publisher connection.");
-  }
-  ASSERT_GT(tfPub.getNumSubscribers(), 0);
+  robot_model_renderer::RobotModelRendererConfig config;
+  config.pixelFormat = Ogre::PF_BYTE_RGBA;
+  config.maxRenderImageSize = 256;
+
+  robot_model_renderer::RobotErrors errors;
+  robot_model_renderer::RobotModelRenderer renderer(log, model, &linkUpdater, errors, config);
+  ASSERT_FALSE(errors.hasError());
+
+  model.clear();
+  model.initFile(std::string(TEST_DATA_DIR) + "/robot.urdf");
+  const auto setModelResult = renderer.setModel(model);
+  ASSERT_TRUE(setModelResult.has_value());
 
   geometry_msgs::TransformStamped tf;
   tf.header.frame_id = "link1";
@@ -851,20 +470,7 @@ TEST(RobotModelRendererNodelet, LowRes)  // NOLINT
   tf.transform.translation.z = 1.0;
   tf.transform.rotation.w = 1.0;
 
-  tf2_msgs::TFMessage tfMsg;
-  tfMsg.transforms.push_back(tf);
-
-  tfPub.publish(tfMsg);
-  ros::WallDuration(0.3).sleep();
-
-  auto camInfoPub = nh.advertise<sensor_msgs::CameraInfo>("camera_info", 1, false);
-  for (size_t i = 0; i < 1000 && camInfoPub.getNumSubscribers() == 0; ++i)
-  {
-    ros::WallDuration(0.01).sleep();
-    ros::spinOnce();
-    ROS_WARN_DELAYED_THROTTLE(0.2, "Waiting for camera info publisher connection.");
-  }
-  ASSERT_GT(camInfoPub.getNumSubscribers(), 0);
+  tfBuffer.setTransform(tf, "test", true);
 
   sensor_msgs::CameraInfo camInfo;
   camInfo.header.frame_id = "link1";
@@ -876,26 +482,13 @@ TEST(RobotModelRendererNodelet, LowRes)  // NOLINT
   camInfo.K = {800.0, 0.0, 600.0, 0.0, 800.0, 800.0, 0.0, 0.0, 1.0};
   camInfo.R = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
   camInfo.P = {800.0, 0.0, 600.0, 0.0, 0.0, 800.0, 800.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+  ASSERT_TRUE(renderer.updateCameraInfo(robot_model_renderer::PinholeCameraModel(camInfo)));
 
-  camInfoPub.publish(camInfo);
+  robot_model_renderer::RenderErrors renderErrors;
+  const auto renderResult = renderer.render(camInfo.header.stamp, renderErrors);
+  ASSERT_TRUE(renderResult.has_value());
 
-  for (size_t i = 0; i < 50 && lastImages.empty() && ros::ok() && nodelet->ok(); ++i)
-  {
-    ros::spinOnce();
-    ros::WallDuration(0.1).sleep();
-  }
-
-  ASSERT_FALSE(lastImages.empty());
-
-  EXPECT_EQ("link1", lastImages[0].header.frame_id);
-  EXPECT_EQ(ros::Time(1732502880, 585000000), lastImages[0].header.stamp);
-  EXPECT_EQ(1212, lastImages[0].width);
-  EXPECT_EQ(1616, lastImages[0].height);
-  EXPECT_EQ(sensor_msgs::image_encodings::RGBA8, lastImages[0].encoding);
-  EXPECT_THAT(lastImages[0].step, alignedStep(1212, 4));
-  EXPECT_EQ(0, lastImages[0].is_bigendian);
-
-  const auto cvImage = cv_bridge::toCvCopy(lastImages[0])->image;
+  const auto& cvImage = renderResult.value();
   ASSERT_EQ(2, cvImage.dims);
   ASSERT_EQ(1616, cvImage.rows);
   ASSERT_EQ(1212, cvImage.cols);
@@ -907,21 +500,11 @@ TEST(RobotModelRendererNodelet, LowRes)  // NOLINT
   EXPECT_EQ(cv::Vec4b(250, 0, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1212 / 2));
   EXPECT_EQ(cv::Vec4b(250, 0, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1211));
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
-
-  nodelet->requestStop();
 }
 
 int main(int argc, char **argv)
 {
+  setenv("LANG", "C", 1);
   testing::InitGoogleTest(&argc, argv);
-
-  // Remove the program name from argv because the nodelet handling code does not expect it
-  argc -= 1;
-  argv += 1;
-  ros::removeROSArgs(argc, argv, my_argv);
-  ros::init(argc, argv, "test_robot_model_renderer");
-
-  ros::NodeHandle nh;  // Just prevent ROS being uninited when the test-private nodehandles go out of scope
-
   return RUN_ALL_TESTS();
 }
