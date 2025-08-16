@@ -272,5 +272,6 @@ if (CATKIN_ENABLE_TESTING)
   target_compile_definitions(test_${PROJECT_NAME} PRIVATE TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test")
 
   add_rostest(test/test_${PROJECT_NAME}.test DEPENDENCIES test_${PROJECT_NAME}_nodelet test_${PROJECT_NAME})
-  roslaunch_add_file_check(test/test_${PROJECT_NAME}.test USE_TEST_DEPENDENCIES)
+  roslaunch_add_file_check(test/test_${PROJECT_NAME}.test USE_TEST_DEPENDENCIES
+    DEPENDENCIES test_${PROJECT_NAME}_nodelet test_${PROJECT_NAME})
 endif()
