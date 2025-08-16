@@ -33,7 +33,9 @@ enum DistortionModel { EQUIDISTANT, PLUMB_BOB_OR_RATIONAL_POLYNOMIAL, UNKNOWN_MO
 struct PinholeCameraModel::Cache
 {
   DistortionState distortion_state;
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
   DistortionModel distortion_model;
+#endif
 
   cv::Mat_<double> K_binned, P_binned;  // Binning applied, but not cropping
 
@@ -42,23 +44,27 @@ struct PinholeCameraModel::Cache
 
   mutable bool reduced_maps_dirty;
   mutable cv::Mat reduced_map1, reduced_map2;
-
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
   mutable bool unrectify_full_maps_dirty;
   mutable cv::Mat unrectify_full_map1, unrectify_full_map2;
 
   mutable bool unrectify_reduced_maps_dirty;
   mutable cv::Mat unrectify_reduced_map1, unrectify_reduced_map2;
-
+#endif
   mutable bool rectified_roi_dirty;
   mutable cv::Rect rectified_roi;
 
-  Cache()
-    : distortion_state(UNKNOWN),
+  Cache() :
+      distortion_state(UNKNOWN),
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
       distortion_model(UNKNOWN_MODEL),
+#endif
       full_maps_dirty(true),
       reduced_maps_dirty(true),
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
       unrectify_full_maps_dirty(true),
       unrectify_reduced_maps_dirty(true),
+#endif
       rectified_roi_dirty(true)
   {
   }
@@ -76,6 +82,13 @@ struct PinholeCameraModel::ExtraCache
 
   mutable bool unrectify_reduced_float_maps_dirty {true};
   mutable cv::Mat unrectify_reduced_float_map;
+
+  // Copied from Cache for Melodic compatibility
+  mutable bool unrectify_full_maps_dirty {true};
+  mutable cv::Mat unrectify_full_map1, unrectify_full_map2;
+
+  mutable bool unrectify_reduced_maps_dirty {true};
+  mutable cv::Mat unrectify_reduced_map1, unrectify_reduced_map2;
 };
 
 void initInverseRectificationMap(cv::InputArray _cameraMatrix, cv::InputArray _distCoeffs,
@@ -213,7 +226,7 @@ PinholeCameraModel::PinholeCameraModel() : extraCache(std::make_unique<ExtraCach
 {
 }
 
-PinholeCameraModel::PinholeCameraModel(const sensor_msgs::CameraInfo& msg)
+PinholeCameraModel::PinholeCameraModel(const sensor_msgs::CameraInfo& msg) : PinholeCameraModel()
 {
   this->fromCameraInfo(msg);
 }
@@ -222,8 +235,9 @@ PinholeCameraModel::~PinholeCameraModel() = default;
 
 
 PinholeCameraModel::PinholeCameraModel(const PinholeCameraModel& other)
-  : image_geometry::PinholeCameraModel(other)
+  : image_geometry::PinholeCameraModel(other), extraCache(std::make_unique<ExtraCache>())
 {
+  *this->extraCache = *other.extraCache;
 }
 
 PinholeCameraModel& PinholeCameraModel::operator=(const PinholeCameraModel& other)
@@ -231,6 +245,7 @@ PinholeCameraModel& PinholeCameraModel::operator=(const PinholeCameraModel& othe
   if (this == &other)
     return *this;
   image_geometry::PinholeCameraModel::operator=(other);
+  *this->extraCache = *other.extraCache;
   return *this;
 }
 
@@ -296,6 +311,21 @@ cv::Point2d PinholeCameraModel::_rectifyPoint(const cv::Point2d& uv_raw, const c
 #endif
 }
 
+bool PinholeCameraModel::fromCameraInfo(const sensor_msgs::CameraInfoConstPtr& msg)
+{
+  return this->fromCameraInfo(*msg);
+}
+
+bool PinholeCameraModel::fromCameraInfo(const sensor_msgs::CameraInfo& msg)
+{
+  const auto changed = image_geometry::PinholeCameraModel::fromCameraInfo(msg);
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
+  this->extraCache->unrectify_full_maps_dirty |= this->cache_->unrectify_full_maps_dirty;
+  this->extraCache->unrectify_reduced_maps_dirty |= this->cache_->unrectify_reduced_maps_dirty;
+#endif
+  return changed;
+}
+
 void PinholeCameraModel::initUnrectificationMaps() const
 {
   if (extraCache->unrectify_full_float_maps_dirty)
@@ -345,18 +375,31 @@ void PinholeCameraModel::initUnrectificationMaps() const
     extraCache->unrectify_full_float_maps_dirty = false;
   }
 
-  if (cache_->unrectify_full_maps_dirty)
+  if (extraCache->unrectify_full_maps_dirty
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
+    || cache_->unrectify_full_maps_dirty
+#endif
+  )
   {
     // Note: m1type=CV_16SC2 to use fast fixed-point maps (see cv::remap)
     convertMaps(extraCache->unrectify_full_float_map,
                 cv::Mat(),
-                cache_->unrectify_full_map1,
-                cache_->unrectify_full_map2,
+                extraCache->unrectify_full_map1,
+                extraCache->unrectify_full_map2,
                 CV_16SC2);
+    extraCache->unrectify_full_maps_dirty = false;
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
+    cache_->unrectify_full_map1 = extraCache->unrectify_full_map1;
+    cache_->unrectify_full_map2 = extraCache->unrectify_full_map2;
     cache_->unrectify_full_maps_dirty = false;
+#endif
   }
 
-  if (cache_->unrectify_reduced_maps_dirty || extraCache->unrectify_reduced_float_maps_dirty)
+  if (extraCache->unrectify_reduced_maps_dirty || extraCache->unrectify_reduced_float_maps_dirty
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
+    || cache_->unrectify_reduced_maps_dirty
+#endif
+  )
   {
     /// @todo Use rectified ROI
     cv::Rect roi(cam_info_.roi.x_offset,
@@ -373,11 +416,19 @@ void PinholeCameraModel::initUnrectificationMaps() const
       roi.y /= binningY();
       roi.width /= binningX();
       roi.height /= binningY();
-      if (cache_->unrectify_reduced_maps_dirty)
+      if (extraCache->unrectify_reduced_maps_dirty
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
+        || cache_->unrectify_reduced_maps_dirty
+#endif
+      )
       {
-        cache_->unrectify_reduced_map1 = cache_->unrectify_full_map1(roi) -
+        extraCache->unrectify_reduced_map1 = extraCache->unrectify_full_map1(roi) -
           cv::Scalar(roi.x, roi.y);
-        cache_->unrectify_reduced_map2 = cache_->unrectify_full_map2(roi);
+        extraCache->unrectify_reduced_map2 = extraCache->unrectify_full_map2(roi);
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
+        cache_->unrectify_reduced_map1 = extraCache->unrectify_reduced_map1;
+        cache_->unrectify_reduced_map2 = extraCache->unrectify_reduced_map2;
+#endif
       }
       if (extraCache->unrectify_reduced_float_maps_dirty)
       {
@@ -387,17 +438,28 @@ void PinholeCameraModel::initUnrectificationMaps() const
     else
     {
       // Otherwise we're rectifying the full image
-      if (cache_->unrectify_reduced_maps_dirty)
+      if (extraCache->unrectify_reduced_maps_dirty
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
+        || cache_->unrectify_reduced_maps_dirty
+#endif
+      )
       {
-        cache_->unrectify_reduced_map1 = cache_->unrectify_full_map1;
-        cache_->unrectify_reduced_map2 = cache_->unrectify_full_map2;
+        extraCache->unrectify_reduced_map1 = extraCache->unrectify_full_map1;
+        extraCache->unrectify_reduced_map2 = extraCache->unrectify_full_map2;
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
+        cache_->unrectify_reduced_map1 = extraCache->unrectify_full_map1;
+        cache_->unrectify_reduced_map2 = extraCache->unrectify_full_map2;
+#endif
       }
       if (extraCache->unrectify_reduced_float_maps_dirty)
       {
         extraCache->unrectify_reduced_float_map = extraCache->unrectify_full_float_map;
       }
     }
+#if IMAGE_GEOMETRY_VERSION_MAJOR > 1 || IMAGE_GEOMETRY_VERSION_MINOR >= 16
     cache_->unrectify_reduced_maps_dirty = false;
+#endif
+    extraCache->unrectify_reduced_maps_dirty = false;
     extraCache->unrectify_reduced_float_maps_dirty = false;
   }
 }
@@ -496,11 +558,11 @@ void PinholeCameraModel::unrectifyImage(const cv::Mat& rectified, cv::Mat& raw, 
       initUnrectificationMaps();
     if (rectified.depth() == CV_32F || rectified.depth() == CV_64F)
     {
-      cv::remap(rectified, raw, cache_->unrectify_reduced_map1, cache_->unrectify_reduced_map2, interpolation,
+      cv::remap(rectified, raw, extraCache->unrectify_reduced_map1, extraCache->unrectify_reduced_map2, interpolation,
         cv::BORDER_CONSTANT, std::numeric_limits<float>::quiet_NaN());
     }
     else {
-      cv::remap(rectified, raw, cache_->unrectify_reduced_map1, cache_->unrectify_reduced_map2, interpolation);
+      cv::remap(rectified, raw, extraCache->unrectify_reduced_map1, extraCache->unrectify_reduced_map2, interpolation);
     }
     break;
     default:

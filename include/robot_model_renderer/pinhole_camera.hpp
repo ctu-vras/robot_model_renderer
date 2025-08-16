@@ -36,6 +36,10 @@ public:
   PinholeCameraModel& operator=(const PinholeCameraModel& other);
 
   virtual ~PinholeCameraModel();
+
+  virtual bool fromCameraInfo(const sensor_msgs::CameraInfo& msg);
+  virtual bool fromCameraInfo(const sensor_msgs::CameraInfoConstPtr& msg);
+
   virtual void initUnrectificationMaps() const;
   virtual cv::Rect rectifyRoi(const cv::Rect& roi_raw, const cv::Mat& P) const;
   cv::Rect rectifyRoi(const cv::Rect& roi_raw) const;
