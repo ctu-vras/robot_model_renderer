@@ -20,6 +20,7 @@
 #include <cras_cpp_common/log_utils/memory.h>
 #include <cras_cpp_common/log_utils/node.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <opencv2/imgcodecs.hpp>
 #include <robot_model_renderer/RobotModelRenderer.hpp>
 #include <robot_model_renderer/robot/tf_link_updater.hpp>
 #include <sensor_msgs/CameraInfo.h>
@@ -517,7 +518,7 @@ TEST(RobotModelRenderer, MaskBackground)  // NOLINT
 
   robot_model_renderer::RobotModelRendererConfig config;
   config.pixelFormat = Ogre::PF_BYTE_RGBA;
-  config.staticMaskImage = cv::Mat(1616, 1212, CV_8UC4);
+  config.staticMaskImage = cv::Mat::zeros(1616, 1212, CV_8UC4);
   config.staticMaskImage.at<cv::Vec4b>(0, 0) = cv::Vec4b(255, 128, 0, 255);
   config.staticMaskImage.at<cv::Vec4b>(1616 / 2, 1212 / 2) = cv::Vec4b(0, 128, 0, 255);
   config.staticMaskIsBackground = true;
@@ -586,7 +587,7 @@ TEST(RobotModelRenderer, MaskForeground)  // NOLINT
 
   robot_model_renderer::RobotModelRendererConfig config;
   config.pixelFormat = Ogre::PF_BYTE_RGBA;
-  config.staticMaskImage = cv::Mat(1616, 1212, CV_8UC4);
+  config.staticMaskImage = cv::Mat::zeros(1616, 1212, CV_8UC4);
   config.staticMaskImage.at<cv::Vec4b>(0, 0) = cv::Vec4b(255, 128, 0, 255);
   config.staticMaskImage.at<cv::Vec4b>(1616 / 2, 1212 / 2) = cv::Vec4b(0, 128, 0, 255);
   config.staticMaskIsBackground = false;
@@ -655,7 +656,7 @@ TEST(RobotModelRenderer, MaskForegroundColorMode)  // NOLINT
 
   robot_model_renderer::RobotModelRendererConfig config;
   config.pixelFormat = Ogre::PF_BYTE_RGBA;
-  config.staticMaskImage = cv::Mat(1616, 1212, CV_8UC4);
+  config.staticMaskImage = cv::Mat::zeros(1616, 1212, CV_8UC4);
   config.staticMaskImage.at<cv::Vec4b>(0, 0) = cv::Vec4b(255, 128, 0, 255);
   config.staticMaskImage.at<cv::Vec4b>(1616 / 2, 1212 / 2) = cv::Vec4b(0, 128, 0, 255);
   config.staticMaskIsBackground = false;
@@ -725,7 +726,7 @@ TEST(RobotModelRenderer, MaskForegroundMaskMode)  // NOLINT
 
   robot_model_renderer::RobotModelRendererConfig config;
   config.pixelFormat = Ogre::PF_BYTE_RGBA;
-  config.staticMaskImage = cv::Mat(1616, 1212, CV_8UC4);
+  config.staticMaskImage = cv::Mat::zeros(1616, 1212, CV_8UC4);
   config.staticMaskImage.at<cv::Vec4b>(0, 0) = cv::Vec4b(255, 128, 0, 255);
   config.staticMaskImage.at<cv::Vec4b>(1616 / 2, 1212 / 2) = cv::Vec4b(0, 128, 0, 255);
   config.staticMaskIsBackground = false;

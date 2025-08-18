@@ -60,7 +60,7 @@ std::unique_ptr<NodeletType> createNodelet(const cras::LogHelperPtr& log,
 {
   // Declaration order of these variables is important to make sure they can be properly stopped and destroyed.
   auto nodelet = class_loader::impl::createInstance<nodelet::Nodelet>(
-    "robot_model_renderer::RobotModelRenderer", nullptr);
+    "robot_model_renderer::RobotModelRendererNodelet", nullptr);
   if (nodelet == nullptr)
     return nullptr;
 
