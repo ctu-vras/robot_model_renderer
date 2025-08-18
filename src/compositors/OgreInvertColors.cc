@@ -19,6 +19,7 @@
 #include <OgreTechnique.h>
 
 #include <cras_cpp_common/log_utils.h>
+#include <robot_model_renderer/ogre_helpers/compositor.hpp>
 
 namespace robot_model_renderer
 {
@@ -65,7 +66,8 @@ void OgreInvertColors::CreateRenderPass()
     return;
   }
 
-  this->dataPtr->material = Ogre::MaterialManager::getSingleton().getByName("InvertColor");
+  this->dataPtr->material = Ogre::MaterialManager::getSingleton().getByName("InvertColor")->clone(
+    "InvertColor/" + this->ogreCamera->getName());
 
   const auto params = this->dataPtr->material->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
   params->setNamedConstant("invert_alpha", static_cast<int>(this->dataPtr->invertAlpha));
@@ -73,8 +75,7 @@ void OgreInvertColors::CreateRenderPass()
   // create compositor instance
   this->dataPtr->compositorInstance = Ogre::CompositorManager::getSingleton().addCompositor(
     this->ogreCamera->getViewport(), "InvertColor");
-  this->dataPtr->compositorInstance->getTechnique()->getOutputTargetPass()->getPass(0)->setMaterial(
-    this->dataPtr->material);
+  getPass(this->dataPtr->compositorInstance, "", 12345)->setMaterial(this->dataPtr->material);
 
   this->dataPtr->compositorInstance->setEnabled(true);
 }
@@ -90,7 +91,7 @@ void OgreInvertColors::Destroy()
   }
   if (!this->dataPtr->material.isNull())
   {
-    this->dataPtr->material->unload();
+    Ogre::MaterialManager::getSingleton().remove(this->dataPtr->material->getName());
     this->dataPtr->material.setNull();
   }
 }

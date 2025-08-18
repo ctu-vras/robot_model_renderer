@@ -20,16 +20,22 @@
 
 #include <cras_cpp_common/log_utils.h>
 
+#include <robot_model_renderer/ogre_helpers/compositor.hpp>
+
 namespace robot_model_renderer
 {
 
 struct OgreOutline::Implementation
 {
-  //! \brief Distortion compositor.
-  Ogre::CompositorInstance* distortionInstance = nullptr;
+  //! \brief Outline compositor.
+  Ogre::CompositorInstance* outlineInstance = nullptr;
 
   //! \brief Ogre Material that contains the outline shader
-  Ogre::MaterialPtr distortionMaterial;
+  Ogre::MaterialPtr outlineMaterial;
+
+  Ogre::MaterialPtr blurVMaterial;
+
+  Ogre::MaterialPtr blurHMaterial;
 
   //! \brief Width of the outline.
   float outlineWidth {5.0f};
@@ -71,48 +77,63 @@ void OgreOutline::CreateRenderPass()
     return;
   }
 
-  if (this->dataPtr->distortionInstance)
+  if (this->dataPtr->outlineInstance)
   {
     CRAS_ERROR_NAMED("compositors.outline", "Outline pass already created. ");
     return;
   }
 
-  this->dataPtr->distortionMaterial = Ogre::MaterialManager::getSingleton().getByName("Outline/PostProcess");
+  this->dataPtr->outlineMaterial = Ogre::MaterialManager::getSingleton().getByName(
+    "Outline/PostProcess")->clone("Outline/PostProcess/" + this->ogreCamera->getName());
 
-  const auto params = this->dataPtr->distortionMaterial->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
+  const auto params = this->dataPtr->outlineMaterial->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
   params->setNamedConstant("outline_color", this->dataPtr->outlineColor);
   params->setNamedConstant("use_closest_color", static_cast<int>(this->dataPtr->outlineFromClosestColor));
 
-  const auto blurVMat = Ogre::MaterialManager::getSingleton().getByName("Outline/BlurV");
-  const auto blurVParams = blurVMat->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
+  this->dataPtr->blurVMaterial = Ogre::MaterialManager::getSingleton().getByName("Outline/BlurV")->clone(
+    "Outline/BlurV/" + this->ogreCamera->getName());
+  const auto blurVParams = this->dataPtr->blurVMaterial->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
   blurVParams->setNamedConstant("outline_width", this->dataPtr->outlineWidth);
 
-  const auto blurHMat = Ogre::MaterialManager::getSingleton().getByName("Outline/BlurH");
-  const auto blurHParams = blurHMat->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
+  this->dataPtr->blurHMaterial = Ogre::MaterialManager::getSingleton().getByName("Outline/BlurH")->clone(
+    "Outline/BlurH/" + this->ogreCamera->getName());
+  const auto blurHParams = this->dataPtr->blurHMaterial->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
   blurHParams->setNamedConstant("outline_width", this->dataPtr->outlineWidth);
 
   // create compositor instance
-  this->dataPtr->distortionInstance = Ogre::CompositorManager::getSingleton().addCompositor(
+  this->dataPtr->outlineInstance = Ogre::CompositorManager::getSingleton().addCompositor(
     this->ogreCamera->getViewport(), "Outline");
-  this->dataPtr->distortionInstance->getTechnique()->getOutputTargetPass()->getPass(0)->setMaterial(
-    this->dataPtr->distortionMaterial);
 
-  this->dataPtr->distortionInstance->setEnabled(true);
+  getPass(this->dataPtr->outlineInstance, "", 12345)->setMaterial(this->dataPtr->outlineMaterial);
+  getPass(this->dataPtr->outlineInstance, "rt0", 12345)->setMaterial(this->dataPtr->blurVMaterial);
+  getPass(this->dataPtr->outlineInstance, "blurred", 12345)->setMaterial(this->dataPtr->blurHMaterial);
+
+  this->dataPtr->outlineInstance->setEnabled(true);
 }
 
 void OgreOutline::Destroy()
 {
-  if (this->dataPtr->distortionInstance)
+  if (this->dataPtr->outlineInstance)
   {
-    this->dataPtr->distortionInstance->setEnabled(false);
+    this->dataPtr->outlineInstance->setEnabled(false);
     Ogre::CompositorManager::getSingleton().removeCompositor(this->ogreCamera->getViewport(), "Outline");
 
-    this->dataPtr->distortionInstance = nullptr;
+    this->dataPtr->outlineInstance = nullptr;
   }
-  if (!this->dataPtr->distortionMaterial.isNull())
+  if (!this->dataPtr->outlineMaterial.isNull())
   {
-    this->dataPtr->distortionMaterial->unload();
-    this->dataPtr->distortionMaterial.setNull();
+    Ogre::MaterialManager::getSingleton().remove(this->dataPtr->outlineMaterial->getName());
+    this->dataPtr->outlineMaterial.setNull();
+  }
+  if (!this->dataPtr->blurVMaterial.isNull())
+  {
+    Ogre::MaterialManager::getSingleton().remove(this->dataPtr->blurVMaterial->getName());
+    this->dataPtr->blurVMaterial.setNull();
+  }
+  if (!this->dataPtr->blurHMaterial.isNull())
+  {
+    Ogre::MaterialManager::getSingleton().remove(this->dataPtr->blurHMaterial->getName());
+    this->dataPtr->blurHMaterial.setNull();
   }
 }
 

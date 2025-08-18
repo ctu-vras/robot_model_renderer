@@ -37,7 +37,6 @@
 #include <robot_model_renderer/robot/mesh_loader.hpp>
 #include <robot_model_renderer/robot/mesh_optimizer.hpp>
 #include <robot_model_renderer/robot/robot.hpp>
-#include <robot_model_renderer/robot/robot_joint.hpp>
 #include <robot_model_renderer/robot/shape_filter.hpp>
 #include <robot_model_renderer/robot/shape_inflation_registry.hpp>
 
@@ -85,9 +84,13 @@ RobotLink::RobotLink(const cras::LogHelperPtr& log, Robot* robot, const urdf::Li
   visual_node_ = robot_->getVisualNode()->createChildSceneNode();
   collision_node_ = robot_->getCollisionNode()->createChildSceneNode();
 
+  static size_t num = 0;
+  num++;
+  const auto numStr = std::to_string(num);
+
   {
     // create material for coloring links
-    std::string material_name = "robot link " + link->name + ":color material";
+    std::string material_name = "robot link " + link->name + numStr + ":color material";
     color_material_ = Ogre::MaterialPtr(new Ogre::Material(
         nullptr, material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
     color_material_->setReceiveShadows(false);
@@ -96,7 +99,7 @@ RobotLink::RobotLink(const cras::LogHelperPtr& log, Robot* robot, const urdf::Li
 
   {
     // create material for drawing masks
-    std::string material_name = "robot link " + link->name + ":mask material";
+    std::string material_name = "robot link " + link->name + numStr + ":mask material";
     mask_material_ = Ogre::MaterialManager::getSingleton().getByName("BaseWhiteNoLighting")->clone(
       material_name, true, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
   }
@@ -118,6 +121,13 @@ RobotLink::RobotLink(const cras::LogHelperPtr& log, Robot* robot, const urdf::Li
 
 RobotLink::~RobotLink()
 {
+  // Set back the normal material
+  for (const auto& [subEntity, material] : materials_)
+    Ogre::MaterialManager::getSingleton().remove(material.first->getName());
+
+  Ogre::MaterialManager::getSingleton().remove(color_material_->getName());
+  Ogre::MaterialManager::getSingleton().remove(mask_material_->getName());
+
   for (const auto& visual_mesh : visual_meshes_)
   {
     scene_manager_->destroyEntity(visual_mesh);
@@ -668,7 +678,7 @@ Ogre::Entity* RobotLink::createEntityForGeometryElement(
 
     // create a new material copy for each instance of a RobotLink to allow modification per link
     active = Ogre::MaterialPtr(new Ogre::Material(
-        nullptr, material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
+        nullptr, entity_name + "/" + material_name, 0, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME));
     *active = *original;
     sub->setMaterial(active);
     materials_[sub] = std::make_pair(active, original);

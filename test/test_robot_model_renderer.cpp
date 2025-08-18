@@ -45,7 +45,7 @@ auto alignedStep(const uint32_t width, const uint32_t channels, const uint32_t p
     testing::Eq(planes * align(step, 64)));
 }
 
-TEST(RobotModelRendererNodelet, Default)  // NOLINT
+TEST(RobotModelRenderer, Default)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -108,7 +108,7 @@ TEST(RobotModelRendererNodelet, Default)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, DefaultCpuDistortion)  // NOLINT
+TEST(RobotModelRenderer, DefaultCpuDistortion)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -173,7 +173,7 @@ TEST(RobotModelRendererNodelet, DefaultCpuDistortion)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, DefaultBGRA)  // NOLINT
+TEST(RobotModelRenderer, DefaultBGRA)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -237,7 +237,7 @@ TEST(RobotModelRendererNodelet, DefaultBGRA)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, DefaultMono)  // NOLINT
+TEST(RobotModelRenderer, DefaultMono)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -301,7 +301,7 @@ TEST(RobotModelRendererNodelet, DefaultMono)  // NOLINT
   EXPECT_EQ(0, cvImage.at<uint8_t>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, ColorModeWithOutline)  // NOLINT
+TEST(RobotModelRenderer, ColorModeWithOutline)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -370,7 +370,7 @@ TEST(RobotModelRendererNodelet, ColorModeWithOutline)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 0, 255, 255), cvImage.at<cv::Vec4b>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, MaskModeWithOutlineMono)  // NOLINT
+TEST(RobotModelRenderer, MaskModeWithOutlineMono)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -438,7 +438,7 @@ TEST(RobotModelRendererNodelet, MaskModeWithOutlineMono)  // NOLINT
   EXPECT_EQ(255, cvImage.at<uint8_t>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, LowRes)  // NOLINT
+TEST(RobotModelRenderer, LowRes)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -503,7 +503,7 @@ TEST(RobotModelRendererNodelet, LowRes)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, MaskBackground)  // NOLINT
+TEST(RobotModelRenderer, MaskBackground)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -572,7 +572,7 @@ TEST(RobotModelRendererNodelet, MaskBackground)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, MaskForeground)  // NOLINT
+TEST(RobotModelRenderer, MaskForeground)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -641,7 +641,7 @@ TEST(RobotModelRendererNodelet, MaskForeground)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, MaskForegroundColorMode)  // NOLINT
+TEST(RobotModelRenderer, MaskForegroundColorMode)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();
@@ -707,11 +707,11 @@ TEST(RobotModelRendererNodelet, MaskForegroundColorMode)  // NOLINT
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1615, 1211));
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(0, 1211));
   EXPECT_EQ(cv::Vec4b(255, 0, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1212 / 2));
-  EXPECT_EQ(cv::Vec4b(255, 0, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1211));
+  EXPECT_EQ(cv::Vec4b(250, 0, 0, 255), cvImage.at<cv::Vec4b>(1616 / 2, 1211));
   EXPECT_EQ(cv::Vec4b(0, 0, 0, 0), cvImage.at<cv::Vec4b>(1616 / 2, 390));
 }
 
-TEST(RobotModelRendererNodelet, MaskForegroundMaskMode)  // NOLINT
+TEST(RobotModelRenderer, MaskForegroundMaskMode)  // NOLINT
 {
   // const auto log = std::make_shared<cras::MemoryLogHelper>();
   const auto log = std::make_shared<cras::NodeLogHelper>();

@@ -419,8 +419,6 @@ class RobotModelRendererTest(unittest.TestCase):
         self.assertSequenceEqual(cv_image[1616 // 2, 1211].tolist(),  (250, 0, 0, 255))
         self.assertSequenceEqual(cv_image[1616 // 2, 390].tolist(),  (0, 0, 0, 0))
 
-    # TODO unskip
-    @unittest.skip("failing for unknown reason, C++ counterpart is okay")
     def test_static_mask_foreground_mask_mode(self):
         config = RobotModelRendererConfig()
         config.staticMaskImage = np.zeros((cam_info.height, cam_info.width, 4), dtype=np.uint8)

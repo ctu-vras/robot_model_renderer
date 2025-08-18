@@ -22,7 +22,7 @@
 #include <OgreTechnique.h>
 
 #include <cras_cpp_common/log_utils.h>
-
+#include <robot_model_renderer/ogre_helpers/compositor.hpp>
 #include <robot_model_renderer/types.hpp>
 
 namespace robot_model_renderer
@@ -120,7 +120,7 @@ void OgreStaticImage::CreateRenderPass()
   }
 
   this->dataPtr->material = Ogre::MaterialManager::getSingleton().getByName("StaticImageMat")->clone(
-    "StaticImageMat_copy");
+    "StaticImageMat/" + this->ogreCamera->getName());
 
   const auto params = this->dataPtr->material->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
   params->setNamedConstant("is_background", this->dataPtr->isBackground);
@@ -152,8 +152,7 @@ void OgreStaticImage::CreateRenderPass()
   // create compositor instance
   this->dataPtr->instance = Ogre::CompositorManager::getSingleton().addCompositor(
     this->ogreCamera->getViewport(), "StaticImage");
-  this->dataPtr->instance->getTechnique()->getOutputTargetPass()->getPass(0)->setMaterial(
-    this->dataPtr->material);
+  getPass(this->dataPtr->instance, "", 12345)->setMaterial(this->dataPtr->material);
 
   this->dataPtr->instance->setEnabled(true);
 }
@@ -169,13 +168,18 @@ void OgreStaticImage::Destroy()
   }
   if (!this->dataPtr->material.isNull())
   {
-    this->dataPtr->material->unload();
+    Ogre::MaterialManager::getSingleton().remove(this->dataPtr->material->getName());
     this->dataPtr->material.setNull();
   }
   if (!this->dataPtr->texture.isNull())
   {
     Ogre::TextureManager::getSingleton().remove(this->dataPtr->texture->getHandle());
     this->dataPtr->texture.setNull();
+  }
+  if (!this->dataPtr->origTexture.isNull())
+  {
+    Ogre::TextureManager::getSingleton().remove(this->dataPtr->origTexture->getHandle());
+    this->dataPtr->origTexture.setNull();
   }
 }
 

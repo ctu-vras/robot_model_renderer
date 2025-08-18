@@ -22,6 +22,7 @@ compositor Outline
             // Vertical blur pass
             pass render_quad
             {
+                identifier 12345
                 material Outline/BlurV
                 input 0 rt_scene
             }
@@ -34,6 +35,7 @@ compositor Outline
             // Horizontal blur pass
             pass render_quad
             {
+                identifier 12345
                 material Outline/BlurH
                 input 0 rt0
             }
@@ -46,6 +48,7 @@ compositor Outline
 
             pass render_quad
             {
+                identifier 12345
                 material Outline/PostProcess
                 input 0 rt_scene
                 input 1 blurred

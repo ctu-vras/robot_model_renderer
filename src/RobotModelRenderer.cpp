@@ -102,7 +102,9 @@ RobotModelRenderer::RobotModelRenderer(
 
     if (camera == nullptr)
     {
-      this->camera_ = this->scene_manager_->createCamera("RobotModelCamera");
+      static size_t i = 0;
+      ++i;
+      this->camera_ = this->scene_manager_->createCamera("RobotModelCamera" + std::to_string(i));
       if (this->config.nearClipDistance > 0.0f)
         this->camera_->setNearClipDistance(this->config.nearClipDistance);
       if (this->config.farClipDistance > 0.0f)
@@ -135,17 +137,68 @@ RobotModelRenderer::RobotModelRenderer(
       this->staticImagePass_.SetCamera(this->overlay_camera_);
     }
 
-    invertColorsPass_.SetCamera(this->hasOverlays() ? overlay_camera_ : camera_);
+    invertColorsPass_.SetCamera(RobotModelRenderer::hasOverlays() ? overlay_camera_ : camera_);
   }
 
-  const auto setModelResult = this->setModel(model);
+  const auto setModelResult = RobotModelRenderer::setModel(model);
   if (setModelResult.has_value())
     CRAS_INFO_NAMED("renderer", "Robot model renderer initialized");
   else
     errors = setModelResult.error();
 }
 
-RobotModelRenderer::~RobotModelRenderer() = default;
+RobotModelRenderer::~RobotModelRenderer()
+{
+  RobotModelRenderer::reset();
+
+  if (scene_manager_)
+  {
+    if (default_light_)
+    {
+      scene_manager_->destroyLight(default_light_);
+      default_light_ = nullptr;
+    }
+
+    if (camera_)
+    {
+      scene_manager_->destroyCamera(camera_);
+      camera_ = nullptr;
+    }
+
+    // Delete the robot instance before scene_manager_ to allow it to deregister its nodes
+    if (robot_)
+      robot_.reset();
+
+    if (scene_node_)
+    {
+      scene_manager_->destroySceneNode(scene_node_);
+      scene_node_ = nullptr;
+    }
+
+    render_system_.root()->destroySceneManager(scene_manager_);
+    scene_manager_ = nullptr;
+  }
+
+  if (overlay_scene_manager_)
+  {
+    if (overlay_camera_)
+    {
+      overlay_scene_manager_->destroyCamera(overlay_camera_);
+      overlay_camera_ = nullptr;
+    }
+
+    if (overlay_scene_node_)
+    {
+      overlay_scene_manager_->destroySceneNode(overlay_scene_node_);
+      overlay_scene_node_ = nullptr;
+    }
+
+    overlay_.setNull();
+
+    render_system_.root()->destroySceneManager(overlay_scene_manager_);
+    overlay_scene_manager_ = nullptr;
+  }
+}
 
 cras::expected<void, RobotErrors> RobotModelRenderer::setModel(const urdf::Model& model)
 {
@@ -364,8 +417,12 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
     CRAS_INFO_THROTTLE_NAMED(1.0, "renderer",
       "Creating offscreen render texture with resolution %ix%i.", res.width, res.height);
 
+    static size_t num = 0;
+    num++;
+    const auto numStr = std::to_string(num);
+
     tex_ = render_system_.root()->getTextureManager()->createManual(
-      "MainRenderTarget", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
+      "MainRenderTarget" + numStr, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
       res.width, res.height, 1, 0, this->config.pixelFormat, Ogre::TU_RENDERTARGET);
     rt_ = tex_->getBuffer()->getRenderTarget();
 
@@ -396,7 +453,7 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
         "Creating overlay offscreen render texture with resolution %ix%i.", origRes.width, origRes.height);
 
       overlay_tex_ = render_system_.root()->getTextureManager()->createManual(
-        "OverlayRenderTarget", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
+        "OverlayRenderTarget" + numStr, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
         origRes.width, origRes.height, 1, 0, this->config.pixelFormat, Ogre::TU_RENDERTARGET);
       overlay_rt_ = overlay_tex_->getBuffer()->getRenderTarget();
 
@@ -404,17 +461,17 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
       overlay_viewPort_->setBackgroundColour(this->config.backgroundColor);
 
       overlay_scene_tex_ = render_system_.root()->getTextureManager()->createManual(
-        "OverlaySceneTex", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
+        "OverlaySceneTex" + numStr, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
         origRes.width, origRes.height, 1, 0, this->config.pixelFormat, Ogre::TU_DYNAMIC_WRITE_ONLY_DISCARDABLE);
 
-      auto overlayMaterial = Ogre::MaterialManager::getSingleton().create("OverlayMat",
-        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-      overlayMaterial->getTechnique(0)->getPass(0)->setLightingEnabled(false);
-      overlayMaterial->getTechnique(0)->getPass(0)->createTextureUnitState("OverlaySceneTex");
-      overlayMaterial->setDepthWriteEnabled(false);
-      overlayMaterial->setDepthCheckEnabled(false);
-      overlayMaterial->setCullingMode(Ogre::CULL_NONE);
-      overlay_->setMaterial("OverlayMat");
+      overlay_material_ = Ogre::MaterialManager::getSingleton().create(
+        "OverlayMat" + numStr, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+      overlay_material_->getTechnique(0)->getPass(0)->setLightingEnabled(false);
+      overlay_material_->getTechnique(0)->getPass(0)->createTextureUnitState("OverlaySceneTex" + numStr);
+      overlay_material_->setDepthWriteEnabled(false);
+      overlay_material_->setDepthCheckEnabled(false);
+      overlay_material_->setCullingMode(Ogre::CULL_NONE);
+      overlay_->setMaterial("OverlayMat" + numStr);
 
       if (this->config.staticMaskImage.total() > 0)
         staticImagePass_.CreateRenderPass();
@@ -599,6 +656,11 @@ void RobotModelRenderer::reset()
   {
     render_system_.root()->getTextureManager()->remove(overlay_scene_tex_->getHandle());
     overlay_scene_tex_.setNull();
+  }
+
+  if (!overlay_material_.isNull())
+  {
+    Ogre::MaterialManager::getSingleton().remove(overlay_material_->getName());
   }
 }
 

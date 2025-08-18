@@ -16,11 +16,11 @@
 #include <opencv2/core/types.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include <OgreCamera.h>
+#include <OgreMaterial.h>
 #include <OgrePixelFormat.h>
-#include <OgreSceneManager.h>
-#include <OgreSceneNode.h>
+#include <OgreRectangle2D.h>
 #include <OgreSharedPtr.h>
+#include <OgreTexture.h>
 
 #include <cras_cpp_common/log_utils.h>
 #include <robot_model_renderer/compositors/OgreCameraDistortion.hpp>
@@ -39,12 +39,15 @@
 namespace Ogre
 {
 
+class Camera;
+class Light;
+class ManualObject;
+class Rectangle2D;
+class RenderTarget;
 class Root;
 class SceneManager;
 class SceneNode;
-class ManualObject;
-class Rectangle2D;
-class Camera;
+class Viewport;
 
 }
 
@@ -160,6 +163,7 @@ protected:
   Ogre::SceneManager* overlay_scene_manager_ {nullptr};
   Ogre::SceneNode* overlay_scene_node_ {nullptr};
   Ogre::SharedPtr<Ogre::Rectangle2D> overlay_;
+  Ogre::MaterialPtr overlay_material_;
   Ogre::TexturePtr overlay_tex_;
   Ogre::TexturePtr overlay_scene_tex_;
   Ogre::RenderTarget* overlay_rt_ {nullptr};

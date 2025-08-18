@@ -18,6 +18,7 @@ compositor StaticImage
 
             pass render_quad
             {
+                identifier 12345
                 material StaticImageMat
                 input 0 rt_scene
             }

@@ -12,6 +12,8 @@
  * \author Gazebo authors
  */
 
+#include <robot_model_renderer/compositors/OgreCameraDistortion.hpp>
+
 #include <OgreCamera.h>
 #include <OgreCompositionPass.h>
 #include <OgreCompositionTargetPass.h>
@@ -29,7 +31,7 @@
 
 #include <cras_cpp_common/log_utils.h>
 #include <image_geometry/pinhole_camera_model.h>
-#include <robot_model_renderer/compositors/OgreCameraDistortion.hpp>
+#include <robot_model_renderer/ogre_helpers/compositor.hpp>
 #include <robot_model_renderer/pinhole_camera.hpp>
 
 namespace robot_model_renderer
@@ -185,8 +187,7 @@ void OgreCameraDistortion::CreateRenderPass()
   // create compositor instance
   this->dataPtr->distortionInstance = Ogre::CompositorManager::getSingleton().addCompositor(
     this->ogreCamera->getViewport(), this->dataPtr->compositorName);
-  this->dataPtr->distortionInstance->getTechnique()->getOutputTargetPass()->getPass(0)->setMaterial(
-    this->dataPtr->distortionMaterial);
+  getPass(this->dataPtr->distortionInstance, "", 12345)->setMaterial(this->dataPtr->distortionMaterial);
 
   this->dataPtr->distortionInstance->setEnabled(true);
 }
@@ -203,7 +204,7 @@ void OgreCameraDistortion::Destroy()
   }
   if (!this->dataPtr->distortionMaterial.isNull())
   {
-    this->dataPtr->distortionMaterial->unload();
+    Ogre::MaterialManager::getSingleton().remove(this->dataPtr->distortionMaterial->getName());
     this->dataPtr->distortionMaterial.setNull();
   }
   if (!this->dataPtr->distortionTexture.isNull())
