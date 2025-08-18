@@ -179,6 +179,13 @@ class _RobotModelRendererConfig(Structure):
         ("upscalingInterpolation", c_int),
         ("renderImageScale", c_double),
         ("maxRenderImageSize", c_size_t),
+        ("staticMaskImageWidth", c_size_t),
+        ("staticMaskImageHeight", c_size_t),
+        ("staticMaskImageStep", c_size_t),
+        ("staticMaskImageCVType", c_int),
+        ("staticMaskImage", c_void_p),
+        ("staticMaskImageEncoding", c_char_p),
+        ("staticMaskIsBackground", c_bool),
     ]
 
     def __init__(self, *args, **kwargs):
@@ -223,12 +230,15 @@ class RobotModelRendererConfig(object):
         self.upscalingInterpolation = conf.upscalingInterpolation
         self.renderImageScale = conf.renderImageScale
         self.maxRenderImageSize = conf.maxRenderImageSize
+        self.staticMaskImage = None  # An OpenCV-compatible Numpy array
+        self.staticMaskImageEncoding = ""
+        self.staticMaskIsBackground = conf.staticMaskIsBackground
 
     @classmethod
     def from_param(cls, obj):
         c = _RobotModelRendererConfig()
         for f, t in _RobotModelRendererConfig._fields_:
-            if t in _simple_types:
+            if t in _simple_types and hasattr(obj, f):
                 setattr(c, f, getattr(obj, f))
 
         c.backgroundColor = (c_float * 4)(*obj.backgroundColor)
@@ -237,6 +247,26 @@ class RobotModelRendererConfig(object):
         c.requiredLinks = (",".join(obj.requiredLinks)).encode("utf-8")
         c.shapeFilter = ShapeFilterConfig.from_param(obj.shapeFilter)
         c.shapeInflationRegistry = ShapeInflationRegistry.from_param(obj.shapeInflationRegistry)
+
+        if obj.staticMaskImage is not None and obj.staticMaskImage.size > 0:
+            import cv2
+            import cv_bridge
+            import numpy as np
+
+            bridge = cv_bridge.CvBridge()
+            image = obj.staticMaskImage
+            assert isinstance(image, (np.ndarray, np.generic))
+
+            c.staticMaskImageWidth = image.shape[1]
+            c.staticMaskImageHeight = image.shape[0]
+            c.staticMaskImageStep = image.ctypes.strides_as(c_size_t)[0]
+            c.staticMaskImage = image.ctypes.data_as(c_void_p)
+            c.staticMaskImageEncoding = obj.staticMaskImageEncoding.encode("utf-8")
+
+            cv_type_str = bridge.numpy_type_to_cvtype[image.dtype.name]
+            n_channels = image.shape[2] if len(image.shape) == 3 else 1
+            c.staticMaskImageCVType = getattr(cv2, "CV_%sC%i" % (cv_type_str, n_channels))
+
         return c
 
 

@@ -84,6 +84,14 @@ inline robot_model_renderer::RobotModelRendererConfig convertConfig(
   cpp.renderImageScale = c.renderImageScale;
   cpp.maxRenderImageSize = c.maxRenderImageSize;
 
+  if (c.staticMaskImageWidth > 0 && c.staticMaskImageHeight > 0 && c.staticMaskImage != nullptr)
+  {
+    cpp.staticMaskImage = cv::Mat(c.staticMaskImageHeight, c.staticMaskImageWidth, c.staticMaskImageCVType,
+      c.staticMaskImage, c.staticMaskImageStep);
+  }
+  cpp.staticMaskImageEncoding = c.staticMaskImageEncoding;
+  cpp.staticMaskIsBackground = c.staticMaskIsBackground;
+
   return cpp;
 }
 
@@ -134,6 +142,14 @@ robot_model_renderer_RobotModelRendererConfig robot_model_renderer_createDefault
   c.upscalingInterpolation = cpp.upscalingInterpolation;
   c.renderImageScale = cpp.renderImageScale;
   c.maxRenderImageSize = cpp.maxRenderImageSize;
+
+  c.staticMaskImageWidth = 0u;
+  c.staticMaskImageHeight = 0u;
+  c.staticMaskImageStep = 0u;
+  c.staticMaskImageCVType = 0;
+  c.staticMaskImage = nullptr;
+  c.staticMaskImageEncoding = "";
+  c.staticMaskIsBackground = cpp.staticMaskIsBackground;
 
   return c;
 }

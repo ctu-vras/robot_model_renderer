@@ -67,6 +67,10 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
   robotConfig.upscalingInterpolation = config.upscalingInterpolation;
   robotConfig.renderImageScale = config.renderImageScale;
   robotConfig.maxRenderImageSize = config.maxRenderImageSize;
+  if (config.staticMaskImage.width > 0 && config.staticMaskImage.height > 0)
+    robotConfig.staticMaskImage = cv_bridge::toCvCopy(config.staticMaskImage)->image;
+  robotConfig.staticMaskImageEncoding = config.staticMaskImage.encoding;
+  robotConfig.staticMaskIsBackground = config.staticMaskIsBackground;
 
   this->linkUpdater = std::make_unique<TFROSLinkUpdater>(this->log, tf, "", "", config.tfTimeout);
   this->renderer = std::make_unique<RobotModelRenderer>(this->log, model, this->linkUpdater.get(),

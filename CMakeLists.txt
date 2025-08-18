@@ -148,6 +148,7 @@ add_library(${PROJECT_NAME}_distortion
   src/compositors/OgreCameraDistortion.cc
   src/compositors/OgreInvertColors.cc
   src/compositors/OgreOutline.cc
+  src/compositors/OgreStaticImage.cc
 )
 target_link_libraries(${PROJECT_NAME}_distortion PUBLIC
   ${catkin_LIBRARIES} OPENCV OGRE Eigen3::Eigen

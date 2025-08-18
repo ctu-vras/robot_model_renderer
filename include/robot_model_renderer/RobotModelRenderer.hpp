@@ -26,12 +26,14 @@
 #include <robot_model_renderer/compositors/OgreCameraDistortion.hpp>
 #include <robot_model_renderer/compositors/OgreInvertColors.hpp>
 #include <robot_model_renderer/compositors/OgreOutline.hpp>
+#include <robot_model_renderer/compositors/OgreStaticImage.hpp>
 #include <robot_model_renderer/pinhole_camera.hpp>
 #include <robot_model_renderer/ogre_helpers/render_system.hpp>
 #include <robot_model_renderer/robot/link_updater.hpp>
 #include <robot_model_renderer/robot/robot.hpp>
 #include <robot_model_renderer/robot/shape_filter.hpp>
 #include <robot_model_renderer/robot/shape_inflation_registry.hpp>
+#include <robot_model_renderer/types.hpp>
 #include <urdf/model.h>
 
 namespace Ogre
@@ -48,16 +50,6 @@ class Camera;
 
 namespace robot_model_renderer
 {
-
-/**
- * \brief Mode of robot model rendering.
- */
-enum class RenderingMode
-{
-  NORMAL,  //!< Normal mode, visual meshes use their textures, collision meshes use red or link color.
-  COLOR,  //!< All meshes are rendered with the specified color (with lighting effects).
-  MASK,  //!< All meshes are rendered as a binary mask (robot = white, background = black).
-};
 
 /**
  * \brief Configuration of RobotModelRenderer.
@@ -95,6 +87,10 @@ struct RobotModelRendererConfig
   cv::InterpolationFlags upscalingInterpolation {cv::INTER_LINEAR};
   double renderImageScale {1.0};
   size_t maxRenderImageSize {0u};
+
+  cv::Mat staticMaskImage;
+  std::string staticMaskImageEncoding;  //!< Encoding from sensor_msgs/image_encodings.h . If empty, BGR(A) is assumed.
+  bool staticMaskIsBackground {true};  //!< If false, the static mask image will be drawn over the rendered image.
 };
 
 struct RenderErrors
@@ -130,6 +126,9 @@ public:
 
 protected:
   virtual void updateOgreCamera();
+  virtual cras::expected<cv::Mat, std::string> renderInner(const ros::Time& time, RenderErrors& errors);
+
+  virtual bool hasOverlays() const;
 
   LinkUpdater* linkUpdater;
 
@@ -148,13 +147,27 @@ protected:
   Ogre::SceneManager* scene_manager_ {nullptr};
   Ogre::Light* default_light_ {nullptr};
   Ogre::SceneNode* scene_node_ {nullptr};
+
   Ogre::TexturePtr tex_;
   Ogre::RenderTarget* rt_ {nullptr};
   Ogre::Camera* camera_ {nullptr};
   Ogre::Viewport* viewPort_ {nullptr};
+
   OgreCameraDistortion distortionPass_;
   OgreInvertColors invertColorsPass_;
   OgreOutline outlinePass_;
+
+  Ogre::SceneManager* overlay_scene_manager_ {nullptr};
+  Ogre::SceneNode* overlay_scene_node_ {nullptr};
+  Ogre::SharedPtr<Ogre::Rectangle2D> overlay_;
+  Ogre::TexturePtr overlay_tex_;
+  Ogre::TexturePtr overlay_scene_tex_;
+  Ogre::RenderTarget* overlay_rt_ {nullptr};
+  Ogre::Camera* overlay_camera_ {nullptr};
+  Ogre::Viewport* overlay_viewPort_ {nullptr};
+
+  OgreStaticImage staticImagePass_;
+
   int cvImageType;
 };
 

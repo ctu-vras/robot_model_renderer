@@ -70,6 +70,9 @@ struct RosCameraRobotModelRendererConfig
   cv::InterpolationFlags upscalingInterpolation {cv::INTER_LINEAR};
   double renderImageScale {1.0};
   size_t maxRenderImageSize {0u};
+
+  sensor_msgs::Image staticMaskImage;
+  bool staticMaskIsBackground {true};  //!< If false, the static mask image will be drawn over the rendered image.
 };
 
 /**

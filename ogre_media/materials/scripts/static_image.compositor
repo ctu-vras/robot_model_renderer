@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
+compositor StaticImage
+{
+    technique
+    {
+        texture rt_scene target_width target_height PF_A8R8G8B8
+
+        target rt_scene
+        {
+            input previous
+        }
+
+        target_output
+        {
+            input none
+
+            pass render_quad
+            {
+                material StaticImageMat
+                input 0 rt_scene
+            }
+        }
+    }
+}

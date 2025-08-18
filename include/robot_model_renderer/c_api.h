@@ -83,6 +83,14 @@ struct robot_model_renderer_RobotModelRendererConfig
   int upscalingInterpolation;
   double renderImageScale;
   size_t maxRenderImageSize;
+
+  size_t staticMaskImageWidth;
+  size_t staticMaskImageHeight;
+  size_t staticMaskImageStep;
+  int staticMaskImageCVType;
+  void* staticMaskImage;
+  const char* staticMaskImageEncoding;  //!< Encoding from sensor_msgs/image_encodings.h . If empty, BGR(A) is assumed.
+  bool staticMaskIsBackground;  //!< If false, the static mask image will be drawn over the rendered image.
 };
 
 struct ros_Time

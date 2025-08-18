@@ -14,10 +14,14 @@
 #include <thread>
 #include <vector>
 
+#include <opencv2/imgcodecs.hpp>
+
 #include <urdf/model.h>
 
 #include <cras_cpp_common/nodelet_utils.hpp>
 #include <cras_cpp_common/param_utils.hpp>
+#include <cras_cpp_common/string_utils.hpp>
+#include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <pluginlib/class_list_macros.h>
 #include <nodelet/nodelet.h>
@@ -203,6 +207,41 @@ private:
     }
   }
 
+  std::string bestImageEncodingFromCvMat(const cv::Mat staticMaskImage)
+  {
+    const auto nchannels = staticMaskImage.channels();
+    const auto depth = staticMaskImage.depth();
+    if (depth == CV_8U && nchannels == 1)
+      return sensor_msgs::image_encodings::MONO8;
+    else if (depth == CV_8U && nchannels == 3)
+      return sensor_msgs::image_encodings::BGR8;  // OpenCV always loads in BGR order
+    else if (depth == CV_8U && nchannels == 4)
+      return sensor_msgs::image_encodings::BGRA8;  // OpenCV always loads in BGR order
+    else if (depth == CV_16U && nchannels == 1)
+      return sensor_msgs::image_encodings::MONO16;
+    else if (depth == CV_16U && nchannels == 3)
+      return sensor_msgs::image_encodings::BGR16;  // OpenCV always loads in BGR order
+    else if (depth == CV_16U && nchannels == 4)
+      return sensor_msgs::image_encodings::BGRA16;  // OpenCV always loads in BGR order
+    else if (depth == CV_32F && nchannels == 1)
+      return sensor_msgs::image_encodings::TYPE_32FC1;
+    else if (depth == CV_32F && nchannels == 2)
+      return sensor_msgs::image_encodings::TYPE_32FC2;
+    else if (depth == CV_32F && nchannels == 3)
+      return sensor_msgs::image_encodings::TYPE_32FC3;
+    else if (depth == CV_32F && nchannels == 4)
+      return sensor_msgs::image_encodings::TYPE_32FC4;
+    else if (depth == CV_64F && nchannels == 1)
+      return sensor_msgs::image_encodings::TYPE_64FC1;
+    else if (depth == CV_64F && nchannels == 2)
+      return sensor_msgs::image_encodings::TYPE_64FC2;
+    else if (depth == CV_64F && nchannels == 3)
+      return sensor_msgs::image_encodings::TYPE_64FC3;
+    else if (depth == CV_64F && nchannels == 4)
+      return sensor_msgs::image_encodings::TYPE_64FC4;
+    return "";
+  }
+
   void onInitialize()
   {
     const auto& publicParams = this->publicParams();
@@ -258,6 +297,8 @@ private:
 
     RosCameraRobotModelRendererConfig config;
 
+    cras::TempLocale l(LC_ALL, "en_US.UTF-8");
+
     config.renderingMode = params->getParam("rendering_mode", config.renderingMode);
 
     if (config.renderingMode == RenderingMode::MASK)
@@ -290,6 +331,20 @@ private:
     config.upscalingInterpolation = params->getParam("upscaling_interpolation", config.upscalingInterpolation);
     config.renderImageScale = params->getParam("render_image_scale", config.renderImageScale);
     config.maxRenderImageSize = params->getParam("max_render_image_size", config.maxRenderImageSize, "px (0 = none)");
+
+    const auto staticMaskImageFile = params->getParam("static_mask_image_file", "");
+    const auto staticMaskImageFileEncoding = params->getParam("static_mask_image_encoding", "");
+    config.staticMaskIsBackground = params->getParam("static_mask_is_background", config.staticMaskIsBackground);
+
+    const auto staticMaskImage = cv::imread(staticMaskImageFile, cv::IMREAD_UNCHANGED);
+    if (staticMaskImage.total() > 0)
+    {
+      auto encoding = staticMaskImageFileEncoding;
+      if (encoding.empty())
+        encoding = bestImageEncodingFromCvMat(staticMaskImage);
+      cv_bridge::CvImage maskImage({}, encoding, staticMaskImage);
+      config.staticMaskImage = *maskImage.toImageMsg();
+    }
 
     const auto inflationPadding = params->getParamVerbose("body_model/inflation/padding", 0.0, "m");
     const auto inflationScale = params->getParamVerbose("body_model/inflation/scale", 1.0);

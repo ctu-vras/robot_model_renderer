@@ -41,6 +41,7 @@
 #include <robot_model_renderer/utils/validate_floats.hpp>
 #include <robot_model_renderer/utils/ogre_opencv.hpp>
 #include <robot_model_renderer/utils/sensor_msgs.hpp>
+#include <robot_model_renderer/utils/sensor_msgs_ogre.hpp>
 
 namespace robot_model_renderer
 {
@@ -65,6 +66,8 @@ RobotModelRenderer::RobotModelRenderer(
     scene_manager_(sceneManager), scene_node_(sceneNode), camera_(camera), distortionPass_(log, false),
     invertColorsPass_(log, config.invertAlpha),
     outlinePass_(log, config.outlineWidth, config.outlineColor, config.outlineFromClosestColor),
+    staticImagePass_(log, config.staticMaskImage, sensorMsgsEncodingToOgrePixelFormat(config.staticMaskImageEncoding),
+      config.pixelFormat, config.staticMaskIsBackground, config.renderingMode, config.colorModeColor),
     cvImageType(ogrePixelFormatToCvMatType(config.pixelFormat))
 {
   if (sceneManager == nullptr && sceneNode != nullptr)
@@ -111,7 +114,28 @@ RobotModelRenderer::RobotModelRenderer(
 
     distortionPass_.SetCamera(camera_);
     outlinePass_.SetCamera(camera_);
-    invertColorsPass_.SetCamera(camera_);
+
+    if (this->hasOverlays())
+    {
+#if (OGRE_VERSION < OGRE_VERSION_CHECK(13, 0, 0))
+      this->overlay_scene_manager_ = this->render_system_.root()->createSceneManager(Ogre::ST_GENERIC);
+#else
+      this->overlay_scene_manager_ = this->render_system_.root()->createSceneManager();
+#endif
+
+      this->overlay_scene_node_ = this->overlay_scene_manager_->getRootSceneNode()->createChildSceneNode();
+
+      this->overlay_.bind(new Ogre::Rectangle2D(true));
+      this->overlay_->setCorners(-1, 1, 1, -1);
+      this->overlay_->setBoundingBox(Ogre::AxisAlignedBox::BOX_INFINITE);
+      this->overlay_scene_node_->createChildSceneNode()->attachObject(this->overlay_.get());
+
+      this->overlay_camera_ = this->overlay_scene_manager_->createCamera("OverlayCamera");
+
+      this->staticImagePass_.SetCamera(this->overlay_camera_);
+    }
+
+    invertColorsPass_.SetCamera(this->hasOverlays() ? overlay_camera_ : camera_);
   }
 
   const auto setModelResult = this->setModel(model);
@@ -342,7 +366,7 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
 
     tex_ = render_system_.root()->getTextureManager()->createManual(
       "MainRenderTarget", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
-      res.width, res.height, 32, 0, this->config.pixelFormat, Ogre::TU_RENDERTARGET);
+      res.width, res.height, 1, 0, this->config.pixelFormat, Ogre::TU_RENDERTARGET);
     rt_ = tex_->getBuffer()->getRenderTarget();
 
     viewPort_ = rt_->addViewport(camera_);
@@ -361,8 +385,43 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
       outlinePass_.CreateRenderPass();
     }
 
-    if (this->config.invertColors)
+    if (this->config.invertColors && !this->hasOverlays())
       invertColorsPass_.CreateRenderPass();
+
+    if (this->hasOverlays())
+    {
+      const auto origRes = this->origCameraModel.reducedResolution();
+
+      CRAS_INFO_THROTTLE_NAMED(1.0, "renderer",
+        "Creating overlay offscreen render texture with resolution %ix%i.", origRes.width, origRes.height);
+
+      overlay_tex_ = render_system_.root()->getTextureManager()->createManual(
+        "OverlayRenderTarget", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
+        origRes.width, origRes.height, 1, 0, this->config.pixelFormat, Ogre::TU_RENDERTARGET);
+      overlay_rt_ = overlay_tex_->getBuffer()->getRenderTarget();
+
+      overlay_viewPort_ = overlay_rt_->addViewport(overlay_camera_);
+      overlay_viewPort_->setBackgroundColour(this->config.backgroundColor);
+
+      overlay_scene_tex_ = render_system_.root()->getTextureManager()->createManual(
+        "OverlaySceneTex", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D,
+        origRes.width, origRes.height, 1, 0, this->config.pixelFormat, Ogre::TU_DYNAMIC_WRITE_ONLY_DISCARDABLE);
+
+      auto overlayMaterial = Ogre::MaterialManager::getSingleton().create("OverlayMat",
+        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+      overlayMaterial->getTechnique(0)->getPass(0)->setLightingEnabled(false);
+      overlayMaterial->getTechnique(0)->getPass(0)->createTextureUnitState("OverlaySceneTex");
+      overlayMaterial->setDepthWriteEnabled(false);
+      overlayMaterial->setDepthCheckEnabled(false);
+      overlayMaterial->setCullingMode(Ogre::CULL_NONE);
+      overlay_->setMaterial("OverlayMat");
+
+      if (this->config.staticMaskImage.total() > 0)
+        staticImagePass_.CreateRenderPass();
+
+      if (this->config.invertColors)
+        invertColorsPass_.CreateRenderPass();
+    }
   }
 
   this->updateOgreCamera();
@@ -371,6 +430,37 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
 }
 
 cras::expected<cv::Mat, std::string> RobotModelRenderer::render(const ros::Time& time, RenderErrors& errors)
+{
+  auto renderResult = this->renderInner(time, errors);
+  if (!renderResult.has_value())
+    return renderResult;
+
+  if (!this->hasOverlays())
+    return *renderResult;
+
+  cv::Mat overlaidImg(renderResult->rows, renderResult->cols, this->cvImageType);
+  {
+    auto renderedImg = renderResult->isContinuous() ? *renderResult : renderResult->clone();
+
+    auto renderLock {render_system_.lock()};
+
+    // Draw the previously rendered scene onto overlay_scene_tex_ .
+    {
+      const Ogre::PixelBox renderPb(renderedImg.cols, renderedImg.rows, 1, this->config.pixelFormat, renderedImg.data);
+      overlay_scene_tex_->getBuffer()->blitFromMemory(renderPb);
+    }
+
+    overlay_rt_->update();
+
+    const Ogre::PixelBox pb(overlay_tex_->getWidth(), overlay_tex_->getHeight(), 1, this->config.pixelFormat,
+      overlaidImg.data);
+    overlay_rt_->copyContentsToMemory(pb);
+  }
+
+  return overlaidImg;
+}
+
+cras::expected<cv::Mat, std::string> RobotModelRenderer::renderInner(const ros::Time& time, RenderErrors& errors)
 {
   const auto updateResult = robot_->update(*this->linkUpdater, time);
   if (!updateResult.has_value())
@@ -462,6 +552,11 @@ cras::expected<cv::Mat, std::string> RobotModelRenderer::render(const ros::Time&
   return scaledCroppedImg;
 }
 
+bool RobotModelRenderer::hasOverlays() const
+{
+  return this->config.staticMaskImage.total() > 0;
+}
+
 void RobotModelRenderer::reset()
 {
   auto renderLock {render_system_.lock()};
@@ -470,6 +565,7 @@ void RobotModelRenderer::reset()
   invertColorsPass_.Destroy();
   outlinePass_.Destroy();
   distortionPass_.Destroy();
+  staticImagePass_.Destroy();
 
   if (rt_)
   {
@@ -483,6 +579,26 @@ void RobotModelRenderer::reset()
   {
     render_system_.root()->getTextureManager()->remove(tex_->getHandle());
     tex_.setNull();
+  }
+
+  if (overlay_rt_)
+  {
+    overlay_rt_->removeAllViewports();
+    overlay_rt_ = nullptr;
+  }
+
+  overlay_viewPort_ = nullptr;
+
+  if (!overlay_tex_.isNull())
+  {
+    render_system_.root()->getTextureManager()->remove(overlay_tex_->getHandle());
+    overlay_tex_.setNull();
+  }
+
+  if (!overlay_scene_tex_.isNull())
+  {
+    render_system_.root()->getTextureManager()->remove(overlay_scene_tex_->getHandle());
+    overlay_scene_tex_.setNull();
   }
 }
 

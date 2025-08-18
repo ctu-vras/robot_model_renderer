@@ -11,6 +11,9 @@
 
 Ogre::PixelFormat robot_model_renderer::sensorMsgsEncodingToOgrePixelFormat(const std::string& encoding)
 {
+  if (encoding.empty())
+    return Ogre::PF_UNKNOWN;
+
   namespace enc = sensor_msgs::image_encodings;
   if (encoding == enc::RGB8)
   {

@@ -43,7 +43,9 @@ void RosLogListener::messageLogged(const Ogre::String& message, const Ogre::LogM
   if (skipThisMessage)
     return;
 
-  const auto ros_level = ogreLogLevelToRosconsole(lml);
+  auto ros_level = ogreLogLevelToRosconsole(lml);
+  if (lml < Ogre::LML_CRITICAL && cras::contains(message, "error:"))
+    ros_level = ros::console::Level::Warn;
   CRAS_LOG(getCrasLogger(), ros_level, std::string(ROSCONSOLE_DEFAULT_NAME) + ".renderer", "%s", message.c_str());
 }
 

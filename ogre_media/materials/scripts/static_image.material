@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+
+fragment_program StaticImageFS_glsl glsl
+{
+    source static_image_fs.glsl
+    default_params
+    {
+        param_named rt_scene int 0
+        param_named static_image int 1
+        param_named orig_static_image int 2
+        param_named is_background int 1
+        param_named background_color float 0.0 0.0 0.0 0.0
+        param_named rendering_mode int 0
+        param_named color_mode_color float 1.0 0.0 0.0 1.0
+    }
+}
+
+material StaticImageMat
+{
+    technique
+    {
+        pass
+        {
+            lighting off
+            depth_check off
+            depth_write off
+
+            scene_blend one zero
+
+            fragment_program_ref StaticImageFS_glsl {}
+
+            texture_unit rt_scene
+            {
+                tex_coord_set 0
+                tex_address_mode border
+                tex_border_colour 0.0 0.0 0.0 0.0
+                filtering none
+            }
+        }
+    }
+}
