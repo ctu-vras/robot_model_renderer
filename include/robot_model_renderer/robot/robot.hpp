@@ -26,8 +26,6 @@
 namespace robot_model_renderer
 {
 
-class Object;
-
 struct RobotErrors
 {
   std::vector<LinkError> linkErrors;

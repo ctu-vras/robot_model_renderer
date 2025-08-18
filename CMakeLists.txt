@@ -156,7 +156,6 @@ target_link_libraries(${PROJECT_NAME}_distortion PUBLIC
 
 add_library(${PROJECT_NAME}_ogre_helpers
   ${ENV_CONFIG_FILE}
-  src/ogre_helpers/object.cpp
   src/ogre_helpers/ogre_logging.cpp
   src/ogre_helpers/orthographic.cpp
   src/ogre_helpers/render_system.cpp

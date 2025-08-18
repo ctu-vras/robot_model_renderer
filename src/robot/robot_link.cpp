@@ -33,7 +33,6 @@
 #include <cras_cpp_common/log_utils.h>
 #include <cras_cpp_common/string_utils.hpp>
 #include <resource_retriever/retriever.h>
-#include <robot_model_renderer/ogre_helpers/object.hpp>
 #include <robot_model_renderer/ogre_helpers/shape.hpp>
 #include <robot_model_renderer/robot/mesh_loader.hpp>
 #include <robot_model_renderer/robot/mesh_optimizer.hpp>
