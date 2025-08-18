@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- SPDX-FileCopyrightText: Czech Technical University in Prague -->
+
 # robot\_model\_renderer
 
 Render or mask out URDF robot model from the camera view.
