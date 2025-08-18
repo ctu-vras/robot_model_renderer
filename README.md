@@ -17,6 +17,27 @@ viewpoint, useful for self-filtering, occlusion detection, and robot awareness a
 
 ![Screenshot](doc/screenshot.png)
 
+## Important Note
+
+> [!WARNING]
+> To manage reasonable performance, this packages does the rendering on a GPU via OpenGL.
+> Therefore, for the library to work, you need a running X server (or XWayland).
+> 
+> If you have a running X window server, but it is not accessible in the console from which you run the node (e.g.
+> because you ssh'd to the robot), just set the `DISPLAY` environment variable to the handle of your running X server
+> (usually `:0` or `:1`):
+> 
+>     DISPLAY=:0 rosrun robot_model_renderer robot_model_renderer
+> 
+> If you don't have a running X server and don't want or can't set it up (e.g. in CI or
+> on headless robots), prefix the node run command with `xvfb-run -a` from package `xvfb`.
+> However, Xvfb does software rendering, which is inefficient. If you have a GPU, you can convince Xvfb to do GPU
+> rendering using VirtualGL:
+> 
+>     vglrun +v -d /dev/dri/card0 xvfb-run -a rosrun robot_model_renderer robot_model_renderer
+> 
+> If you run this library as nodelet, this prefixing needs to be done on the side of the nodelet manager.
+
 ## Node `robot_model_renderer` and nodelet `robot_model_renderer/robot_model_renderer_nodelet`
 
 ### Topics
