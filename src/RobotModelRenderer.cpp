@@ -334,6 +334,13 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
 
   CRAS_DEBUG_NAMED("camera_info", "Updating new camera info");
 
+  // Invalidate cache if camera geometry changes and static rendering is enabled
+  if (this->config.renderedImageIsStatic && this->cached_image_.total() > 0)
+  {
+    this->cached_image_ = cv::Mat();
+    CRAS_DEBUG_NAMED("camera_info", "Invalidating cached image due to camera geometry change");
+  }
+
   const auto prevOrigCamMsg = this->origCameraModel.cameraInfo();
   this->origCameraModel = model;
 
@@ -488,33 +495,47 @@ bool RobotModelRenderer::updateCameraInfo(const robot_model_renderer::PinholeCam
 
 cras::expected<cv::Mat, std::string> RobotModelRenderer::render(const ros::Time& time, RenderErrors& errors)
 {
+  // Check if we can use cached rendering for static images
+  if (this->config.renderedImageIsStatic && this->cached_image_.total() > 0)
+    return this->cached_image_.clone();
+
   auto renderResult = this->renderInner(time, errors);
   if (!renderResult.has_value())
     return renderResult;
 
+  cv::Mat finalImage;
+
   if (!this->hasOverlays())
-    return *renderResult;
-
-  cv::Mat overlaidImg(renderResult->rows, renderResult->cols, this->cvImageType);
   {
-    auto renderedImg = renderResult->isContinuous() ? *renderResult : renderResult->clone();
-
-    auto renderLock {render_system_.lock()};
-
-    // Draw the previously rendered scene onto overlay_scene_tex_ .
+    finalImage = *renderResult;
+  }
+  else
+  {
+    finalImage = cv::Mat(renderResult->rows, renderResult->cols, this->cvImageType);
     {
-      const Ogre::PixelBox renderPb(renderedImg.cols, renderedImg.rows, 1, this->config.pixelFormat, renderedImg.data);
-      overlay_scene_tex_->getBuffer()->blitFromMemory(renderPb);
+      auto renderedImg = renderResult->isContinuous() ? *renderResult : renderResult->clone();
+
+      auto renderLock {render_system_.lock()};
+
+      // Draw the previously rendered scene onto overlay_scene_tex_ .
+      {
+        const Ogre::PixelBox renderPb(renderedImg.cols, renderedImg.rows, 1, this->config.pixelFormat,
+          renderedImg.data);
+        overlay_scene_tex_->getBuffer()->blitFromMemory(renderPb);
+      }
+
+      overlay_rt_->update();
+
+      const Ogre::PixelBox pb(overlay_tex_->getWidth(), overlay_tex_->getHeight(), 1, this->config.pixelFormat,
+        finalImage.data);
+      overlay_rt_->copyContentsToMemory(pb);
     }
-
-    overlay_rt_->update();
-
-    const Ogre::PixelBox pb(overlay_tex_->getWidth(), overlay_tex_->getHeight(), 1, this->config.pixelFormat,
-      overlaidImg.data);
-    overlay_rt_->copyContentsToMemory(pb);
   }
 
-  return overlaidImg;
+  if (this->config.renderedImageIsStatic)
+    this->cached_image_ = finalImage.clone();
+
+  return finalImage;
 }
 
 cras::expected<cv::Mat, std::string> RobotModelRenderer::renderInner(const ros::Time& time, RenderErrors& errors)
@@ -662,6 +683,8 @@ void RobotModelRenderer::reset()
   {
     Ogre::MaterialManager::getSingleton().remove(overlay_material_->getName());
   }
+
+  cached_image_ = cv::Mat();
 }
 
 }

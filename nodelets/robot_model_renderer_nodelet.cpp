@@ -331,6 +331,7 @@ private:
     config.upscalingInterpolation = params->getParam("upscaling_interpolation", config.upscalingInterpolation);
     config.renderImageScale = params->getParam("render_image_scale", config.renderImageScale);
     config.maxRenderImageSize = params->getParam("max_render_image_size", config.maxRenderImageSize, "px (0 = none)");
+    config.renderedImageIsStatic = params->getParam("rendered_image_is_static", config.renderedImageIsStatic);
 
     const auto staticMaskImageFile = params->getParam("static_mask_image_file", "");
     const auto staticMaskImageFileEncoding = params->getParam("static_mask_image_encoding", "");

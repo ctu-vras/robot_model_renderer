@@ -94,6 +94,7 @@ struct RobotModelRendererConfig
   cv::Mat staticMaskImage;
   std::string staticMaskImageEncoding;  //!< Encoding from sensor_msgs/image_encodings.h . If empty, BGR(A) is assumed.
   bool staticMaskIsBackground {true};  //!< If false, the static mask image will be drawn over the rendered image.
+  bool renderedImageIsStatic {false};  //!< If true, cache rendered images for identical camera geometry.
 };
 
 struct RenderErrors
@@ -173,6 +174,8 @@ protected:
   OgreStaticImage staticImagePass_;
 
   int cvImageType;
+
+  cv::Mat cached_image_;
 };
 
 }

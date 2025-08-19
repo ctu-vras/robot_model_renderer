@@ -83,6 +83,7 @@ struct robot_model_renderer_RobotModelRendererConfig
   int upscalingInterpolation;
   double renderImageScale;
   size_t maxRenderImageSize;
+  bool renderedImageIsStatic;
 
   size_t staticMaskImageWidth;
   size_t staticMaskImageHeight;

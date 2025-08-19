@@ -83,6 +83,7 @@ inline robot_model_renderer::RobotModelRendererConfig convertConfig(
   cpp.upscalingInterpolation = static_cast<cv::InterpolationFlags>(c.upscalingInterpolation);
   cpp.renderImageScale = c.renderImageScale;
   cpp.maxRenderImageSize = c.maxRenderImageSize;
+  cpp.renderedImageIsStatic = c.renderedImageIsStatic;
 
   if (c.staticMaskImageWidth > 0 && c.staticMaskImageHeight > 0 && c.staticMaskImage != nullptr)
   {
@@ -142,6 +143,7 @@ robot_model_renderer_RobotModelRendererConfig robot_model_renderer_createDefault
   c.upscalingInterpolation = cpp.upscalingInterpolation;
   c.renderImageScale = cpp.renderImageScale;
   c.maxRenderImageSize = cpp.maxRenderImageSize;
+  c.renderedImageIsStatic = cpp.renderedImageIsStatic;
 
   c.staticMaskImageWidth = 0u;
   c.staticMaskImageHeight = 0u;

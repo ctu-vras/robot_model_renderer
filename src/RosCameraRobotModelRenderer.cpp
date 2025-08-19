@@ -19,6 +19,7 @@
 #include <robot_model_renderer/pinhole_camera.hpp>
 #include <robot_model_renderer/RobotModelRenderer.hpp>
 #include <robot_model_renderer/RosCameraRobotModelRenderer.hpp>
+#include <robot_model_renderer/utils/sensor_msgs.hpp>
 #include <robot_model_renderer/utils/sensor_msgs_ogre.hpp>
 #include <robot_model_renderer/utils/validate_floats.hpp>
 #include <tf2_ros/buffer.h>
@@ -71,6 +72,7 @@ RosCameraRobotModelRenderer::RosCameraRobotModelRenderer(
     robotConfig.staticMaskImage = cv_bridge::toCvCopy(config.staticMaskImage)->image;
   robotConfig.staticMaskImageEncoding = config.staticMaskImage.encoding;
   robotConfig.staticMaskIsBackground = config.staticMaskIsBackground;
+  robotConfig.renderedImageIsStatic = config.renderedImageIsStatic;
 
   this->linkUpdater = std::make_unique<TFROSLinkUpdater>(this->log, tf, "", "", config.tfTimeout);
   this->renderer = std::make_unique<RobotModelRenderer>(this->log, model, this->linkUpdater.get(),

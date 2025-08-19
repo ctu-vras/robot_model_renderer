@@ -72,6 +72,11 @@ viewpoint, useful for self-filtering, occlusion detection, and robot awareness a
                                                   values to decrease the resolution of the rendered image.
 - `~upscaling_interpolation` (string, default: "INTER_LINEAR"): OpenCV interpolation method for upscaling when the
                                                                 rendered image is smaller than camera info size.
+- `~rendered_image_is_static` (bool, default: false): Enable caching of rendered images for identical camera geometry.
+                                                      When true, subsequent camera infos with identical camera geometry
+                                                      will reuse the last rendered image without triggering rendering or
+                                                      TF lookups, but output images will have correct timestamps. Use
+                                                      this when the visible parts of the robot do not move.
 
 #### Lens Distortion
 

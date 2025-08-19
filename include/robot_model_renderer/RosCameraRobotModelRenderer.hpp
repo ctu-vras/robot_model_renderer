@@ -73,6 +73,7 @@ struct RosCameraRobotModelRendererConfig
 
   sensor_msgs::Image staticMaskImage;
   bool staticMaskIsBackground {true};  //!< If false, the static mask image will be drawn over the rendered image.
+  bool renderedImageIsStatic {false};  //!< If true, cache rendered images for identical camera geometry.
 };
 
 /**
