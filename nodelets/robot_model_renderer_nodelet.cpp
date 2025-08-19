@@ -36,6 +36,8 @@
 #include <tf2_ros/message_filter.h>
 #include <tf2_ros/transform_listener.h>
 
+// Parameter conversion helpers
+
 namespace cras
 {
 
@@ -149,6 +151,102 @@ public:
 /**
  * \brief Nodelet that renders the robot from robot_description using a camera described by a sensor_msgs/CameraInfo
  *        topic.
+ *
+ * Subscribed topics:
+ * - `camera_info` (sensor_msgs/CameraInfo): Camera parameters for rendering viewpoint
+ *
+ * Published topics:
+ * - `mask` (sensor_msgs/Image): Rendered robot model image
+ *
+ * ROS parameters:
+ *
+ * Core Parameters
+ * - `robot_description` (string, required): URDF robot model description
+ * - `~image_encoding` (string, default: "bgr8"): Output image encoding (color/mono encodings supported)
+ * - `~rendering_mode` (string, default: "normal"): Rendering mode
+ *   - `"normal"`: Standard textured rendering according to the URDF model
+ *   - `"color"`: Render all links using a shaded solid color (`~color_mode_color`)
+ *   - `"mask"`: Render all links using a non-shaded white mask
+ *
+ * Camera & Rendering
+ * - `~near_clip` (double, default: 0.01 m): Near clipping plane distance
+ * - `~far_clip` (double, default: infinite): Far clipping plane distance
+ * - `~render_image_scale` (double, default: 1.0): Scaling factor for rendered image. Set lower than 1 to decrease the
+ *                                                 resolution of the rendered image.
+ * - `~max_render_image_size` (uint, default: 0 px): Maximum render texture size (0 px = GPU limit). Set to lower
+ *                                                   values to decrease the resolution of the rendered image.
+ * - `~upscaling_interpolation` (string, default: "INTER_LINEAR"): OpenCV interpolation method for upscaling when the
+ *                                                                 rendered image is smaller than camera info size.
+ * - `~rendered_image_is_static` (bool, default: false): Enable caching of rendered images for identical camera
+ *                                                       geometry. When true, subsequent camera infos with identical
+ *                                                       camera geometry will reuse the last rendered image without
+ *                                                       triggering rendering or TF lookups, but output images will have
+ *                                                       correct timestamps. Use this when the visible parts of the
+ *                                                       robot do not move.
+ *
+ * Lens Distortion
+ * - `~do_distort` (bool, default: true): Enable camera distortion correction (true: distorted image, false: rectified)
+ * - `~gpu_distortion` (bool, default: true): Use GPU-accelerated distortion (faster). Should generally be okay, but may
+ *                                            produce slightly different results than the original image_geometry code.
+ *
+ * Visual Appearance
+ * - `~background_color` (float[4], default: [0,0,0,0]): Background color (RGBA, 0-1). This is the color of all parts of
+ *                                                       the image where there is no robot part.
+ * - `~color_mode_color` (float[4], default: [1,1,1,1]): Solid color for "color" rendering mode (RGBA, 0-1).
+ * - `~visual` (bool, default: true): Show visual geometry.
+ * - `~collision` (bool, default: false): Show collision geometry.
+ *
+ * Outline Rendering
+ * - `~draw_outline` (bool, default: false): Draw object outlines.
+ * - `~outline_width` (double, default: 2.0): Outline thickness in pixels (may not be precise).
+ * - `~outline_color` (float[4], default: [1,1,1,1]): Outline color (RGBA, 0-1).
+ * - `~outline_from_closest_color` (bool, default: false): Use closest pixel color for outline instead of
+ *                                                         `~outline_color`.
+ *
+ * Color Processing
+ * - `~invert_colors` (bool, default: false): Invert output colors (without alpha channel)
+ * - `~invert_alpha` (bool, default: false): Invert alpha channel
+ *
+ * Static Mask Overlay
+ * - `~static_mask_image_file` (string, default: no image): Path to static mask image file
+ * - `~static_mask_image_encoding` (string, default: auto-detect): Encoding of mask image (see
+ *                                                                 sensor_msgs/Image/encoding)
+ * - `~static_mask_is_background` (bool, default: false): Treat mask as background (true) or foreground (false)
+ *
+ * Transform & Timing
+ * - `~tf_timeout` (double, default: 1.0, units: s): TF lookup timeout
+ * - `~all_links_required` (bool, default: false): Require all links to have valid transforms
+ * - `~required_links` (string[], default: empty): Set of link names that must have valid transforms
+ *
+ * Shape Names and Name Templates
+ *
+ * The `~only_shapes`, `~ignored_shapes` and `~body_model/inflation/per_shape` configs reference individual model parts.
+ * These can be referenced by various names and name templates (`link` is the name of a link, `shape` is the name of a
+ * visual or collision element, `shape#` is the ordinal number of the visual/collision in its link):
+ *
+ * - `link` (match all shapes in the link with name `link`)
+ * - `*::shape` (match all shapes with name `shape` in any link)
+ * - `link::shape#` (match the `shape#`-th visual or collision in the given link)
+ * - `link::shape` (match shape with name `shape` in link with name `link`)
+ * - `*:visual:shape` (match visual with name `shape` in any link)
+ * - `link:visual:shape#` (match `shape#`-th visual in link with name `link`)
+ * - `link:visual:shape` (match visual with name `shape` in link with name `link`)
+ * - `*:collision:shape` (match collision with name `shape` in any link)
+ * - `link:collision:shape#` (match `shape#`-th collision in link with name `link`)
+ * - `link:collision:shape` (match collision with name `shape` in link with name `link`)
+ *
+ * Note: This syntax is similar to [robot_body_filter](https://github.com/peci1/robot_body_filter).
+ * But robot_body_filter does not support the `:visual:` and `:collision:` selectors.
+ *
+ * Shape Filtering
+ * - `~ignored_shapes` (string[], default: empty): Link/shape names to ignore (see above)
+ * - `~only_shapes` (string[], default: render all): Only render these shapes (see above)
+ *
+ * Scaling and Padding of Individual Body Parts
+ * - `~body_model/inflation/scale` (double, default: 1.0): Global scaling factor for all shapes
+ * - `~body_model/inflation/padding` (double, default: 0.0, units: m): Global padding for all shapes
+ * - `~body_model/inflation/per_shape/scale` (dict[string,double]): Per-shape scaling overrides (see above)
+ * - `~body_model/inflation/per_shape/padding` (dict[string,double], units: m): Per-shape padding overrides (see above)
  */
 class RobotModelRendererNodelet : public cras::Nodelet
 {
@@ -160,7 +258,7 @@ public:
 
   ~RobotModelRendererNodelet() override
   {
-    this->requestStop();
+    RobotModelRendererNodelet::requestStop();
   }
 
   void onInit() override

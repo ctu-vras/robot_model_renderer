@@ -59,49 +59,64 @@ namespace robot_model_renderer
  */
 struct RobotModelRendererConfig
 {
-  bool setupDefaultLighting {true};
+  bool setupDefaultLighting {true};  //!< If true, a default point and ambient light will be added.
 
-  Ogre::PixelFormat pixelFormat {Ogre::PF_BYTE_RGBA};
-  Ogre::ColourValue backgroundColor {0, 0, 0, 0};
+  Ogre::PixelFormat pixelFormat {Ogre::PF_BYTE_RGBA};  //!< Pixel format of the rendered image.
+  Ogre::ColourValue backgroundColor {0, 0, 0, 0};  //!< Color of pixels that are not a part of the robot model.
 
-  bool doDistort {true};
-  bool gpuDistortion {true};
+  bool doDistort {true};  //!< Apply lens distortion to the rendered images. If false, the output images are rectified.
+  bool gpuDistortion {true};  //!< Do the lens distortion on GPU.
 
-  float nearClipDistance {0.03f};
-  float farClipDistance {0.0f};
+  float nearClipDistance {0.03f};  //!< Near clip plane of the camera (meters).
+  float farClipDistance {0.0f};  //!< Far clip plane of the camera (meters). 0.0 means infinity.
 
-  RenderingMode renderingMode {RenderingMode::NORMAL};
-  Ogre::ColourValue colorModeColor {Ogre::ColourValue::Red};
+  RenderingMode renderingMode {RenderingMode::NORMAL};  //!< The mode of rendering.
+  Ogre::ColourValue colorModeColor {Ogre::ColourValue::Red};  //!< Color of the robot that will be used in COLOR mode.
 
-  bool drawOutline {false};
-  double outlineWidth {5.0};
-  Ogre::ColourValue outlineColor {Ogre::ColourValue::Black};
-  bool outlineFromClosestColor {false};
+  bool drawOutline {false};  //!< Whether to draw an outline.
+  double outlineWidth {5.0};  //!< Width of the outline.
+  Ogre::ColourValue outlineColor {Ogre::ColourValue::Black};  //!< Color of the outline.
+  bool outlineFromClosestColor {false};  //!< Whether outline color should be taken from the nearest on-robot pixel.
 
-  bool invertColors {false};
-  bool invertAlpha {false};
+  bool invertColors {false};  //!< Invert RGB channel values.
+  bool invertAlpha {false};  //!< Invert alpha channel values.
 
+  //! If true, all links from URDF are required to have a valid TF for rendering to happen.
   bool allLinksRequired {false};
-  std::set<std::string> requiredLinks;
+  std::set<std::string> requiredLinks;  //!< The list of links whose TFs are required for the rendering to happen.
 
+  //! Filter of visuals/collisions. Non-matching shapes are not rendered.
   std::shared_ptr<ShapeFilter> shapeFilter {nullptr};
+  //! Registry of scaling and padding parameters for individual links/visuals/collisions.
   std::shared_ptr<ShapeInflationRegistry> shapeInflationRegistry {nullptr};
 
-  cv::InterpolationFlags upscalingInterpolation {cv::INTER_LINEAR};
-  double renderImageScale {1.0};
-  size_t maxRenderImageSize {0u};
+  cv::InterpolationFlags upscalingInterpolation {cv::INTER_LINEAR};  //!< Interpolation method used of upscaling.
+  double renderImageScale {1.0};  //!< If lower than 1.0, scale down the rendered image to save resources.
+  size_t maxRenderImageSize {0u};  //!< If non-zero, sets the maximum size of render textures. Decreases quality.
 
-  cv::Mat staticMaskImage;
+  cv::Mat staticMaskImage;  //!< If non-empty, this image will be drawn over/below the robot model.
   std::string staticMaskImageEncoding;  //!< Encoding from sensor_msgs/image_encodings.h . If empty, BGR(A) is assumed.
   bool staticMaskIsBackground {true};  //!< If false, the static mask image will be drawn over the rendered image.
+
   bool renderedImageIsStatic {false};  //!< If true, cache rendered images for identical camera geometry.
 };
 
+/**
+ * \brief Errors that happened during rendering.
+ */
 struct RenderErrors
 {
-  UpdateErrors updateErrors;
+  UpdateErrors updateErrors;  //!< Errors with TF updates.
 
+  /**
+   * \return Whether there is some error.
+   */
   bool hasError() const;
+
+  /**
+   * \brief Convert the recorded errors into a single string.
+   * \return The single string.
+   */
   std::string toString() const;
 };
 
@@ -111,22 +126,89 @@ struct RenderErrors
 class RobotModelRenderer : public cras::HasLogger
 {
 public:
+  /**
+   * \brief Construct the renderer. Check `errors` after construction to see whether it was successful.
+   *
+   * \param[in] log Logger.
+   * \param[in] model The robot model to render.
+   * \param[in] linkUpdater Updater of robot link positions.
+   * \param[out] errors The errors encountered during construction of this class.
+   * \param[in] config Configuration of this class.
+   * \param[in] sceneManager Optional scene manager to use.
+   * \param[in] sceneNode Optional root scene node to use.
+   * \param[in] camera Optional OGRE camera to use.
+   */
   RobotModelRenderer(const cras::LogHelperPtr& log, const urdf::Model& model, LinkUpdater* linkUpdater,
     RobotErrors& errors, const RobotModelRendererConfig& config = {},
     Ogre::SceneManager* sceneManager = nullptr, Ogre::SceneNode* sceneNode = nullptr, Ogre::Camera* camera = nullptr);
+
   virtual ~RobotModelRenderer();
 
+  /**
+   * \brief Set a new URDF model to render.
+   *
+   * \param[in] model The new URDF model to render.
+   * \return Possible errors that happened when setting the model.
+   */
   virtual cras::expected<void, RobotErrors> setModel(const urdf::Model& model);
-  virtual void setNearClipDistance(double nearClip);
-  virtual void setFarClipDistance(double farClip);
-  virtual void setVisualVisible(bool visible);
-  virtual void setCollisionVisible(bool visible);
-  virtual void setPixelFormat(const Ogre::PixelFormat& pf);
 
+  /**
+   * \brief Set new camera geometry affecting the rendered view.
+   *
+   * \note This function is efficient, so you can call it with all incoming camera infos, even on high frequencies.
+   *
+   * \param[in] model The new camera geometry.
+   * \return Whether the camera geometry is valid and has been accepted.
+   */
+  virtual bool updateCameraInfo(const robot_model_renderer::PinholeCameraModel& model);
+
+  /**
+   * \brief Render the model using the last set camera info.
+   *
+   * \note At least one call to updateCameraInfo() is required before calling render().
+   *
+   * \param[in] time The time instant for which the model should be rendered.
+   * \param[out] errors Non-fatal errors that happened during rendering. Check field `may_succeed_later` of the link
+   *                    errors to find out if it makes sense to request rendering for this time again later, when the
+   *                    link updater collects more TF information.
+   * \return The rendered image, or a fatal error description.
+   */
+  virtual cras::expected<cv::Mat, std::string> render(const ros::Time& time, RenderErrors& errors);
+
+  /**
+   * \brief Reset the renderer state.
+   */
   virtual void reset();
 
-  virtual cras::expected<cv::Mat, std::string> render(const ros::Time& time, RenderErrors& errors);
-  virtual bool updateCameraInfo(const robot_model_renderer::PinholeCameraModel& model);
+  /**
+   * \param[in] nearClip Near clip plane of the camera (meters).
+   */
+  virtual void setNearClipDistance(double nearClip);
+
+  /**
+   * \param[in] farClip Far clip plane of the camera (meters). 0.0 means infinity.
+   */
+  virtual void setFarClipDistance(double farClip);
+
+  /**
+   * \param[in] visible Whether visual elements should be rendered.
+   */
+  virtual void setVisualVisible(bool visible);
+
+  /**
+   * \param[in] visible Whether collision elements should be rendered.
+   */
+  virtual void setCollisionVisible(bool visible);
+
+  /**
+   * \brief Set the pixel format of the rendered images.
+   *
+   * This affects e.g. whether the images have an alpha channel, whether they are mono or RGB, or whether the colors are
+   * ordered as RGB or BGR.
+   *
+   * \param[in] pf The pixel format of the rendered images.
+   */
+  virtual void setPixelFormat(const Ogre::PixelFormat& pf);
 
 protected:
   virtual void updateOgreCamera();

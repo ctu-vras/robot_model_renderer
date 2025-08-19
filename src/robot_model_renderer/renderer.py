@@ -83,7 +83,17 @@ def sensorMsgsEncodingToOgrePixelFormat(encoding):
 
 
 class RobotModelRenderer(object):
+    """Renderer of robot model from URDF."""
+
     def __init__(self, model, config, imageEncoding=None):
+        """Construct the renderer.
+
+        :param str model: The URDF model to load.
+        :param RobotModelRendererConfig config: Configuration of this class.
+        :param imageEncoding: Encoding of the rendered image (one of sensor_msgs/image_encodings.h).
+        :type imageEncoding: str or none
+        :throws RuntimeError: If construction failed.
+        """
         self._log_alloc = LogMessagesAllocator()
         self._log_alloc_func = self._log_alloc.get_cfunc()
 
@@ -112,6 +122,12 @@ class RobotModelRenderer(object):
         del self._log_alloc.allocated_sizes[:]
 
     def setModel(self, model):
+        """Set a new URDF model to render.
+
+        :param str model: The new URDF model to render.
+        :return: Whether setting the model succeeded, and possible errors
+        :rtype: tuple
+        """
         error_alloc = StringAllocator()
         success = _get_library().robot_model_renderer_RobotModelRenderer_setModel(
             self._handle, model.encode("utf-8"), error_alloc.get_cfunc())
@@ -119,6 +135,12 @@ class RobotModelRenderer(object):
         return success, error_alloc.values
 
     def updateCameraInfo(self, cameraInfo):
+        """Set new camera geometry affecting the rendered view.
+
+        :param CameraInfo cameraInfo: The new camera geometry.
+        :return: Whether the camera geometry is valid and has been accepted.
+        :rtype: bool
+        """
         success = _get_library().robot_model_renderer_RobotModelRenderer_updateCameraInfo(
             self._handle, sensor_msgs_CameraInfo(cameraInfo))
         self._camera_info = cameraInfo
@@ -126,6 +148,16 @@ class RobotModelRenderer(object):
         return success
 
     def render(self, time_or_cameraInfo):
+        """Render the model using the provided or last set camera info.
+
+        If you provide only timestamp as parameter, the last camera info set by :meth:`updateCameraInfo` will be used.
+
+        :param time_or_cameraInfo: The time instant for which the model should be rendered, or a camera info for whose
+                                   timestamp the rendering should happen.
+        :type time_or_cameraInfo: rospy.Time or CameraInfo
+        :return: The rendered image, fatal error message, non-fatal error messages
+        :rtype: tuple
+        """
         image_data_alloc = BytesAllocator()
         link_error_alloc = BytesAllocator()
         error_alloc = StringAllocator()

@@ -33,6 +33,7 @@ public:
   /**
    * \brief Create a distortion pass that applies calibrated pinhole camera distortion.
    *
+   * \param[in] log Logger.
    * \param[in] useDistortionMap Whether to use a distortion map in the shader or compute distortion on the fly.
    *                             The results should be the same if the inverse rectification shader is written
    *                             correctly. The distortion map should be the map returned from PinholeCameraModel.

@@ -20,7 +20,7 @@ viewpoint, useful for self-filtering, occlusion detection, and robot awareness a
 
 ![Screenshot](doc/screenshot.png)
 
-## Important Note
+## GPU Usage
 
 > [!WARNING]
 > To manage reasonable performance, this packages does the rendering on a GPU via OpenGL.
@@ -40,6 +40,22 @@ viewpoint, useful for self-filtering, occlusion detection, and robot awareness a
 >     vglrun +v -d /dev/dri/card0 xvfb-run -a rosrun robot_model_renderer robot_model_renderer
 > 
 > If you run this library as nodelet, this prefixing needs to be done on the side of the nodelet manager.
+
+> [!IMPORTANT]
+> Because of the way OGRE and OpenGL work, only one thread in each process can be accessing the GPU at a time.
+> This is important to know when you run multiple instances of this nodelet in one nodelet manager.
+> 
+> This library is prepared for such case and there is a mutex protecting access to the GPU, so it is safe to run
+> multiple robot_model_renderer nodelets in one manager. However, the rendering itself will be serialized, so it can
+> happen that when there is too many nodelets, the performance will degrade even if the GPU would have performance and
+> resources for handling all of them at once.
+
+## Documentation
+
+To build the C++ and Python API docs for this package, install `ros-${ROS_DISTRO}-rosdoc-lite` and
+`ros-${ROS_DISTRO}-cras-docs-common` and run `rosdoc_lite .` in the root folder of this project.
+
+The documentation will be built in folder `doc/html`.
 
 ## Node `robot_model_renderer` and nodelet `robot_model_renderer/robot_model_renderer_nodelet`
 

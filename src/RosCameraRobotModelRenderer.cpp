@@ -125,9 +125,9 @@ cras::expected<sensor_msgs::ImageConstPtr, std::string> RosCameraRobotModelRende
   return cvImg.toImageMsg();  // TODO here's an unneeded memcpy, we should rather preallocate and share the buffer
 }
 
-void RosCameraRobotModelRenderer::setModel(const urdf::Model& model)
+cras::expected<void, RobotErrors> RosCameraRobotModelRenderer::setModel(const urdf::Model& model)
 {
-  this->renderer->setModel(model);
+  return this->renderer->setModel(model);
 }
 
 void RosCameraRobotModelRenderer::setNearClipDistance(const double nearClip)
