@@ -404,10 +404,10 @@ class RobotModelRendererConfig(object):
         self.upscalingInterpolation = conf.upscalingInterpolation
         self.renderImageScale = conf.renderImageScale
         self.maxRenderImageSize = conf.maxRenderImageSize
-        self.renderedImageIsStatic = conf.renderedImageIsStatic
         self.staticMaskImage = None  # An OpenCV-compatible Numpy array
         self.staticMaskImageEncoding = ""
         self.staticMaskIsBackground = conf.staticMaskIsBackground
+        self.renderedImageIsStatic = conf.renderedImageIsStatic
 
     @classmethod
     def from_param(cls, obj):

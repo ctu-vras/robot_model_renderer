@@ -3,14 +3,18 @@
 
 import copy
 import os
+import re
 import sys
 
+import cv2
+import rospkg
 import rospy
 from cras import image_encodings
 from cras_bag_tools import DeserializedMessageFilter
 from cras_bag_tools.message_filter import fix_connection_header
 from sensor_msgs.msg import Image
-from robot_model_renderer import RobotModelRenderer, RobotModelRendererConfig, RenderingMode
+from robot_model_renderer import (RobotModelRenderer, RobotModelRendererConfig, RenderingMode, ShapeFilterConfig,
+                                  ShapeInflationRegistry, ScaleAndPadding, PerShapeInflation)
 
 
 class RenderCameraMask(DeserializedMessageFilter):
@@ -41,14 +45,55 @@ class RenderCameraMask(DeserializedMessageFilter):
                 print('URDF model file "%s" does not exist.' % (description_file,), file=sys.stderr)
 
         self._config = RobotModelRendererConfig()
+        # Default config for this plugin
         self._config.renderingMode = RenderingMode.MASK
         self._config.drawOutline = True
         self._config.outlineColor = [1.0, 1.0, 1.0, 1.0]
         self._config.outlineWidth = 10.0
         self._config.renderImageScale = 0.25
         self._config.maxRenderImageSize = 2048
+        # Custom config from kwargs
         for k, v in kwargs.items():
-            setattr(self._config, k, v)
+            if k == "renderingMode":
+                if isinstance(kwargs[k], int):
+                    self._config.renderingMode = RenderingMode(kwargs[k])
+                else:  # string
+                    self._config.renderingMode = RenderingMode[kwargs[k].upper()]
+            elif k == "shapeFilter":
+                self._config.shapeFilter = ShapeFilterConfig(
+                    v.get("visualAllowed", True),
+                    v.get("collisionAllowed", False),
+                    v.get("ignoreShapes", []),
+                    v.get("onlyShapes", []))
+            elif k == "shapeInflationRegistry":
+                defaultInflation = ScaleAndPadding(
+                    kwargs.get("defaultInflation", {}).get("scale", 1.0),
+                    kwargs.get("defaultInflation", {}).get("padding", 0.0))
+                defaultVisualInflation = ScaleAndPadding(
+                    kwargs.get("defaultVisualInflation", {}).get("scale", defaultInflation.scale),
+                    kwargs.get("defaultVisualInflation", {}).get("padding", defaultInflation.padding))
+                defaultCollisionInflation = ScaleAndPadding(
+                    kwargs.get("defaultCollisionInflation", {}).get("scale", defaultInflation.scale),
+                    kwargs.get("defaultCollisionInflation", {}).get("padding", defaultInflation.padding))
+                self._config.shapeInflationRegistry = ShapeInflationRegistry(
+                    defaultInflation, defaultVisualInflation, defaultCollisionInflation)
+                for kk, vv in kwargs.get("perShape", {}).items():
+                    i = PerShapeInflation(kk, ScaleAndPadding(vv.get("scale", 1.0), vv.get("padding", 0.0)))
+                    self._config.shapeInflationRegistry.perShapeInflation.append(i)
+            elif k == "staticMaskImage":
+                try:
+                    image_file = kwargs[k]
+                    matches = re.match(r'\$\(find ([^)]+)\)', image_file)
+                    if matches is not None:
+                        rospack = rospkg.RosPack()
+                        package_path = rospack.get_path(matches[1])
+                        image_file = image_file.replace('$(find %s)' % (matches[1],), package_path)
+                    self._config.staticMaskImage = cv2.imread(image_file, cv2.IMREAD_UNCHANGED)
+                except Exception as e:
+                    print("Error reading static mask image %s: %s" % (kwargs[k], str(e)), file=sys.stderr)
+            else:
+                setattr(self._config, k, v)
+
         self._encoding = encoding
 
         self.renderer = None
