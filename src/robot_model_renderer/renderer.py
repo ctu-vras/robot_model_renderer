@@ -142,7 +142,7 @@ class RobotModelRenderer(object):
         :rtype: bool
         """
         success = _get_library().robot_model_renderer_RobotModelRenderer_updateCameraInfo(
-            self._handle, sensor_msgs_CameraInfo(cameraInfo))
+            self._handle, sensor_msgs_CameraInfo(camInfo=cameraInfo))
         self._camera_info = cameraInfo
         self._flush_log_messages()
         return success
@@ -162,7 +162,7 @@ class RobotModelRenderer(object):
         link_error_alloc = BytesAllocator()
         error_alloc = StringAllocator()
 
-        if isinstance(time_or_cameraInfo, (CameraInfo, sensor_msgs_CameraInfo)):
+        if not isinstance(time_or_cameraInfo, rospy.Time):
             if not self.updateCameraInfo(time_or_cameraInfo):
                 return None, "Update of camera parameters failed.", None
             time = time_or_cameraInfo.header.stamp
@@ -209,7 +209,7 @@ class RobotModelRenderer(object):
 
     def setTransform(self, transform, authority, isStatic):
         success = _get_library().robot_model_renderer_LinkUpdater_set_transform(
-            self._handle, geometry_msgs_TransformStamped(transform), authority.encode("utf-8"), isStatic)
+            self._handle, geometry_msgs_TransformStamped(tf=transform), authority.encode("utf-8"), isStatic)
         self._flush_log_messages()
         return success
 

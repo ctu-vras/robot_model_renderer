@@ -11,6 +11,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -145,39 +146,39 @@ struct robot_model_renderer_RobotModelRendererConfig
 
 struct ros_Time
 {
-  unsigned int sec;
-  unsigned int nsec;
+  uint32_t sec;
+  uint32_t nsec;
 };
 
 struct std_msgs_Header
 {
-  unsigned int seq;
+  uint32_t seq;
   ros_Time stamp;
   const char* frame_id;
 };
 
 struct sensor_msgs_RegionOfInterest
 {
-  unsigned int x_offset;
-  unsigned int y_offset;
-  unsigned int height;
-  unsigned int width;
-  bool do_rectify;
+  uint32_t x_offset;
+  uint32_t y_offset;
+  uint32_t height;
+  uint32_t width;
+  uint8_t do_rectify;
 };
 
 struct sensor_msgs_CameraInfo
 {
   std_msgs_Header header;
-  unsigned int height;
-  unsigned int width;
+  uint32_t height;
+  uint32_t width;
   const char* distortion_model;
   size_t D_count;
   double* D;
   double K[9];
   double R[9];
   double P[12];
-  unsigned int binning_x;
-  unsigned int binning_y;
+  uint32_t binning_x;
+  uint32_t binning_y;
   sensor_msgs_RegionOfInterest roi;
 };
 

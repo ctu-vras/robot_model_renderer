@@ -131,8 +131,10 @@ class ShapeFilterConfig(object):
         c = _ShapeFilterConfig()
         c.visualAllowed = obj.visualAllowed
         c.collisionAllowed = obj.collisionAllowed
-        c.ignoreShapes = ",".join(obj.ignoreShapes).encode("utf-8")
-        c.onlyShapes = ",".join(obj.onlyShapes).encode("utf-8")
+        obj._ignoreShapes = ",".join(obj.ignoreShapes).encode("utf-8")
+        c.ignoreShapes = obj._ignoreShapes
+        obj._onlyShapes = ",".join(obj.onlyShapes).encode("utf-8")
+        c.onlyShapes = obj._onlyShapes
         return c
 
 
@@ -417,7 +419,8 @@ class RobotModelRendererConfig(object):
         c.backgroundColor = (c_float * 4)(*obj.backgroundColor)
         c.colorModeColor = (c_float * 4)(*obj.colorModeColor)
         c.outlineColor = (c_float * 4)(*obj.outlineColor)
-        c.requiredLinks = (",".join(obj.requiredLinks)).encode("utf-8")
+        obj._requiredLinks = ",".join(obj.requiredLinks).encode("utf-8")
+        c.requiredLinks = obj._requiredLinks
         c.shapeFilter = ShapeFilterConfig.from_param(obj.shapeFilter)
         c.shapeInflationRegistry = ShapeInflationRegistry.from_param(obj.shapeInflationRegistry)
 
@@ -433,8 +436,10 @@ class RobotModelRendererConfig(object):
             c.staticMaskImageWidth = image.shape[1]
             c.staticMaskImageHeight = image.shape[0]
             c.staticMaskImageStep = image.ctypes.strides_as(c_size_t)[0]
-            c.staticMaskImage = image.ctypes.data_as(c_void_p)
-            c.staticMaskImageEncoding = obj.staticMaskImageEncoding.encode("utf-8")
+            obj._staticMaskImage = image.ctypes.data_as(c_void_p)
+            c.staticMaskImage = obj._staticMaskImage
+            obj._staticMaskImageEncoding = obj.staticMaskImageEncoding.encode("utf-8")
+            c.staticMaskImageEncoding = obj._staticMaskImageEncoding
 
             cv_type_str = bridge.numpy_type_to_cvtype[image.dtype.name]
             n_channels = image.shape[2] if len(image.shape) == 3 else 1

@@ -47,6 +47,8 @@ SPDX-FileCopyrightText: Czech Technical University in Prague
   <build_export_depend>libopencv-dev</build_export_depend>
 
   <exec_depend>assimp</exec_depend>
+  <exec_depend>cras_bag_tools</exec_depend>
+  <exec_depend>cras_py_common</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>glut</exec_depend>
   <exec_depend>image_transport</exec_depend>
@@ -71,6 +73,7 @@ SPDX-FileCopyrightText: Czech Technical University in Prague
   <doc_depend>rosdoc_lite</doc_depend>
 
   <export>
+    <cras_bag_tools filters="robot_model_renderer.cras_bag_tools_plugin" />
     <nodelet plugin="${prefix}/nodelet.xml" />
     <rosdoc config="rosdoc.yaml"/>
   </export>

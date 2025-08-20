@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # SPDX-FileCopyrightText: Czech Technical University in Prague
-
-from ctypes import c_bool, c_char_p, c_double, c_size_t, c_uint, c_uint32
+import ctypes
+from ctypes import c_bool, c_char_p, c_double, c_size_t, c_uint, c_uint32, c_uint8
 from ctypes import cast, POINTER, Structure
 import sys
 
+import genpy
 import rospy
 from geometry_msgs.msg import Transform, TransformStamped
 from sensor_msgs.msg import CameraInfo, RegionOfInterest
@@ -29,7 +30,7 @@ class RosTime(rospy.Time):
         if isinstance(secs, _RosTime):
             c = secs
             super(RosTime, self).__init__(c.sec, c.nsec)
-        elif isinstance(secs, rospy.Time):
+        elif isinstance(secs, (rospy.Time, genpy.rostime.Time)):
             c = secs
             super(RosTime, self).__init__(c.secs, c.nsecs)
         else:
@@ -55,7 +56,7 @@ class std_msgs_Header(Header):
     def __init__(self, header=None, *args, **kwargs):
         if header is not None and isinstance(header, _std_msgs_Header):
             super(std_msgs_Header, self).__init__(header.seq, RosTime(header.stamp), _decode(header.frame_id))
-        if header is not None and isinstance(header, Header):
+        if header is not None:
             super(std_msgs_Header, self).__init__(header.seq, RosTime(header.stamp), header.frame_id)
         else:
             super(std_msgs_Header, self).__init__(*args, **kwargs)
@@ -65,23 +66,24 @@ class std_msgs_Header(Header):
         c = _std_msgs_Header()
         c.seq = obj.seq
         c.stamp = RosTime.from_param(obj.stamp)
-        c.frame_id = obj.frame_id.encode("utf-8")
+        obj._frame_id = obj.frame_id.encode("utf-8")
+        c.frame_id = obj._frame_id
         return c
 
 
 class _sensor_msgs_RegionOfInterest(Structure):
     _fields_ = [
-        ("x_offset", c_uint),
-        ("y_offset", c_uint),
-        ("height", c_uint),
-        ("width", c_uint),
-        ("do_rectify", c_bool),
+        ("x_offset", c_uint32),
+        ("y_offset", c_uint32),
+        ("height", c_uint32),
+        ("width", c_uint32),
+        ("do_rectify", c_uint8),
     ]
 
 
 class sensor_msgs_RegionOfInterest(RegionOfInterest):
     def __init__(self, roi=None, *args, **kwargs):
-        if roi is not None and isinstance(roi, (_sensor_msgs_RegionOfInterest, RegionOfInterest)):
+        if roi is not None:
             super(sensor_msgs_RegionOfInterest, self).__init__(
                 roi.x_offset, roi.y_offset, roi.height, roi.width, roi.do_rectify)
         else:
@@ -101,16 +103,16 @@ class sensor_msgs_RegionOfInterest(RegionOfInterest):
 class _sensor_msgs_CameraInfo(Structure):
     _fields_ = [
         ("header", _std_msgs_Header),
-        ("height", c_uint),
-        ("width", c_uint),
+        ("height", c_uint32),
+        ("width", c_uint32),
         ("distortion_model", c_char_p),
         ("D_count", c_size_t),
         ("D", POINTER(c_double)),
         ("K", c_double * 9),
         ("R", c_double * 9),
         ("P", c_double * 12),
-        ("binning_x", c_uint),
-        ("binning_y", c_uint),
+        ("binning_x", c_uint32),
+        ("binning_y", c_uint32),
         ("roi", _sensor_msgs_RegionOfInterest),
     ]
 
@@ -119,17 +121,14 @@ class sensor_msgs_CameraInfo(CameraInfo):
     def __init__(self, camInfo=None, *args, **kwargs):
         if camInfo is not None and isinstance(camInfo, _sensor_msgs_CameraInfo):
             super(sensor_msgs_CameraInfo, self).__init__(
-                std_msgs_Header(camInfo.header), camInfo.height, camInfo.width, _decode(camInfo.distortion_model),
-                list(cast(camInfo.D, POINTER(c_double))), camInfo.K, camInfo.R, camInfo.P,
-                camInfo.binning_x, camInfo.binning_y, sensor_msgs_RegionOfInterest(camInfo.roi))
-        elif camInfo is not None and isinstance(camInfo, CameraInfo):
+                std_msgs_Header(header=camInfo.header), camInfo.height, camInfo.width,
+                _decode(camInfo.distortion_model), list(cast(camInfo.D, POINTER(c_double))), camInfo.K, camInfo.R,
+                camInfo.P, camInfo.binning_x, camInfo.binning_y, sensor_msgs_RegionOfInterest(roi=camInfo.roi))
+        elif camInfo is not None:
             super(sensor_msgs_CameraInfo, self).__init__(
-                std_msgs_Header(camInfo.header), camInfo.height, camInfo.width, camInfo.distortion_model,
+                std_msgs_Header(header=camInfo.header), camInfo.height, camInfo.width, camInfo.distortion_model,
                 camInfo.D, camInfo.K, camInfo.R, camInfo.P, camInfo.binning_x, camInfo.binning_y,
-                sensor_msgs_RegionOfInterest(camInfo.roi))
-        elif camInfo is not None and isinstance(camInfo, CameraInfo):
-            for f in CameraInfo.__slots__:
-                setattr(self, f, getattr(camInfo, f))
+                sensor_msgs_RegionOfInterest(roi=camInfo.roi))
         else:
             super(sensor_msgs_CameraInfo, self).__init__(*args, **kwargs)
 
@@ -139,9 +138,11 @@ class sensor_msgs_CameraInfo(CameraInfo):
         c.header = std_msgs_Header.from_param(obj.header)
         c.height = obj.height
         c.width = obj.width
-        c.distortion_model = obj.distortion_model.encode('utf-8')
+        obj._distortion_model = obj.distortion_model.encode('utf-8')
+        c.distortion_model = obj._distortion_model
         c.D_count = len(obj.D)
-        c.D = cast((c_double * len(obj.D))(*obj.D), POINTER(c_double))
+        obj._D = cast((c_double * len(obj.D))(*obj.D), POINTER(c_double))
+        c.D = obj._D
         c.K = (c_double * 9)(*obj.K)
         c.R = (c_double * 9)(*obj.R)
         c.P = (c_double * 12)(*obj.P)
@@ -169,8 +170,15 @@ class geometry_msgs_Transform(Transform):
             self.rotation.y = tf.rotation[1]
             self.rotation.z = tf.rotation[2]
             self.rotation.w = tf.rotation[3]
-        elif tf is not None and isinstance(tf, Transform):
-            super(geometry_msgs_Transform, self).__init__(tf.translation, tf.rotation)
+        elif tf is not None:
+            super(geometry_msgs_Transform, self).__init__()
+            self.translation.x = tf.translation.x
+            self.translation.y = tf.translation.y
+            self.translation.z = tf.translation.z
+            self.rotation.x = tf.rotation.x
+            self.rotation.y = tf.rotation.y
+            self.rotation.z = tf.rotation.z
+            self.rotation.w = tf.rotation.w
         else:
             super(geometry_msgs_Transform, self).__init__(*args, **kwargs)
 
@@ -194,14 +202,14 @@ class geometry_msgs_TransformStamped(TransformStamped):
     def __init__(self, tf=None, *args, **kwargs):
         if tf is not None and isinstance(tf, _geometry_msgs_TransformStamped):
             super(geometry_msgs_TransformStamped, self).__init__()
-            self.header = std_msgs_Header(tf.header)
+            self.header = std_msgs_Header(header=tf.header)
             self.child_frame_id = _decode(tf.child_frame_id)
-            self.transform = geometry_msgs_Transform(tf.transform)
-        if tf is not None and isinstance(tf, TransformStamped):
+            self.transform = geometry_msgs_Transform(tf=tf.transform)
+        elif tf is not None:
             super(geometry_msgs_TransformStamped, self).__init__()
-            self.header = std_msgs_Header(tf.header)
+            self.header = std_msgs_Header(header=tf.header)
             self.child_frame_id = tf.child_frame_id
-            self.transform = geometry_msgs_Transform(tf.transform)
+            self.transform = geometry_msgs_Transform(tf=tf.transform)
         else:
             super(geometry_msgs_TransformStamped, self).__init__(*args, **kwargs)
 
@@ -209,7 +217,8 @@ class geometry_msgs_TransformStamped(TransformStamped):
     def from_param(cls, obj):
         c = _geometry_msgs_TransformStamped()
         c.header = std_msgs_Header.from_param(obj.header)
-        c.child_frame_id = obj.child_frame_id.encode('utf-8')
+        obj._child_frame_id = obj.child_frame_id.encode('utf-8')
+        c.child_frame_id = obj._child_frame_id
         c.transform = geometry_msgs_Transform.from_param(obj.transform)
         return c
 
