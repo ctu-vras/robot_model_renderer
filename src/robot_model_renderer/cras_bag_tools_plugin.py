@@ -113,7 +113,7 @@ class RenderCameraMask(DeserializedMessageFilter):
         if model is None:
             raise RuntimeError("RenderCameraMask requires robot URDF either as a file or ROS parameter.")
 
-        self.renderer = RobotModelRenderer(model, self._config, self._encoding)
+        self.renderer = RobotModelRenderer(model, self._config, self._encoding, warnExtrapolation=False)
 
     def filter(self, topic, msg, stamp, header):
         if self.renderer is None:
@@ -124,8 +124,8 @@ class RenderCameraMask(DeserializedMessageFilter):
             if stamp - s < self.tf_timeout:
                 to_try.append((m, s, h))
             else:
-                print("Failed transforming robot for mask rendering at time %s: %r" % (m.header.stamp, e),
-                      file=sys.stderr)
+                print("Failed transforming robot for mask rendering at time %i.%09i: %r" % (
+                    m.header.stamp.secs, m.header.stamp.nsecs, e), file=sys.stderr)
         self._failed_msgs = []
 
         if topic.lstrip('/') == 'tf':
@@ -148,7 +148,8 @@ class RenderCameraMask(DeserializedMessageFilter):
                 header = fix_connection_header(copy.copy(header), self.mask_topic, Image._type, Image._md5sum, Image)
                 result.append((self.mask_topic, img, stamp, header))
             else:
-                print("Failed rendering robot mask for time %s: %r" % (msg.header.stamp, err), file=sys.stderr)
+                print("Failed rendering robot mask for time %i.%09i: %r" % (
+                    msg.header.stamp.secs, msg.header.stamp.nsecs, err), file=sys.stderr)
 
         return result
 

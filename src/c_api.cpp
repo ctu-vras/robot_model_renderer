@@ -185,7 +185,7 @@ public:
 
 robot_model_renderer_RobotModelRendererHandle robot_model_renderer_createRobotModelRenderer(
   cras_allocator_t logMessagesAllocator, const char* model, cras_allocator_t errorMessagesAllocator,
-  robot_model_renderer_RobotModelRendererConfig config)
+  robot_model_renderer_RobotModelRendererConfig config, const bool warnExtrapolation)
 {
   urdf::Model robotModel;
   try
@@ -213,7 +213,8 @@ robot_model_renderer_RobotModelRendererHandle robot_model_renderer_createRobotMo
   {
     LogGuard logGuard(handle);
 
-    handle->linkUpdater = std::make_shared<robot_model_renderer::TFLinkUpdater>(handle->log, &handle->tf);
+    handle->linkUpdater = std::make_shared<robot_model_renderer::TFLinkUpdater>(
+      handle->log, &handle->tf, "", "", warnExtrapolation);
 
     handle->renderer = std::make_unique<robot_model_renderer::RobotModelRenderer>(
       handle->log, robotModel, handle->linkUpdater.get(), errors, config_cpp);

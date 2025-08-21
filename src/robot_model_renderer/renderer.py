@@ -33,7 +33,7 @@ def _get_library():
 
         __lib.robot_model_renderer_createRobotModelRenderer.restype = robot_model_renderer_RobotModelRendererHandle
         __lib.robot_model_renderer_createRobotModelRenderer.argtypes = [
-            Allocator.ALLOCATOR, c_char_p, Allocator.ALLOCATOR, RobotModelRendererConfig,
+            Allocator.ALLOCATOR, c_char_p, Allocator.ALLOCATOR, RobotModelRendererConfig, c_bool,
         ]
 
         __lib.robot_model_renderer_deleteRobotModelRenderer.restype = None
@@ -85,13 +85,14 @@ def sensorMsgsEncodingToOgrePixelFormat(encoding):
 class RobotModelRenderer(object):
     """Renderer of robot model from URDF."""
 
-    def __init__(self, model, config, imageEncoding=None):
+    def __init__(self, model, config, imageEncoding=None, warnExtrapolation=True):
         """Construct the renderer.
 
         :param str model: The URDF model to load.
         :param RobotModelRendererConfig config: Configuration of this class.
         :param imageEncoding: Encoding of the rendered image (one of sensor_msgs/image_encodings.h).
         :type imageEncoding: str or none
+        :param bool warnExtrapolation: If true, warn on TF extrapolation errors.
         :throws RuntimeError: If construction failed.
         """
         self._log_alloc = LogMessagesAllocator()
@@ -104,7 +105,7 @@ class RobotModelRenderer(object):
 
         error_alloc = StringAllocator()
         self._handle = _get_library().robot_model_renderer_createRobotModelRenderer(
-            self._log_alloc_func, model.encode("utf-8"), error_alloc.get_cfunc(), config)
+            self._log_alloc_func, model.encode("utf-8"), error_alloc.get_cfunc(), config, warnExtrapolation)
 
         self._camera_info = None
         self._flush_log_messages()

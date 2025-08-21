@@ -219,6 +219,7 @@ int robot_model_renderer_sensorMsgsEncodingToOgrePixelFormat(const char* encodin
  * \param[in] model The robot model to render (string version of the URDF file).
  * \param[out] errorMessagesAllocator Allocator for the errors encountered during construction of this class.
  * \param[in] config Configuration of this class.
+ * \param[in] warnExtrapolation Whether to warn on TF extrapolation errors.
  * \return A handle to the constructed class instance. Nullptr if the construction failed.
  * \note Delete this instance by calling robot_model_renderer_deleteRobotModelRenderer() when no longer needed.
  */
@@ -226,7 +227,8 @@ robot_model_renderer_RobotModelRendererHandle robot_model_renderer_createRobotMo
   cras_allocator_t logMessagesAllocator,
   const char* model,
   cras_allocator_t errorMessagesAllocator,
-  robot_model_renderer_RobotModelRendererConfig config);
+  robot_model_renderer_RobotModelRendererConfig config,
+  bool warnExtrapolation);
 
 /**
  * \brief Delete the instance created by robot_model_renderer_createRobotModelRenderer().

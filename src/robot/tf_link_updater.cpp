@@ -30,15 +30,16 @@ std::string concat(const std::string& prefix, const std::string& frame)
 }
 
 TFLinkUpdater::TFLinkUpdater(const cras::LogHelperPtr& log, tf2::BufferCore* tf,
-  const std::string& fixed_frame, const std::string& tf_prefix)
-  : cras::HasLogger(log), tf_(tf), fixed_frame_(fixed_frame), tf_prefix_(tf_prefix)
+  const std::string& fixed_frame, const std::string& tf_prefix, const bool warn_extrapolation)
+  : cras::HasLogger(log), tf_(tf), fixed_frame_(fixed_frame), tf_prefix_(tf_prefix),
+    warn_extrapolation_(warn_extrapolation)
 {
 }
 
 TFROSLinkUpdater::TFROSLinkUpdater(const cras::LogHelperPtr& log,
   const std::shared_ptr<cras::InterruptibleTFBuffer>& tf, const std::string& fixed_frame, const std::string& tf_prefix,
-  const ros::Duration& timeout)
-  : TFLinkUpdater(log, &tf->getRawBuffer(), fixed_frame, tf_prefix), timeout_(timeout), tf_ros_(tf)
+  const ros::Duration& timeout, const bool warn_extrapolation)
+  : TFLinkUpdater(log, &tf->getRawBuffer(), fixed_frame, tf_prefix, warn_extrapolation), tf_ros_(tf), timeout_(timeout)
 {
 }
 
@@ -71,8 +72,11 @@ cras::expected<void, LinkUpdateError> TFLinkUpdater::getLinkTransforms(
   }
   catch (const tf2::ExtrapolationException& e)
   {
-    CRAS_WARN_STREAM_THROTTLE_NAMED(1.0, "link_updater",
-      "No transform from [" << link_name_prefixed << "] to [" << fixed_frame_ << "]: " << e.what());
+    if (warn_extrapolation_)
+    {
+      CRAS_WARN_STREAM_THROTTLE_NAMED(1.0, "link_updater",
+        "No transform from [" << link_name_prefixed << "] to [" << fixed_frame_ << "]: " << e.what());
+    }
     error.error = e.what();
     error.name = link_name_prefixed;
     error.maySucceedLater = true;

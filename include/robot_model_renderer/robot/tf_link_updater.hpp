@@ -25,7 +25,7 @@ class TFLinkUpdater : public LinkUpdater, public cras::HasLogger
 {
 public:
   explicit TFLinkUpdater(const cras::LogHelperPtr& log, tf2::BufferCore* tf,
-    const std::string& fixed_frame = {}, const std::string& tf_prefix = {});
+    const std::string& fixed_frame = {}, const std::string& tf_prefix = {}, bool warn_extrapolation = true);
 
   void setFixedFrame(const std::string& fixedFrame);
 
@@ -37,6 +37,7 @@ protected:
   tf2::BufferCore* tf_;
   std::string fixed_frame_;
   std::string tf_prefix_;
+  bool warn_extrapolation_;
 };
 
 class TFROSLinkUpdater : public TFLinkUpdater
@@ -44,7 +45,7 @@ class TFROSLinkUpdater : public TFLinkUpdater
 public:
   explicit TFROSLinkUpdater(const cras::LogHelperPtr& log, const std::shared_ptr<cras::InterruptibleTFBuffer>& tf,
     const std::string& fixed_frame = {}, const std::string& tf_prefix = {},
-    const ros::Duration& timeout = ros::Duration(0.01));
+    const ros::Duration& timeout = ros::Duration(0.01), bool warn_extrapolation = true);
 
   virtual void setTimeoutStart(const ros::Time& time);
 
