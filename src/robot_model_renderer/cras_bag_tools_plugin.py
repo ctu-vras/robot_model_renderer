@@ -9,20 +9,20 @@ import sys
 import cv2
 import rospkg
 import rospy
-from cras import image_encodings
-from cras_bag_tools import DeserializedMessageFilter
+from cras import image_encodings, to_str
+from cras_bag_tools import DeserializedMessageFilterWithTF
 from cras_bag_tools.message_filter import fix_connection_header
 from sensor_msgs.msg import Image
 from robot_model_renderer import (RobotModelRenderer, RobotModelRendererConfig, RenderingMode, ShapeFilterConfig,
                                   ShapeInflationRegistry, ScaleAndPadding, PerShapeInflation)
 
 
-class RenderCameraMask(DeserializedMessageFilter):
+class RenderCameraMask(DeserializedMessageFilterWithTF):
     def __init__(self, camera_info_topic, mask_topic=None, description_param=None, description_file=None,
                  encoding=image_encodings.MONO8, tf_timeout=1.5,
                  min_stamp=None, max_stamp=None, include_time_ranges=None, exclude_time_ranges=None, **kwargs):
         super(RenderCameraMask, self).__init__(
-            include_topics=[camera_info_topic, "/tf", "/tf_static"], min_stamp=min_stamp, max_stamp=max_stamp,
+            include_topics=[camera_info_topic], min_stamp=min_stamp, max_stamp=max_stamp,
             include_time_ranges=include_time_ranges, exclude_time_ranges=exclude_time_ranges)
 
         self.camera_info_topic = camera_info_topic
@@ -120,12 +120,12 @@ class RenderCameraMask(DeserializedMessageFilter):
             return None
 
         to_try = []
-        for m, s, h, e in self._failed_msgs:
+        for m, s, h, e, n in self._failed_msgs:
             if stamp - s < self.tf_timeout:
-                to_try.append((m, s, h))
+                to_try.append((m, s, h, n))
             else:
-                print("Failed transforming robot for mask rendering at time %i.%09i: %r" % (
-                    m.header.stamp.secs, m.header.stamp.nsecs, e), file=sys.stderr)
+                print("Failed transforming robot for mask rendering at time %s after %i tries: %r" % (
+                    to_str(m.header.stamp), n, e), file=sys.stderr)
         self._failed_msgs = []
 
         if topic.lstrip('/') == 'tf':
@@ -135,21 +135,21 @@ class RenderCameraMask(DeserializedMessageFilter):
             for transform in msg.transforms:
                 self.renderer.setTransform(transform, "robot_model_renderer.cras_bag_tools_plugin", True)
         else:
-            to_try.append((msg, stamp, header))
+            to_try.append((msg, stamp, header, 0))
         result = [(topic, msg, stamp, header)]
 
-        for msg, stamp, header in to_try:
+        for msg, stamp, header, num_fails in to_try:
             img, err, link_err = self.renderer.render(msg)
 
             may_succeed_later = any([e.maySucceedLater for e in link_err]) if link_err is not None else False
             if may_succeed_later:
-                self._failed_msgs.append((msg, stamp, header, err))
+                self._failed_msgs.append((msg, stamp, header, err, num_fails + 1))
             elif img is not None:
                 header = fix_connection_header(copy.copy(header), self.mask_topic, Image._type, Image._md5sum, Image)
                 result.append((self.mask_topic, img, stamp, header))
             else:
-                print("Failed rendering robot mask for time %i.%09i: %r" % (
-                    msg.header.stamp.secs, msg.header.stamp.nsecs, err), file=sys.stderr)
+                print("Failed rendering robot mask for time %s after %i tries: %r" % (
+                    to_str(msg.header.stamp), num_fails, err), file=sys.stderr)
 
         return result
 
