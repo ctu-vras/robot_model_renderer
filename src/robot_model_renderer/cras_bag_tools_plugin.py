@@ -67,17 +67,17 @@ class RenderCameraMask(DeserializedMessageFilterWithTF):
                     v.get("onlyShapes", []))
             elif k == "shapeInflationRegistry":
                 defaultInflation = ScaleAndPadding(
-                    kwargs.get("defaultInflation", {}).get("scale", 1.0),
-                    kwargs.get("defaultInflation", {}).get("padding", 0.0))
+                    v.get("defaultInflation", {}).get("scale", 1.0),
+                    v.get("defaultInflation", {}).get("padding", 0.0))
                 defaultVisualInflation = ScaleAndPadding(
-                    kwargs.get("defaultVisualInflation", {}).get("scale", defaultInflation.scale),
-                    kwargs.get("defaultVisualInflation", {}).get("padding", defaultInflation.padding))
+                    v.get("defaultVisualInflation", {}).get("scale", defaultInflation.scale),
+                    v.get("defaultVisualInflation", {}).get("padding", defaultInflation.padding))
                 defaultCollisionInflation = ScaleAndPadding(
-                    kwargs.get("defaultCollisionInflation", {}).get("scale", defaultInflation.scale),
-                    kwargs.get("defaultCollisionInflation", {}).get("padding", defaultInflation.padding))
+                    v.get("defaultCollisionInflation", {}).get("scale", defaultInflation.scale),
+                    v.get("defaultCollisionInflation", {}).get("padding", defaultInflation.padding))
                 self._config.shapeInflationRegistry = ShapeInflationRegistry(
                     defaultInflation, defaultVisualInflation, defaultCollisionInflation)
-                for kk, vv in kwargs.get("perShape", {}).items():
+                for kk, vv in v.get("perShape", {}).items():
                     i = PerShapeInflation(kk, ScaleAndPadding(vv.get("scale", 1.0), vv.get("padding", 0.0)))
                     self._config.shapeInflationRegistry.perShapeInflation.append(i)
             elif k == "staticMaskImage":

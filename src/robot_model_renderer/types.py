@@ -158,23 +158,39 @@ class ScaleAndPadding(Structure):
         super(ScaleAndPadding, self).__init__(scale=scale, padding=padding)
 
 
-class PerShapeInflation(Structure):
-    """Scaling and padding configuration for a single shape name template.
+class _PerShapeInflation(Structure):
+    _fields_ = [
+        ("shapeName", c_char_p),
+        ("inflation", ScaleAndPadding),
+    ]
 
-    ctypes interop with struct robot_model_renderer_PerShapeInflation.
+    def __init__(self, shapeName=b"", inflation=ScaleAndPadding()):
+        super(_PerShapeInflation, self).__init__(shapeName=shapeName, inflation=inflation)
+
+
+class PerShapeInflation(object):
+    """Scaling and padding configuration for a single shape name template.
 
     :ivar shapeName: Shape name template.
     :vartype shapeName: str
     :ivar inflation: The applied scaling and padding.
     :vartype inflation: ScaleAndPadding
     """
-    _fields_ = [
-        ("shapeName", c_char_p),
-        ("inflation", ScaleAndPadding),
-    ]
-
     def __init__(self, shapeName="", inflation=ScaleAndPadding()):
-        super(PerShapeInflation, self).__init__(shapeName=shapeName, inflation=inflation)
+        if isinstance(shapeName, _PerShapeInflation):
+            self.shapeName = _decode(shapeName.shapeName)
+            self.inflation = shapeName.inflation
+        else:
+            self.shapeName = shapeName
+            self.inflation = inflation
+
+    @classmethod
+    def from_param(cls, obj):
+        c = _PerShapeInflation()
+        obj._shapeName = obj.shapeName.encode("utf-8")
+        c.shapeName = obj._shapeName
+        c.inflation = obj.inflation
+        return c
 
 
 class _ShapeInflationRegistry(Structure):
@@ -187,12 +203,12 @@ class _ShapeInflationRegistry(Structure):
         ("defaultVisualInflation", ScaleAndPadding),
         ("defaultCollisionInflation", ScaleAndPadding),
         ("perShapeInflationCount", c_size_t),
-        ("perShapeInflation", POINTER(PerShapeInflation)),
+        ("perShapeInflation", POINTER(_PerShapeInflation)),
     ]
 
     def __init__(self, defaultInflation=ScaleAndPadding(), defaultVisualInflation=ScaleAndPadding(),
                  defaultCollisionInflation=ScaleAndPadding(), perShapeInflationCount=0,
-                 perShapeInflation=ctypes.cast((PerShapeInflation * 0)(), POINTER(PerShapeInflation))):
+                 perShapeInflation=ctypes.cast((_PerShapeInflation * 0)(), POINTER(_PerShapeInflation))):
         super(_ShapeInflationRegistry, self).__init__(
             defaultInflation=defaultInflation,
             defaultVisualInflation=defaultVisualInflation, defaultCollisionInflation=defaultCollisionInflation,
@@ -243,8 +259,9 @@ class ShapeInflationRegistry(object):
             self.defaultInflation = conf.defaultInflation
             self.defaultVisualInflation = conf.defaultVisualInflation
             self.defaultCollisionInflation = conf.defaultCollisionInflation
-            self.perShapeInflation = list(ctypes.cast(
-                conf.perShapeInflation, PerShapeInflation * conf.perShapeInflationCount))
+            self.perShapeInflation = []
+            for i in range(conf.perShapeInflationCount):
+                self.perShapeInflation.append(PerShapeInflation(conf.perShapeInflation[i]))
         else:
             self.defaultInflation = defaultInflation
             self.defaultVisualInflation = defaultVisualInflation
@@ -258,9 +275,10 @@ class ShapeInflationRegistry(object):
         c.defaultVisualInflation = obj.defaultVisualInflation
         c.defaultCollisionInflation = obj.defaultCollisionInflation
         c.perShapeInflationCount = len(obj.perShapeInflation)
-        c.perShapeInflation = (PerShapeInflation * c.perShapeInflationCount)()
+        c.perShapeInflation = ctypes.cast(
+            (_PerShapeInflation * c.perShapeInflationCount)(), POINTER(_PerShapeInflation))
         for i in range(len(obj.perShapeInflation)):
-            c.perShapeInflation[i] = obj.perShapeInflation[i]
+            c.perShapeInflation[i] = PerShapeInflation.from_param(obj.perShapeInflation[i])
         return c
 
 
