@@ -384,15 +384,14 @@ std::pair<Eigen::Vector3d, size_t> calculate_mesh_centroid(const Ogre::MeshPtr& 
   return {centroid, num_vertices};
 }
 
-Ogre::MeshPtr inflateMesh(const std::string& newMeshName, const Ogre::MeshPtr& ogreMesh, const urdf::Mesh& urdfMesh,
+Ogre::MeshPtr inflateMesh(const std::string& newMeshName, const Ogre::MeshPtr& ogreMesh,
                           const ScaleAndPadding& inflation)
 {
   // This is the same algorithm as Mesh::scaleAndPadd from geometric_shapes library, but it extends vertices along
   // normals computed from optimized mesh (all vertices closer than 1 mm are merged into one).
   // https://github.com/moveit/geometric_shapes/blob/noetic-devel/src/shapes.cpp#L378
 
-  if (inflation == ScaleAndPadding(1.0, 0.0) &&
-      urdfMesh.scale.x == 1.0 && urdfMesh.scale.y == 1.0 && urdfMesh.scale.z == 1.0)
+  if (inflation == ScaleAndPadding(1.0, 0.0))
     return ogreMesh;
 
   const auto& [centroid, num_vertices] = calculate_mesh_centroid(ogreMesh);
@@ -411,8 +410,7 @@ Ogre::MeshPtr inflateMesh(const std::string& newMeshName, const Ogre::MeshPtr& o
     opt_mesh = opt.optimizeMesh(mesh->clone(newMeshName + "_opt"), 1e-3, 1e3, 1e3);
 
   Ogre::AxisAlignedBox aabb;
-  const Eigen::Vector3d scale(
-    inflation.scale * urdfMesh.scale.x, inflation.scale * urdfMesh.scale.y, inflation.scale * urdfMesh.scale.z);
+  const Eigen::Vector3d scale(inflation.scale, inflation.scale, inflation.scale);
   const auto nonUniformScaling = scale.x() != scale.y() || scale.y() != scale.z();
 
   for (size_t i = 0; i < mesh->getNumSubMeshes(); ++i)
@@ -612,8 +610,8 @@ Ogre::Entity* RobotLink::createEntityForGeometryElement(
 
       const std::string& model_name = mesh.filename;
 
-      const auto should_inflate = inflation != ScaleAndPadding(1.0, 0.0) ||
-        mesh.scale.x != 1.0 || mesh.scale.y != 1.0 || mesh.scale.z != 1.0;
+      const auto should_inflate = inflation != ScaleAndPadding(1.0, 0.0);
+      scale = Ogre::Vector3(mesh.scale.x, mesh.scale.y, mesh.scale.z);
 
       try
       {
@@ -626,7 +624,7 @@ Ogre::Entity* RobotLink::createEntityForGeometryElement(
         else
         {
           if (should_inflate)
-            ogreMesh = inflateMesh(entity_name + "_mesh", ogreMesh, mesh, inflation);
+            ogreMesh = inflateMesh(entity_name + "_mesh", ogreMesh, inflation);
           entity = scene_manager_->createEntity(entity_name, ogreMesh);
         }
       }
